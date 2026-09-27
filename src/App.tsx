@@ -135,6 +135,10 @@ export default function App() {
   const [manualPriceInput, setManualPriceInput] = useState<string>('');
   const [selectedWinnerManual, setSelectedWinnerManual] = useState<string>('');
 
+  // Modale personalizzato per nome lega
+  const [showCustomLeagueModal, setShowCustomLeagueModal] = useState(false);
+  const [customLeagueInput, setCustomLeagueInput] = useState('');
+
   // State Business & Paywall
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [demoStep, setDemoStep] = useState<number | null>(null);
@@ -614,15 +618,10 @@ export default function App() {
               <button
                 onClick={() => {
                   if (!leagueName || leagueName.trim() === '' || leagueName === 'FantaLega Serie A') {
-                    const customName = prompt("⚠️ Inserisci il nome della tua Lega (questo diventerà il codice stanza per i tuoi amici):");
-                    if (!customName || customName.trim() === '') {
-                      alert("❌ Devi obbligatoriamente dare un nome alla tua lega per poter procedere!");
-                      return;
-                    }
-                    setLeagueName(customName.trim());
-                    setRoomCode(customName.trim().toUpperCase().replace(/\s+/g, ''));
+                    setShowCustomLeagueModal(true);
+                  } else {
+                    setShowPaywall(true);
                   }
-                  setShowPaywall(true);
                 }}
                 className="w-full py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg hover:brightness-110 active:scale-98 transition-all cursor-pointer"
               >
@@ -1198,6 +1197,61 @@ export default function App() {
         </div>
       )}
 
+      {/* MODALE CUSTOM INSERIMENTO NOME LEGA */}
+      {showCustomLeagueModal && (
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
+          <div className="bg-[#0d1322] border-2 border-amber-400 rounded-3xl p-6 max-w-sm w-full flex flex-col gap-4 shadow-[0_0_50px_rgba(245,158,11,0.4)] text-center relative">
+            <button onClick={() => setShowCustomLeagueModal(false)} className="absolute top-4 right-4 text-[#7c8cae] hover:text-white cursor-pointer"><X size={18} /></button>
+            
+            <div className="w-12 h-12 bg-amber-400/20 border border-amber-400/40 rounded-full flex items-center justify-center text-amber-400 mx-auto">
+              <ShieldCheck size={24} />
+            </div>
+
+            <div>
+              <span className="text-[10px] font-black uppercase text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/30">
+                Configurazione Stanza
+              </span>
+              <h3 className="text-lg font-black text-white uppercase mt-2">Nome della Lega</h3>
+              <p className="text-xs text-[#7c8cae] mt-1">Questo nome diventerà il codice stanza per i tuoi amici.</p>
+            </div>
+
+            <input
+              type="text"
+              placeholder="Es. FantaLega Amici 2026"
+              value={customLeagueInput}
+              onChange={(e) => setCustomLeagueInput(e.target.value)}
+              className="w-full bg-[#060913] border border-[#1e2d4a] rounded-xl p-3 text-xs text-white font-semibold focus:outline-none focus:border-amber-400 text-center"
+              autoFocus
+            />
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowCustomLeagueModal(false)}
+                className="flex-1 py-2.5 bg-[#060913] border border-[#1e2d4a] text-[#7c8cae] hover:text-white font-bold rounded-xl text-xs uppercase cursor-pointer"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={() => {
+                  if (!customLeagueInput || customLeagueInput.trim() === '') {
+                    alert("❌ Devi inserire un nome valido per la lega!");
+                    return;
+                  }
+                  const nameClean = customLeagueInput.trim();
+                  setLeagueName(nameClean);
+                  setRoomCode(nameClean.toUpperCase().replace(/\s+/g, ''));
+                  setShowCustomLeagueModal(false);
+                  setShowPaywall(true);
+                }}
+                className="flex-1 py-2.5 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black rounded-xl text-xs uppercase cursor-pointer shadow-md"
+              >
+                Conferma 🚀
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showPlayerPaymentModal && pendingPlayerAuth && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#072019] border-2 border-emerald-400 rounded-3xl p-6 max-w-sm w-full flex flex-col gap-4 shadow-2xl text-center relative">
@@ -1420,7 +1474,7 @@ export default function App() {
             <span className="text-[10px] font-black text-amber-400 uppercase bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/30">Guida Rapida • Passaggio {demoStep}/3</span>
             <button onClick={() => setDemoStep(null)} className="text-[#80bca8] hover:text-white"><X size={16} /></button>
           </div>
-          {demoStep === 1 && (<><h4 className="text-sm font-black text-white uppercase">1. La Regia del Presidente 📺</h4><p className="text-xs text-[#80bca8]">Da qui cerchi e mandi a schermo i calciatori. La Card cambia colore in base alla squadra di Serie A!</p></>)}
+          {demoStep === 1 && (<><h4 className="text-sm font-black text-white uppercase">1. La Regia del Presidente 📺</h4><p className="text-xs text-[#80bca8]">Da hier cerchi e mandi a schermo i calciatori. La Card cambia colore in base alla squadra di Serie A!</p></>)}
           {demoStep === 2 && (<><h4 className="text-sm font-black text-white uppercase">2. Buzzer Live da Smartphone ⚡</h4><p className="text-xs text-[#80bca8]">I fantallenatori dal loro telefono premono BUZZ per rilanciare istantaneamente in diretta audio e video.</p></>)}
           {demoStep === 3 && (<><h4 className="text-sm font-black text-white uppercase">3. Aggiudicazione e Rose 📊</h4><p className="text-xs text-[#80bca8]">Aggiudica il giocatore con un clic per aggiornare in tempo reale i crediti e la rosa scaricabile in Excel!</p></>)}
           <div className="flex justify-between items-center pt-2 border-t border-[#124235]">
