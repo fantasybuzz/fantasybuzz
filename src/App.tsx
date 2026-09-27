@@ -115,7 +115,6 @@ export default function App() {
   // State Base
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<'ALL' | 'P' | 'D' | 'C' | 'A'>('ALL');
-  const [selectedStep, setSelectedStep] = useState(1);
   const [isBlinking, setIsBlinking] = useState(false);
   const [bidHistory, setBidHistory] = useState<{ bidder: string; amount: number; time: string }[]>([]);
 
@@ -150,6 +149,7 @@ export default function App() {
   const [selectedPackage, setSelectedPackage] = useState<'TV' | 'LIVE'>('LIVE');
   const [paymentType, setPaymentType] = useState<'SINGLE' | 'SPLIT'>('SINGLE');
   const [coachesCount, setCoachesCount] = useState(10);
+  const [selectedStep, setSelectedStep] = useState<number>(1);
 
   // Controllo Presenze / Partecipanti Mancanti
   const [showIncompleteWarning, setShowIncompleteWarning] = useState(false);
@@ -255,7 +255,6 @@ export default function App() {
     setActiveTab('AUCTION');
   };
 
-  // LOGICA CONDIZIONALE CASSA COMUNE VS PAGAMENTO PRESIDENTE
   const handlePlayerAuthClick = (coach: any) => {
     if (paymentType === 'SPLIT') {
       setPendingPlayerAuth(coach);
@@ -285,7 +284,7 @@ export default function App() {
   const handleStartDemo = () => {
     setIsDemoMode(true);
     setActivePackage('LIVE');
-    setRoomCode('DEMO-3WAY');
+    setRoomCode('BUZZ2026');
     setLeagueName('Lega Demo (3 Partecipanti)');
     setInitialBudget(500);
     setCoaches([
@@ -566,10 +565,9 @@ export default function App() {
 
   return (
     <>
-      {/* 1. LOGIN / ACCESSO CON NOME LEGA E CODICE STANZA */}
       {!userRole ? (
-        <div className="h-screen w-screen bg-[#04060c] text-white flex flex-col items-center justify-center p-4 select-none relative z-10">
-          <div className="max-w-md w-full bg-[#0d1322] border border-[#1e2d4a] rounded-3xl p-6 shadow-2xl flex flex-col items-center gap-5">
+        <div className="min-h-screen w-full bg-[#04060c] text-white flex flex-col items-center justify-center p-4 select-none relative z-10 box-border">
+          <div className="max-w-md w-full bg-[#0d1322] border border-[#1e2d4a] rounded-3xl p-6 shadow-2xl flex flex-col items-center gap-5 my-auto">
             <div className="w-16 h-16 rounded-2xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-amber-400 shadow-inner">
               <Zap size={32} />
             </div>
@@ -580,7 +578,7 @@ export default function App() {
             </div>
 
             <div className="w-full bg-[#060913] border border-[#1e2d4a] p-3.5 rounded-2xl space-y-2">
-              <span className="text-[10px] font-black uppercase text-amber-400 block tracking-wider">Dati Stanza Ricevuti</span>
+              <span className="text-[10px] font-black uppercase text-amber-400 block tracking-wider">Accesso Partecipanti / Ospiti</span>
               <div className="space-y-2">
                 <div>
                   <label className="text-[10px] text-[#7c8cae] font-bold uppercase block mb-1">Nome della Lega</label>
@@ -589,17 +587,17 @@ export default function App() {
                     placeholder="Es. FantaLega Serie A"
                     value={inputLeagueName}
                     onChange={(e) => setInputLeagueName(e.target.value)}
-                    className="w-full bg-[#0d1322] border border-[#1e2d4a] rounded-xl p-2 text-xs text-white font-semibold focus:outline-none"
+                    className="w-full bg-[#0d1322] border border-[#1e2d4a] rounded-xl p-2.5 text-xs text-white font-semibold focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-[#7c8cae] font-bold uppercase block mb-1">Codice Stanza</label>
+                  <label className="text-[10px] text-[#7c8cae] font-bold uppercase block mb-1">Codice Stanza (Nome Lega o BUZZ2026 per Demo)</label>
                   <input
                     type="text"
-                    placeholder="Es. BUZZ2026"
+                    placeholder="Es. FANTALEGASERIEA"
                     value={inputRoomCode}
                     onChange={(e) => setInputRoomCode(e.target.value.toUpperCase())}
-                    className="w-full bg-[#0d1322] border border-[#1e2d4a] rounded-xl p-2 text-xs text-amber-400 font-black tracking-widest text-center focus:outline-none"
+                    className="w-full bg-[#0d1322] border border-[#1e2d4a] rounded-xl p-2.5 text-xs text-amber-400 font-black tracking-widest text-center focus:outline-none"
                   />
                 </div>
               </div>
@@ -610,11 +608,22 @@ export default function App() {
                 onClick={handleStartDemo}
                 className="w-full py-3.5 bg-gradient-to-r from-emerald-400 to-emerald-500 text-slate-950 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg hover:brightness-110 active:scale-98 transition-all cursor-pointer"
               >
-                <Play size={16} className="fill-slate-950" /> Prova la Demo Gratuita (3 Partecipanti)
+                <Play size={16} className="fill-slate-950" /> Prova la Demo Gratuita (Codice: BUZZ2026)
               </button>
 
               <button
-                onClick={() => setShowPaywall(true)}
+                onClick={() => {
+                  if (!leagueName || leagueName.trim() === '' || leagueName === 'FantaLega Serie A') {
+                    const customName = prompt("⚠️ Inserisci il nome della tua Lega (questo diventerà il codice stanza per i tuoi amici):");
+                    if (!customName || customName.trim() === '') {
+                      alert("❌ Devi obbligatoriamente dare un nome alla tua lega per poter procedere!");
+                      return;
+                    }
+                    setLeagueName(customName.trim());
+                    setRoomCode(customName.trim().toUpperCase().replace(/\s+/g, ''));
+                  }
+                  setShowPaywall(true);
+                }}
                 className="w-full py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg hover:brightness-110 active:scale-98 transition-all cursor-pointer"
               >
                 <ShieldCheck size={18} /> Crea Nuova Lega / Sblocca Stanza 🚀
@@ -628,13 +637,22 @@ export default function App() {
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-[#7c8cae] block text-center uppercase tracking-wider">
-                  Scegli il tuo nome in lista
+                  Seleziona il tuo nome in lista
                 </label>
                 <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1">
                   {coaches.map((c) => (
                     <button
                       key={c.name}
-                      onClick={() => handlePlayerAuthClick(c)}
+                      onClick={() => {
+                        const cleanRoomCode = roomCode.toUpperCase().replace(/\s+/g, '');
+                        const inputClean = inputRoomCode.toUpperCase().replace(/\s+/g, '');
+
+                        if (inputClean !== cleanRoomCode && inputClean !== 'BUZZ2026') {
+                          alert(`❌ Codice stanza errato! Per entrare nella lega "${leagueName}", inserisci il codice corretto.`);
+                          return;
+                        }
+                        handlePlayerAuthClick(c);
+                      }}
                       className="p-3 bg-[#060913] hover:bg-emerald-500/20 hover:border-emerald-400 border border-[#1e2d4a] rounded-xl font-bold text-xs text-white flex flex-col items-start gap-1 transition-all active:scale-95 cursor-pointer text-left"
                     >
                       <span className="font-extrabold text-amber-300 truncate w-full">{c.name}</span>
@@ -648,7 +666,6 @@ export default function App() {
           </div>
         </div>
       ) : (
-        /* 2. APP PRINCIPALE */
         <div className={`h-screen w-screen font-sans flex flex-col justify-between p-3 md:p-5 select-none overflow-hidden relative z-10 transition-colors duration-500 ${
           userRole === 'PRESIDENT' 
             ? 'bg-[#030d0a] text-[#e2e8f0]' 
@@ -762,7 +779,6 @@ export default function App() {
             </div>
           </header>
 
-          {/* Area Asta */}
           {activeTab === 'AUCTION' && (
             userRole === 'PRESIDENT' ? (
               <main className="flex-1 flex gap-4 items-stretch my-1 overflow-hidden w-full relative">
@@ -978,7 +994,6 @@ export default function App() {
                 </aside>
               </main>
             ) : (
-              /* VISTA SMARTPHONE FANTALLENATORE */
               <main className="flex-1 flex flex-col gap-3 max-w-sm mx-auto w-full my-1 overflow-hidden items-center justify-between relative">
                 <div className={`w-[190px] h-[230px] relative flex flex-col justify-between p-3 rounded-3xl border-2 bg-gradient-to-b ${teamStyle.bg} ${teamStyle.border} shadow-[0_0_30px_rgba(0,0,0,0.8)]`}>
                   <div className="flex justify-between items-center z-10">
@@ -1018,7 +1033,6 @@ export default function App() {
             )
           )}
 
-          {/* Area Rose */}
           {activeTab === 'ROSTERS' && (
              <main className="flex-1 flex gap-4 items-stretch my-2 overflow-hidden w-full">
                <aside className="w-[280px] bg-[#072019] border border-[#124235] rounded-2xl p-4 flex flex-col gap-3 flex-shrink-0 overflow-hidden shadow-2xl">
@@ -1043,7 +1057,7 @@ export default function App() {
                    })}
                  </div>
                </aside>
-     
+      
                <section className="flex-1 bg-[#072019] border border-[#124235] rounded-2xl p-5 flex flex-col justify-between relative shadow-2xl overflow-y-auto">
                  {(() => {
                    const currentCoachData = coaches.find(c => c.name === selectedRosterCoach) || coaches[0];
@@ -1052,61 +1066,60 @@ export default function App() {
                    const dif = roster.filter(item => item.player.role === 'D');
                    const cen = roster.filter(item => item.player.role === 'C');
                    const att = roster.filter(item => item.player.role === 'A');
-     
+      
                    return (
-                     <div className="space-y-6">
-                       <div className="flex justify-between items-center bg-[#030d0a] p-4 rounded-2xl border border-[#124235]">
-                         <div>
-                           <h2 className="text-lg font-black text-white uppercase tracking-wider">{currentCoachData?.name}</h2>
-                           <p className="text-xs text-[#80bca8]">{currentCoachData?.teamName}</p>
+                   <div className="space-y-6">
+                     <div className="flex justify-between items-center bg-[#030d0a] p-4 rounded-2xl border border-[#124235]">
+                       <div>
+                         <h2 className="text-lg font-black text-white uppercase tracking-wider">{currentCoachData?.name}</h2>
+                         <p className="text-xs text-[#80bca8]">{currentCoachData?.teamName}</p>
+                       </div>
+                       <div className="flex gap-4 text-center">
+                         <div className="bg-[#072019] px-3 py-1.5 rounded-xl border border-[#124235]">
+                           <span className="text-[10px] text-[#80bca8] block uppercase font-bold">Crediti Residui</span>
+                           <span className="text-base font-black text-amber-400">{currentCoachData?.budget} FM</span>
                          </div>
-                         <div className="flex gap-4 text-center">
-                           <div className="bg-[#072019] px-3 py-1.5 rounded-xl border border-[#124235]">
-                             <span className="text-[10px] text-[#80bca8] block uppercase font-bold">Crediti Residui</span>
-                             <span className="text-base font-black text-amber-400">{currentCoachData?.budget} FM</span>
-                           </div>
-                           <div className="bg-[#072019] px-3 py-1.5 rounded-xl border border-[#124235]">
-                             <span className="text-[10px] text-[#80bca8] block uppercase font-bold">Totale In Rosa</span>
-                             <span className="text-base font-black text-emerald-400">{roster.length} Giocatori</span>
-                           </div>
+                         <div className="bg-[#072019] px-3 py-1.5 rounded-xl border border-[#124235]">
+                           <span className="text-[10px] text-[#80bca8] block uppercase font-bold">Totale In Rosa</span>
+                           <span className="text-base font-black text-emerald-400">{roster.length} Giocatori</span>
                          </div>
                        </div>
-     
-                       {[
-                         { label: 'Portieri', role: 'P', items: por, max: 3, color: 'bg-yellow-400 text-slate-950' },
-                         { label: 'Difensori', role: 'D', items: dif, max: 8, color: 'bg-emerald-500 text-white' },
-                         { label: 'Centrocampisti', role: 'C', items: cen, max: 8, color: 'bg-blue-500 text-white' },
-                         { label: 'Attaccanti', role: 'A', items: att, max: 6, color: 'bg-red-500 text-white' },
-                       ].map(sec => (
-                         <div key={sec.role} className="space-y-2">
-                           <div className="flex items-center gap-2 pb-1 border-b border-[#124235]">
-                             <span className={`text-xs font-black px-2.5 py-0.5 rounded-full uppercase ${sec.color}`}>{sec.role}</span>
-                             <h3 className="text-xs font-extrabold text-white uppercase tracking-wider">{sec.label}</h3>
-                             <span className="text-[10px] text-[#80bca8] font-bold">({sec.items.length}/{sec.max})</span>
-                           </div>
-                           {sec.items.length > 0 ? (
-                             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                               {sec.items.map((item, idx) => (
-                                 <div key={idx} className="bg-[#030d0a] border border-[#124235] p-2.5 rounded-xl flex justify-between items-center">
-                                   <div>
-                                     <span className="font-bold text-xs text-white block">{item.player.name}</span>
-                                     <span className="text-[10px] text-[#80bca8]">{item.player.team}</span>
-                                   </div>
-                                   <span className="font-black text-amber-400 text-xs bg-amber-400/10 px-2 py-1 rounded-lg border">{item.price} FM</span>
-                                 </div>
-                               ))}
-                             </div>
-                           ) : <p className="text-xs text-[#80bca8] italic py-1">Nessun calciatore acquistato in questo ruolo.</p>}
-                         </div>
-                       ))}
                      </div>
+      
+                     {[
+                       { label: 'Portieri', role: 'P', items: por, max: 3, color: 'bg-yellow-400 text-slate-950' },
+                       { label: 'Difensori', role: 'D', items: dif, max: 8, color: 'bg-emerald-500 text-white' },
+                       { label: 'Centrocampisti', role: 'C', items: cen, max: 8, color: 'bg-blue-500 text-white' },
+                       { label: 'Attaccanti', role: 'A', items: att, max: 6, color: 'bg-red-500 text-white' },
+                     ].map(sec => (
+                       <div key={sec.role} className="space-y-2">
+                         <div className="flex items-center gap-2 pb-1 border-b border-[#124235]">
+                           <span className={`text-xs font-black px-2.5 py-0.5 rounded-full uppercase ${sec.color}`}>{sec.role}</span>
+                           <h3 className="text-xs font-extrabold text-white uppercase tracking-wider">{sec.label}</h3>
+                           <span className="text-[10px] text-[#80bca8] font-bold">({sec.items.length}/{sec.max})</span>
+                         </div>
+                         {sec.items.length > 0 ? (
+                           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                             {sec.items.map((item, idx) => (
+                               <div key={idx} className="bg-[#030d0a] border border-[#124235] p-2.5 rounded-xl flex justify-between items-center">
+                                 <div>
+                                   <span className="font-bold text-xs text-white block">{item.player.name}</span>
+                                   <span className="text-[10px] text-[#80bca8]">{item.player.team}</span>
+                                 </div>
+                                 <span className="font-black text-amber-400 text-xs bg-amber-400/10 px-2 py-1 rounded-lg border">{item.price} FM</span>
+                               </div>
+                             ))}
+                           </div>
+                         ) : <p className="text-xs text-[#80bca8] italic py-1">Nessun calciatore acquistato in questo ruolo.</p>}
+                       </div>
+                     ))}
+                   </div>
                    );
                  })()}
                </section>
              </main>
           )}
 
-          {/* Area Highlights */}
           {activeTab === 'HIGHLIGHTS' && (
             <main className="flex-1 flex flex-col gap-4 items-center justify-center p-6 bg-[#072019] border border-[#124235] rounded-3xl my-2 relative overflow-y-auto shadow-2xl">
               <div className="text-center">
@@ -1185,7 +1198,6 @@ export default function App() {
         </div>
       )}
 
-      {/* MODALE PAGAMENTO QUOTA FANTALLENATORE (ATTIVO SOLO SE CASSA COMUNE) */}
       {showPlayerPaymentModal && pendingPlayerAuth && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#072019] border-2 border-emerald-400 rounded-3xl p-6 max-w-sm w-full flex flex-col gap-4 shadow-2xl text-center relative">
@@ -1220,7 +1232,6 @@ export default function App() {
         </div>
       )}
 
-      {/* MODALE AVVISO LEGA INCOMPLETA */}
       {showIncompleteWarning && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#072019] border-2 border-red-500 rounded-3xl p-6 max-w-md w-full flex flex-col gap-4 shadow-[0_0_60px_rgba(239,68,68,0.4)] relative">
@@ -1268,7 +1279,6 @@ export default function App() {
         </div>
       )}
 
-      {/* POP-UP GUIDA INIZIALE PER I GIOCATORI */}
       {playerGuideStep !== null && userRole === 'PLAYER' && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#062017] border-2 border-emerald-400 rounded-3xl p-6 max-w-xs w-full text-center shadow-[0_0_50px_rgba(16,185,129,0.4)] flex flex-col items-center gap-4 relative">
@@ -1332,7 +1342,6 @@ export default function App() {
         </div>
       )}
 
-      {/* POP-UP CHECKOUT / PAYWALL */}
       {showPaywall && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#072019] border-2 border-amber-400 rounded-3xl p-6 max-w-lg w-full flex flex-col gap-5 shadow-[0_0_60px_rgba(245,158,11,0.3)] relative">
@@ -1405,7 +1414,6 @@ export default function App() {
         </div>
       )}
 
-      {/* POP-UP GUIDA DEMO */}
       {demoStep !== null && userRole === 'PRESIDENT' && (
         <div className="fixed bottom-6 right-6 z-50 max-w-sm bg-gradient-to-b from-[#0b3327] to-[#072019] border-2 border-amber-400 p-5 rounded-3xl shadow-[0_0_50px_rgba(245,158,11,0.5)] flex flex-col gap-3">
           <div className="flex justify-between items-start">
@@ -1421,7 +1429,6 @@ export default function App() {
         </div>
       )}
 
-      {/* MODALE CONFIGURAZIONE */}
       {showConfig && userRole === 'PRESIDENT' && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#072019] border-2 border-amber-400/80 rounded-3xl p-6 max-w-md w-full flex flex-col gap-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
@@ -1472,7 +1479,6 @@ export default function App() {
         </div>
       )}
 
-      {/* MODALE VINCITA */}
       {awardModal?.show && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-gradient-to-b from-[#0b3327] to-[#051c13] border-2 border-amber-400 rounded-3xl p-6 max-w-sm w-full text-center shadow-[0_0_80px_rgba(245,158,11,0.5)] relative flex flex-col items-center gap-4">
