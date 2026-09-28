@@ -683,12 +683,12 @@ export default function App() {
             </div>
           )}
 
-          <header className={`flex justify-between items-center p-3 px-4 md:px-6 rounded-2xl border h-14 flex-shrink-0 my-1 ${
+          <header className={`flex flex-col lg:flex-row justify-between items-center p-3 px-4 md:px-6 rounded-2xl border flex-shrink-0 my-1 gap-3 lg:gap-0 lg:h-14 ${
             userRole === 'PRESIDENT' 
               ? 'bg-[#081e18] border-[#124235]' 
               : 'bg-[#062017] border-[#103d2c]'
           }`}>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col md:flex-row items-center gap-3 md:gap-4 w-full lg:w-auto">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-amber-400">
                   <Zap size={16} />
@@ -712,10 +712,10 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="flex gap-1 bg-[#030d0a] p-1 rounded-xl border border-[#124235] ml-4">
+              <div className="flex gap-1 overflow-x-auto bg-[#030d0a] p-1 rounded-xl border border-[#124235] w-full lg:w-auto justify-start lg:justify-center lg:ml-4">
                 <button
                   onClick={() => setActiveTab('AUCTION')}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${activeTab === 'AUCTION' ? 'bg-amber-400 text-slate-950 shadow-md' : 'text-[#80bca8] hover:text-white'}`}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${activeTab === 'AUCTION' ? 'bg-amber-400 text-slate-950 shadow-md' : 'text-[#80bca8] hover:text-white'}`}
                 >
                   <Zap size={13} /> Asta Live
                 </button>
@@ -724,14 +724,14 @@ export default function App() {
                     if (!selectedRosterCoach && coaches.length > 0) setSelectedRosterCoach(coaches[0].name);
                     setActiveTab('ROSTERS');
                   }}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${activeTab === 'ROSTERS' ? 'bg-amber-400 text-slate-950 shadow-md' : 'text-[#80bca8] hover:text-white'}`}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${activeTab === 'ROSTERS' ? 'bg-amber-400 text-slate-950 shadow-md' : 'text-[#80bca8] hover:text-white'}`}
                 >
                   <Shirt size={13} /> Rose Lega
                 </button>
                 {userRole === 'PRESIDENT' && (
                   <button
                     onClick={() => setActiveTab('HIGHLIGHTS')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${activeTab === 'HIGHLIGHTS' ? 'bg-emerald-400 text-slate-950 shadow-md' : 'text-[#80bca8] hover:text-white'}`}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${activeTab === 'HIGHLIGHTS' ? 'bg-emerald-400 text-slate-950 shadow-md' : 'text-[#80bca8] hover:text-white'}`}
                   >
                     <Award size={13} /> Highlights & Riepilogo
                   </button>
@@ -739,7 +739,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-2 w-full lg:w-auto">
               {userRole === 'PRESIDENT' && (
                 <button
                   onClick={() => setIsPureTvDisplay(!isPureTvDisplay)}
@@ -752,7 +752,7 @@ export default function App() {
               )}
 
               {activePackage === 'LIVE' && userRole === 'PRESIDENT' && (
-                <div className="mr-2 inline-flex items-center gap-1.5 bg-[#030d0a] border border-[#124235] px-3 py-1.5 rounded-xl text-[11px] font-bold text-amber-400">
+                <div className="inline-flex items-center gap-1.5 bg-[#030d0a] border border-[#124235] px-3 py-1.5 rounded-xl text-[11px] font-bold text-amber-400">
                   <Share2 size={12} /> Stanza: <strong className="text-white tracking-widest">{roomCode}</strong>
                 </div>
               )}
@@ -780,16 +780,16 @@ export default function App() {
 
           {activeTab === 'AUCTION' && (
             userRole === 'PRESIDENT' ? (
-              <main className="flex-1 flex gap-4 items-stretch my-1 overflow-hidden w-full relative">
+              <main className="flex-1 flex flex-col lg:flex-row gap-4 items-stretch my-1 overflow-y-auto lg:overflow-hidden w-full relative pb-10 lg:pb-0">
                 
                 {latestBidAlert && (
-                  <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-gradient-to-r from-emerald-500 via-amber-400 to-emerald-500 text-slate-950 font-black px-6 py-2 rounded-2xl shadow-[0_0_50px_rgba(16,185,129,0.9)] border-2 border-white animate-bounce flex items-center gap-2">
+                  <div className="absolute top-4 lg:top-16 left-1/2 -translate-x-1/2 z-50 bg-gradient-to-r from-emerald-500 via-amber-400 to-emerald-500 text-slate-950 font-black px-6 py-2 rounded-2xl shadow-[0_0_50px_rgba(16,185,129,0.9)] border-2 border-white animate-bounce flex items-center gap-2">
                     <Zap size={20} className="fill-slate-950" />
-                    <span className="text-sm uppercase tracking-wider">⚡ NUOVO RILANCIO DA {latestBidAlert.bidder.toUpperCase()}: {latestBidAlert.amount} FM!</span>
+                    <span className="text-sm uppercase tracking-wider">⚡ RILANCIO DA {latestBidAlert.bidder.toUpperCase()}: {latestBidAlert.amount} FM!</span>
                   </div>
                 )}
 
-                <aside className="w-[280px] bg-[#072019] border border-[#124235] rounded-2xl p-4 flex flex-col gap-3 flex-shrink-0 overflow-hidden shadow-2xl">
+                <aside className="w-full lg:w-[280px] shrink-0 bg-[#072019] border border-[#124235] rounded-2xl p-4 flex flex-col gap-3 lg:overflow-hidden shadow-2xl min-h-[250px] lg:min-h-0">
                   <h3 className="text-xs font-bold text-[#80bca8] uppercase tracking-wider flex items-center justify-between pb-2 border-b border-[#124235]">
                     <span className="flex items-center gap-2"><Trophy size={14} className="text-amber-400" /> Allenatori</span>
                     <span className="text-[10px] text-[#80bca8]">Rosa / Budget</span>
@@ -812,7 +812,7 @@ export default function App() {
                   </div>
                 </aside>
 
-                <section className={`flex-1 bg-gradient-to-b ${
+                <section className={`w-full lg:flex-1 shrink-0 min-h-[600px] lg:min-h-0 bg-gradient-to-b ${
                   countdown !== null && countdown <= 2 
                     ? 'from-red-900/80 via-amber-950 to-slate-950 border-red-500 animate-pulse' 
                     : 'from-[#0f4d34] via-[#093322] to-[#051c13] border-amber-400/80'
@@ -930,24 +930,25 @@ export default function App() {
                             {displayBid} <span className="text-base text-amber-500">FM</span>
                           </div>
 
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex flex-col items-end gap-1.5">
                             <button
                               onClick={() => setCountdown(3)}
-                              className="px-3 py-2.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:brightness-110 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center gap-1 cursor-pointer shadow-md"
+                              className="px-3 py-1.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:brightness-110 text-slate-950 font-black rounded-xl text-[11px] uppercase flex items-center gap-1 cursor-pointer shadow-md"
                               title="Avvia il conteggio prima dell'aggiudicazione"
                             >
-                              <Timer size={15} /> Countdown 3s
+                              <Timer size={13} /> Countdown 3s
                             </button>
-
-                            <button onClick={handleNextPlayer} className="px-3 py-2.5 bg-[#072019] text-[#e2e8f0] font-bold rounded-xl text-xs uppercase flex items-center gap-1 border cursor-pointer"><SkipForward size={14} /> Salta</button>
-                            <button onClick={handleAward} className="px-4 py-2.5 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center gap-1.5 cursor-pointer shadow-lg"><Check size={16} /> Aggiudica</button>
+                            <div className="flex gap-1.5">
+                              <button onClick={handleNextPlayer} className="px-3 py-2 bg-[#072019] text-[#e2e8f0] font-bold rounded-xl text-[11px] uppercase flex items-center gap-1 border cursor-pointer"><SkipForward size={12} /> Salta</button>
+                              <button onClick={handleAward} className="px-3 py-2 bg-emerald-500 text-slate-950 font-black rounded-xl text-[11px] uppercase flex items-center gap-1 cursor-pointer shadow-lg"><Check size={14} /> Aggiudica</button>
+                            </div>
                           </div>
                         </div>
 
                         {!isPureTvDisplay && (
                           <div className="grid grid-cols-4 gap-1.5 pt-1 border-t border-[#124235]">
                             {[1, 5, 10, 20].map(step => (
-                              <button key={step} onClick={() => handleRaise(step)} className="py-1.5 bg-[#072019] hover:bg-amber-400 hover:text-slate-950 text-white border text-xs font-black rounded-lg cursor-pointer">+{step} Presidente</button>
+                              <button key={step} onClick={() => handleRaise(step)} className="py-1.5 bg-[#072019] hover:bg-amber-400 hover:text-slate-950 text-white border text-xs font-black rounded-lg cursor-pointer">+{step} Pres.</button>
                             ))}
                           </div>
                         )}
@@ -956,7 +957,7 @@ export default function App() {
                   </div>
                 </section>
 
-                <aside className="w-[280px] bg-[#072019] border border-[#124235] rounded-2xl p-4 flex flex-col gap-3 flex-shrink-0 overflow-hidden shadow-2xl">
+                <aside className="w-full lg:w-[280px] shrink-0 bg-[#072019] border border-[#124235] rounded-2xl p-4 flex flex-col gap-3 lg:overflow-hidden shadow-2xl min-h-[250px] lg:min-h-0">
                   {activePackage === 'TV' && !isDemoMode ? (
                     <div className="flex flex-col items-center justify-center h-full text-center p-4">
                       <div className="w-16 h-16 rounded-full bg-[#124235] flex items-center justify-center mb-4">
@@ -1033,8 +1034,8 @@ export default function App() {
           )}
 
           {activeTab === 'ROSTERS' && (
-             <main className="flex-1 flex gap-4 items-stretch my-2 overflow-hidden w-full">
-               <aside className="w-[280px] bg-[#072019] border border-[#124235] rounded-2xl p-4 flex flex-col gap-3 flex-shrink-0 overflow-hidden shadow-2xl">
+             <main className="flex-1 flex flex-col lg:flex-row gap-4 items-stretch my-2 overflow-y-auto lg:overflow-hidden w-full pb-10 lg:pb-0">
+               <aside className="w-full lg:w-[280px] shrink-0 bg-[#072019] border border-[#124235] rounded-2xl p-4 flex flex-col gap-3 lg:overflow-hidden shadow-2xl min-h-[300px] lg:min-h-0">
                  <h3 className="text-xs font-bold text-[#80bca8] uppercase tracking-wider flex items-center justify-between pb-2 border-b border-[#124235]">
                    <span className="flex items-center gap-2"><Shirt size={14} className="text-amber-400" /> Sguardo Rose</span>
                  </h3>
@@ -1057,7 +1058,7 @@ export default function App() {
                  </div>
                </aside>
       
-               <section className="flex-1 bg-[#072019] border border-[#124235] rounded-2xl p-5 flex flex-col justify-between relative shadow-2xl overflow-y-auto">
+               <section className="w-full lg:flex-1 shrink-0 bg-[#072019] border border-[#124235] rounded-2xl p-5 flex flex-col justify-between relative shadow-2xl lg:overflow-y-auto min-h-[500px] lg:min-h-0">
                  {(() => {
                    const currentCoachData = coaches.find(c => c.name === selectedRosterCoach) || coaches[0];
                    const roster = (currentCoachData && purchasedPlayers[currentCoachData.name]) || [];
@@ -1068,17 +1069,17 @@ export default function App() {
       
                    return (
                    <div className="space-y-6">
-                     <div className="flex justify-between items-center bg-[#030d0a] p-4 rounded-2xl border border-[#124235]">
+                     <div className="flex flex-col md:flex-row justify-between md:items-center bg-[#030d0a] p-4 rounded-2xl border border-[#124235] gap-4">
                        <div>
                          <h2 className="text-lg font-black text-white uppercase tracking-wider">{currentCoachData?.name}</h2>
                          <p className="text-xs text-[#80bca8]">{currentCoachData?.teamName}</p>
                        </div>
                        <div className="flex gap-4 text-center">
-                         <div className="bg-[#072019] px-3 py-1.5 rounded-xl border border-[#124235]">
+                         <div className="flex-1 md:flex-none bg-[#072019] px-3 py-1.5 rounded-xl border border-[#124235]">
                            <span className="text-[10px] text-[#80bca8] block uppercase font-bold">Crediti Residui</span>
                            <span className="text-base font-black text-amber-400">{currentCoachData?.budget} FM</span>
                          </div>
-                         <div className="bg-[#072019] px-3 py-1.5 rounded-xl border border-[#124235]">
+                         <div className="flex-1 md:flex-none bg-[#072019] px-3 py-1.5 rounded-xl border border-[#124235]">
                            <span className="text-[10px] text-[#80bca8] block uppercase font-bold">Totale In Rosa</span>
                            <span className="text-base font-black text-emerald-400">{roster.length} Giocatori</span>
                          </div>
@@ -1098,7 +1099,7 @@ export default function App() {
                            <span className="text-[10px] text-[#80bca8] font-bold">({sec.items.length}/{sec.max})</span>
                          </div>
                          {sec.items.length > 0 ? (
-                           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                              {sec.items.map((item, idx) => (
                                <div key={idx} className="bg-[#030d0a] border border-[#124235] p-2.5 rounded-xl flex justify-between items-center">
                                  <div>
@@ -1120,7 +1121,7 @@ export default function App() {
           )}
 
           {activeTab === 'HIGHLIGHTS' && (
-            <main className="flex-1 flex flex-col gap-4 items-center justify-center p-6 bg-[#072019] border border-[#124235] rounded-3xl my-2 relative overflow-y-auto shadow-2xl">
+            <main className="flex-1 flex flex-col gap-4 items-center justify-center p-6 bg-[#072019] border border-[#124235] rounded-3xl my-2 relative overflow-y-auto shadow-2xl pb-10">
               <div className="text-center">
                 <span className="text-[10px] font-black uppercase text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/30">
                   Gran Gala di Chiusura • Report Ufficiale
@@ -1129,7 +1130,7 @@ export default function App() {
                 <p className="text-xs text-[#80bca8]">Analisi dettagliata, statistiche di spesa e record della lega</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 w-full max-w-4xl my-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 w-full max-w-4xl my-2">
                 <div className="bg-[#030d0a] border-2 border-amber-400/80 rounded-2xl p-4 text-center flex flex-col items-center gap-1.5 shadow-lg">
                   <Award size={26} className="text-amber-400" />
                   <span className="text-[10px] font-bold text-[#80bca8] uppercase">Mr. Budget Resiliente</span>
@@ -1177,7 +1178,7 @@ export default function App() {
                         </div>
                         <div className="flex items-center gap-4">
                           <span className="text-emerald-400 font-bold">{c.playersCount} In Rosa</span>
-                          <span className="text-amber-400 font-black">{spesi} Spesi ({percentuale}%)</span>
+                          <span className="text-amber-400 font-black hidden md:inline">{spesi} Spesi ({percentuale}%)</span>
                           <span className="text-sky-400 font-bold">{c.budget} Residui</span>
                         </div>
                       </div>
@@ -1186,8 +1187,8 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="flex gap-3 mt-2">
-                <button onClick={handleExportCSV} className="py-3 px-6 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-2xl text-xs uppercase shadow-xl flex items-center gap-2 cursor-pointer">
+              <div className="flex gap-3 mt-2 w-full md:w-auto">
+                <button onClick={handleExportCSV} className="w-full py-3 px-6 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-2xl text-xs uppercase shadow-xl flex items-center justify-center gap-2 cursor-pointer">
                   <Download size={16} /> Scarica Report CSV Completo
                 </button>
               </div>
