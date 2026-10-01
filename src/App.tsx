@@ -5,7 +5,6 @@ import confetti from 'canvas-confetti';
 import rawListone from './data/listone.json';
 import { supabase } from './supabase';
 
-// Mappatura sicura del listone
 const listoneUfficiale = Array.isArray(rawListone) && rawListone.length > 0 
   ? rawListone.map((p: any) => ({
       id: String(p?.Id || Math.random()),
@@ -19,7 +18,6 @@ const listoneUfficiale = Array.isArray(rawListone) && rawListone.length > 0
     }))
   : [];
 
-// Colori Squadre
 const teamColors: Record<string, { bg: string; border: string; accent: string }> = {
   Inter: { bg: 'from-blue-900 via-slate-900 to-black', border: 'border-blue-500', accent: 'bg-blue-600' },
   Milan: { bg: 'from-red-900 via-slate-900 to-black', border: 'border-red-600', accent: 'bg-red-600' },
@@ -157,6 +155,8 @@ export default function App() {
   const [inputRoomCode, setInputRoomCode] = useState('');
   const [roomCode, setRoomCode] = useState('BUZZ2026');
   const [showConfig, setShowConfig] = useState(false);
+  
+  const [activeChannel, setActiveChannel] = useState<any>(null);
 
   const [initialBudget, setInitialBudget] = useState(500);
   const [leagueName, setLeagueName] = useState('FantaLega Serie A');
@@ -173,6 +173,7 @@ export default function App() {
   useEffect(() => {
     if (!roomCode) return;
     const channel = supabase.channel(`room_${roomCode}`);
+    
     channel
       .on('broadcast', { event: 'new_bid' }, (payload: any) => {
         const { bidder_name, bid_amount } = payload.payload;
@@ -192,10 +193,27 @@ export default function App() {
           setBidHistory(prev => [{ bidder: bidder_name, amount: bid_amount, time: timeStr }, ...prev]);
         }
       })
-      .subscribe();
+      .on('broadcast', { event: 'change_player' }, (payload: any) => {
+        const { player } = payload.payload;
+        if (player) {
+          setCurrentPlayer(player);
+          setBidHistory([]);
+          setManualPriceInput('');
+          setCountdown(null);
+          setLatestBidAlert(null);
+        }
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          setActiveChannel(channel);
+        }
+      });
 
-    return () => { supabase.removeChannel(channel); };
-  }, [roomCode, placeBid]);
+    return () => { 
+      supabase.removeChannel(channel); 
+      setActiveChannel(null);
+    };
+  }, [roomCode, placeBid, setCurrentPlayer]);
 
   useEffect(() => {
     if (currentBid !== displayBid) {
@@ -315,12 +333,22 @@ export default function App() {
     alert('📋 Nome Lega, Codice Stanza e Link copiati negli appunti!');
   };
 
-  const handleSelectPlayer = (player: any) => { 
+  const handleSelectPlayer = async (player: any) => { 
     setCurrentPlayer(player); 
     setBidHistory([]); 
     setManualPriceInput('');
     setCountdown(null);
     setLatestBidAlert(null);
+
+    if (activeChannel) {
+      try {
+        await activeChannel.send({
+          type: 'broadcast',
+          event: 'change_player',
+          payload: { player },
+        });
+      } catch (e) { console.error("Errore sync giocatore", e); }
+    }
   };
 
   const handleRaise = async (stepVal: number) => {
@@ -340,25 +368,36 @@ export default function App() {
     const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
     setBidHistory(prev => [{ bidder: activeName, amount: nuovaOfferta, time: timeStr }, ...prev]);
 
-    try {
-      await supabase.channel(`room_${roomCode}`).send({
-        type: 'broadcast',
-        event: 'new_bid',
-        payload: { bidder_name: activeName, bid_amount: nuovaOfferta },
-      });
-    } catch (e) {
-      console.error("Errore broadcast Supabase:", e);
+    if (activeChannel) {
+      try {
+        await activeChannel.send({
+          type: 'broadcast',
+          event: 'new_bid',
+          payload: { bidder_name: activeName, bid_amount: nuovaOfferta },
+        });
+      } catch (e) { console.error("Errore broadcast Supabase:", e); }
     }
   };
 
-  const handleNextPlayer = () => {
+  const handleNextPlayer = async () => {
     const currentIndex = filteredList.findIndex(p => p.id === activePlayer.id);
     const nextPlayer = filteredList[(currentIndex + 1) % filteredList.length] || listoneUfficiale[0];
+    
     setCurrentPlayer(nextPlayer as any);
     setBidHistory([]);
     setManualPriceInput('');
     setCountdown(null);
     setLatestBidAlert(null);
+
+    if (activeChannel) {
+      try {
+        await activeChannel.send({
+          type: 'broadcast',
+          event: 'change_player',
+          payload: { player: nextPlayer },
+        });
+      } catch (e) { console.error("Errore sync prossimo giocatore", e); }
+    }
   };
 
   const handleAward = () => {
@@ -1278,9 +1317,9 @@ export default function App() {
                 <button onClick={() => setPlayerGuideStep(null)} className="absolute top-4 right-4 text-[#80bca8] hover:text-white"><X size={16} /></button>
                 <div className="w-12 h-12 bg-emerald-500/20 border border-emerald-400 rounded-full flex items-center justify-center text-emerald-400"><Zap size={24} /></div>
                 <span className="text-[10px] font-black uppercase text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/30">Guida Rapida • Passaggio {playerGuideStep}/3</span>
-                {playerGuideStep === 1 && (<><h4 className="text-sm font-black text-white uppercase">1. Guarda lo Schermo TV 📺</h4><p className="text-xs text-[#80bca8]">Siga la TV del salotto per vedere la card del calciatore in asta e l'offerta più alta.</p></>)}
+                {playerGuideStep === 1 && (<><h4 className="text-sm font-black text-white uppercase">1. Guarda lo Schermo TV 📺</h4><p className="text-xs text-[#80bca8]">Segui la TV del salotto per vedere la card del calciatore in asta e l'offerta più alta in tempo reale.</p></>)}
                 {playerGuideStep === 2 && (<><h4 className="text-sm font-black text-white uppercase">2. Seleziona il Rilancio ➕</h4><p className="text-xs text-[#80bca8]">Scegli di quanti crediti vuoi superare l'offerta (+1, +5, +10) usando i tastini in basso.</p></>)}
-                {playerGuideStep === 3 && (<><h4 className="text-sm font-black text-white uppercase">3. Premi il BUZZER! ⚡</h4><p className="text-xs text-[#80bca8]">Premi il pulsantone verde **BUZZ**: il tuo rilancio volerà all'istante sulla TV!</p></>)}
+                {playerGuideStep === 3 && (<><h4 className="text-sm font-black text-white uppercase">3. Premi il BUZZER! ⚡</h4><p className="text-xs text-[#80bca8]">Premi il pulsantone verde **BUZZ**: il tuo rilancio volerà all'istante sulla TV superando tutti!</p></>)}
                 <div className="w-full pt-2 border-t border-[#103d2c]">
                   {playerGuideStep < 3 ? <button onClick={() => setPlayerGuideStep(playerGuideStep + 1)} className="w-full py-2.5 bg-amber-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-1">Capito, Avanti <ArrowRight size={14} /></button> : <button onClick={() => setPlayerGuideStep(null)} className="w-full py-2.5 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase shadow-lg">Pronto per l'Asta! ⚽</button>}
                 </div>
@@ -1345,9 +1384,9 @@ export default function App() {
                 <span className="text-[10px] font-black text-amber-400 uppercase bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/30">Guida Rapida • Passaggio {demoStep}/3</span>
                 <button onClick={() => setDemoStep(null)} className="text-[#80bca8] hover:text-white"><X size={16} /></button>
               </div>
-              {demoStep === 1 && (<><h4 className="text-sm font-black text-white uppercase">1. La Regia del Presidente 📺</h4><p className="text-xs text-[#80bca8]">Da hier cerchi e mandi a schermo i calciatori. La Card cambia colore in base alla squadra di Serie A!</p></>)}
-              {demoStep === 2 && (<><h4 className="text-sm font-black text-white uppercase">2. Buzzer Live da Smartphone ⚡</h4><p className="text-xs text-[#80bca8]">I fantallenatori dal loro telefono premono BUZZ per rilanciare istantaneamente in diretta audio e video.</p></>)}
-              {demoStep === 3 && (<><h4 className="text-sm font-black text-white uppercase">3. Aggiudicazione e Rose 📊</h4><p className="text-xs text-[#80bca8]">Aggiudica il giocatore con un clic per aggiornare in tempo reale i crediti e la rosa scaricabile in Excel!</p></>)}
+              {demoStep === 1 && (<><h4 className="text-sm font-black text-white uppercase">1. La Regia del Presidente 📺</h4><p className="text-xs text-[#80bca8]">Da questa console cerchi e metti all'asta i calciatori. Gestisci i tempi e aggiudica le offerte con un tap!</p></>)}
+              {demoStep === 2 && (<><h4 className="text-sm font-black text-white uppercase">2. Buzzer Live da Smartphone ⚡</h4><p className="text-xs text-[#80bca8]">I fantallenatori premono BUZZ dal loro telefono per far comparire il rilancio istantaneamente sulla TV di tutti.</p></>)}
+              {demoStep === 3 && (<><h4 className="text-sm font-black text-white uppercase">3. Aggiudicazione e Rose 📊</h4><p className="text-xs text-[#80bca8]">Aggiudica il giocatore per scalare in automatico i crediti al vincitore e scaricare il resoconto rose in Excel.</p></>)}
               <div className="flex justify-between items-center pt-2 border-t border-[#124235]">
                 {demoStep < 3 ? <button onClick={() => setDemoStep(demoStep + 1)} className="w-full py-2 bg-amber-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-1">Prossimo <ArrowRight size={14} /></button> : <button onClick={() => setDemoStep(null)} className="w-full py-2 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase">Inizia a Provare! ⚽</button>}
               </div>
