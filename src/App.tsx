@@ -122,6 +122,7 @@ export default function App() {
   const [isPureTvDisplay, setIsPureTvDisplay] = useState(false);
   const [showMobileCoaches, setShowMobileCoaches] = useState(false);
   const [showMobileHistory, setShowMobileHistory] = useState(false);
+  const [customAlertMessage, setCustomAlertMessage] = useState<string | null>(null);
 
   const [manualPriceInput, setManualPriceInput] = useState<string>('');
   const [selectedWinnerManual, setSelectedWinnerManual] = useState<string>('');
@@ -247,7 +248,7 @@ export default function App() {
   const splitPrice = (totalPrice / coachesCount + 0.15).toFixed(2);
 
   const handlePayment = () => {
-    alert(`Pagamento completato! Modalità attivata: FantasyBuzz ${selectedPackage}`);
+    setCustomAlertMessage(`Pagamento completato! Modalità attivata: FantasyBuzz ${selectedPackage}`);
     setActivePackage(selectedPackage);
     setIsDemoMode(false);
     setDemoStep(null);
@@ -330,7 +331,7 @@ export default function App() {
   const handleCopyInviteLink = () => {
     const text = `Unisciti alla lega "${leagueName}" su FantasyBuzz! Codice stanza: ${roomCode} - Link: ${window.location.href.split('?')[0]}`;
     navigator.clipboard.writeText(text);
-    alert('📋 Nome Lega, Codice Stanza e Link copiati negli appunti!');
+    setCustomAlertMessage('📋 Nome Lega, Codice Stanza e Link copiati negli appunti!');
   };
 
   const handleSelectPlayer = async (player: any) => { 
@@ -418,7 +419,7 @@ export default function App() {
     const maxRoleLimit = ROLE_LIMITS[activePlayer.role] || 8;
 
     if (currentRoleCount >= maxRoleLimit) {
-      alert(`⚠️ Blocco Acquisto: ${winnerName} ha già raggiunto il limite di ${maxRoleLimit} per il ruolo ${activePlayer.role}!`);
+      setCustomAlertMessage(`⚠️ Blocco Acquisto: ${winnerName} ha già raggiunto il limite di ${maxRoleLimit} per il ruolo ${activePlayer.role}!`);
       return;
     }
 
@@ -561,7 +562,7 @@ export default function App() {
   };
 
   const handleAddCoach = () => {
-    if (isDemoMode && coaches.length >= 3) { alert('La versione DEMO è limitata a 3 Partecipanti.'); return; }
+    if (isDemoMode && coaches.length >= 3) { setCustomAlertMessage('La versione DEMO è limitata a 3 Partecipanti.'); return; }
     if (newCoachName.trim()) {
       setCoaches(prev => [...prev, { name: newCoachName.trim(), teamName: newTeamName.trim() || `FC ${newCoachName.trim()}`, budget: initialBudget, playersCount: 0 }]);
       setNewCoachName(''); setNewTeamName('');
@@ -665,7 +666,7 @@ export default function App() {
                         const inputClean = inputRoomCode.toUpperCase().replace(/\s+/g, '');
 
                         if (inputClean !== cleanRoomCode && inputClean !== 'BUZZ2026') {
-                          alert(`❌ Codice stanza errato! Per entrare nella lega "${leagueName}", inserisci il codice corretto.`);
+                          setCustomAlertMessage(`❌ Codice stanza errato! Per entrare nella lega "${leagueName}", inserisci il codice corretto.`);
                           return;
                         }
                         handlePlayerAuthClick(c);
@@ -1253,6 +1254,25 @@ export default function App() {
             </div>
           )}
 
+          {/* MODALE DI AVVISO GRAFICO PERSONALIZZATO */}
+          {customAlertMessage && (
+            <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
+              <div className="bg-[#0d1322] border-2 border-amber-400 rounded-3xl p-6 max-w-sm w-full flex flex-col gap-4 shadow-[0_0_50px_rgba(245,158,11,0.4)] text-center relative">
+                <button onClick={() => setCustomAlertMessage(null)} className="absolute top-4 right-4 text-[#7c8cae] hover:text-white cursor-pointer"><X size={18} /></button>
+                <div className="w-12 h-12 bg-amber-400/20 border border-amber-400/40 rounded-full flex items-center justify-center text-amber-400 mx-auto">
+                  <AlertCircle size={24} />
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/30">Avviso FantasyBuzz</span>
+                  <p className="text-xs text-white font-semibold mt-3 leading-relaxed">{customAlertMessage}</p>
+                </div>
+                <button onClick={() => setCustomAlertMessage(null)} className="w-full py-2.5 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black rounded-xl text-xs uppercase cursor-pointer shadow-md">
+                  Capito
+                </button>
+              </div>
+            </div>
+          )}
+
           {showCustomLeagueModal && (
             <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
               <div className="bg-[#0d1322] border-2 border-amber-400 rounded-3xl p-6 max-w-sm w-full flex flex-col gap-4 shadow-[0_0_50px_rgba(245,158,11,0.4)] text-center relative">
@@ -1266,7 +1286,7 @@ export default function App() {
                 <input type="text" placeholder="Es. FantaLega Amici 2026" value={customLeagueInput} onChange={(e) => setCustomLeagueInput(e.target.value)} className="w-full bg-[#060913] border border-[#1e2d4a] rounded-xl p-3 text-xs text-white font-semibold focus:outline-none focus:border-amber-400 text-center" autoFocus />
                 <div className="flex gap-2">
                   <button onClick={() => setShowCustomLeagueModal(false)} className="flex-1 py-2.5 bg-[#060913] border border-[#1e2d4a] text-[#7c8cae] hover:text-white font-bold rounded-xl text-xs uppercase cursor-pointer">Annulla</button>
-                  <button onClick={() => { if (!customLeagueInput || customLeagueInput.trim() === '') { alert("❌ Devi inserire un nome valido per la lega!"); return; } const nameClean = customLeagueInput.trim(); setLeagueName(nameClean); setRoomCode(nameClean.toUpperCase().replace(/\s+/g, '')); setShowCustomLeagueModal(false); setShowPaywall(true); }} className="flex-1 py-2.5 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black rounded-xl text-xs uppercase cursor-pointer shadow-md">Conferma 🚀</button>
+                  <button onClick={() => { if (!customLeagueInput || customLeagueInput.trim() === '') { setCustomAlertMessage("❌ Devi inserire un nome valido per la lega!"); return; } const nameClean = customLeagueInput.trim(); setLeagueName(nameClean); setRoomCode(nameClean.toUpperCase().replace(/\s+/g, '')); setShowCustomLeagueModal(false); setShowPaywall(true); }} className="flex-1 py-2.5 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black rounded-xl text-xs uppercase cursor-pointer shadow-md">Conferma 🚀</button>
                 </div>
               </div>
             </div>
@@ -1287,7 +1307,7 @@ export default function App() {
                   <div className="text-3xl font-black text-amber-400">€{splitPrice}</div>
                   <p className="text-[10px] text-[#80bca8]">Paga la quota per attivare il tuo buzzer in stanza.</p>
                 </div>
-                <button onClick={() => { alert(`Pagamento di €${splitPrice} completato con successo per ${pendingPlayerAuth.name}! Accesso consentito.`); loginPlayerDirectly(pendingPlayerAuth); }} className="w-full py-3 bg-gradient-to-r from-emerald-400 to-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase shadow-lg hover:brightness-110 cursor-pointer">Paga Quota & Entra in Asta ⚡</button>
+                <button onClick={() => { setCustomAlertMessage(`Pagamento di €${splitPrice} completato con successo per ${pendingPlayerAuth.name}! Accesso consentito.`); loginPlayerDirectly(pendingPlayerAuth); }} className="w-full py-3 bg-gradient-to-r from-emerald-400 to-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase shadow-lg hover:brightness-110 cursor-pointer">Paga Quota & Entra in Asta ⚡</button>
               </div>
             </div>
           )}
