@@ -174,29 +174,22 @@ export default function App() {
   useEffect(() => {
     if (!roomCode) return;
 
-    const channel = supabase.channel(`room_${roomCode}`, {
-      config: {
-        broadcast: { self: true },
-      },
-    });
-    
-    channel
-      .on('broadcast', { event: 'new_bid' }, (payload: any) => {
-        const { bidder_name, bid_amount } = payload.payload;
-        if (bidder_name) {
+    const channel = supabase.channel(`room_${roomCode}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'room_bids', filter: `room_code=eq.${roomCode}` }, (payload) => {
+        const newBid = payload.new;
+        if (newBid && newBid.bidder_name) {
           playBuzzSound();
           setIsBlinking(true);
           setCountdown(null);
           setTimeout(() => setIsBlinking(false), 250);
 
-          placeBid(bidder_name, bid_amount);
+          placeBid(newBid.bidder_name, newBid.bid_amount);
 
-          setLatestBidAlert({ bidder: bidder_name, amount: bid_amount });
+          setLatestBidAlert({ bidder: newBid.bidder_name, amount: newBid.bid_amount });
           setTimeout(() => setLatestBidAlert(null), 2500);
 
-          const now = new Date();
-          const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-          setBidHistory(prev => [{ bidder: bidder_name, amount: bid_amount, time: timeStr }, ...prev]);
+          const timeStr = new Date(newBid.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          setBidHistory(prev => [{ bidder: newBid.bidder_name, amount: newBid.bid_amount, time: timeStr }, ...prev]);
         }
       })
       .on('broadcast', { event: 'change_player' }, (payload: any) => {
@@ -361,27 +354,16 @@ export default function App() {
     const activeName = userRole === 'PRESIDENT' ? 'Presidente (Tu)' : playerName;
     const nuovaOfferta = highestBidder ? currentBid + stepVal : stepVal;
 
-    playBuzzSound();
-    setIsBlinking(true);
-    setCountdown(null);
-    setTimeout(() => setIsBlinking(false), 250);
-    placeBid(activeName, nuovaOfferta);
-
-    setLatestBidAlert({ bidder: activeName, amount: nuovaOfferta });
-    setTimeout(() => setLatestBidAlert(null), 2500);
-
-    const now = new Date();
-    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-    setBidHistory(prev => [{ bidder: activeName, amount: nuovaOfferta, time: timeStr }, ...prev]);
-
-    if (activeChannel) {
-      try {
-        await activeChannel.send({
-          type: 'broadcast',
-          event: 'new_bid',
-          payload: { bidder_name: activeName, bid_amount: nuovaOfferta },
-        });
-      } catch (e) { console.error("Errore broadcast Supabase:", e); }
+    try {
+      await supabase.from('room_bids').insert([
+        {
+          room_code: roomCode,
+          bidder_name: activeName,
+          bid_amount: nuovaOfferta
+        }
+      ]);
+    } catch (e) {
+      console.error("Errore salvataggio offerta:", e);
     }
   };
 
