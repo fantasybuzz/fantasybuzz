@@ -19,38 +19,38 @@ const listoneUfficiale = Array.isArray(rawListone) && rawListone.length > 0
   : [];
 
 const teamColors: Record<string, { bg: string; border: string; accent: string }> = {
-  Inter: { bg: 'from-blue-900 via-slate-900 to-black', border: 'border-blue-500', accent: 'bg-blue-600' },
-  Milan: { bg: 'from-red-900 via-slate-900 to-black', border: 'border-red-600', accent: 'bg-red-600' },
-  Juventus: { bg: 'from-slate-800 via-zinc-900 to-black', border: 'border-white', accent: 'bg-white text-black' },
-  Napoli: { bg: 'from-sky-700 via-sky-900 to-slate-950', border: 'border-sky-400', accent: 'bg-sky-400 text-black' },
-  Roma: { bg: 'from-amber-700 via-red-950 to-slate-950', border: 'border-amber-500', accent: 'bg-amber-500 text-black' },
-  Lazio: { bg: 'from-sky-500 via-slate-900 to-slate-950', border: 'border-sky-300', accent: 'bg-sky-300 text-black' },
-  Atalanta: { bg: 'from-blue-800 via-slate-900 to-black', border: 'border-blue-400', accent: 'bg-blue-500' },
-  Fiorentina: { bg: 'from-purple-900 via-indigo-950 to-slate-950', border: 'border-purple-500', accent: 'bg-purple-500' },
-  Bologna: { bg: 'from-red-900 via-blue-950 to-slate-950', border: 'border-red-500', accent: 'bg-red-600' },
-  Torino: { bg: 'from-amber-950 via-red-950 to-black', border: 'border-amber-700', accent: 'bg-amber-800' },
-  Monza: { bg: 'from-red-700 via-rose-950 to-black', border: 'border-red-400', accent: 'bg-red-500' },
-  Cagliari: { bg: 'from-blue-900 via-red-950 to-black', border: 'border-red-500', accent: 'bg-red-600' },
-  Udinese: { bg: 'from-zinc-700 via-stone-900 to-black', border: 'border-zinc-300', accent: 'bg-white text-black' },
-  Verona: { bg: 'from-yellow-700 via-blue-950 to-black', border: 'border-yellow-400', accent: 'bg-yellow-400 text-black' },
-  Genoa: { bg: 'from-blue-900 via-red-900 to-black', border: 'border-red-500', accent: 'bg-blue-600' },
-  Lecce: { bg: 'from-yellow-600 via-red-900 to-black', border: 'border-yellow-400', accent: 'bg-yellow-400 text-black' },
-  Como: { bg: 'from-blue-600 via-blue-900 to-slate-950', border: 'border-blue-300', accent: 'bg-blue-400 text-black' },
-  Parma: { bg: 'from-yellow-600 via-blue-900 to-black', border: 'border-yellow-400', accent: 'bg-yellow-400 text-black' },
-  Sassuolo: { bg: 'from-emerald-800 via-slate-900 to-black', border: 'border-emerald-400', accent: 'bg-emerald-500' },
-  Venezia: { bg: 'from-orange-800 via-emerald-950 to-black', border: 'border-orange-500', accent: 'bg-orange-500' },
+  Inter: { bg: 'from-blue-900 via-slate-900 to-black', border: 'border-blue-500 shadow-blue-500/50', accent: 'bg-blue-600' },
+  Milan: { bg: 'from-red-900 via-slate-900 to-black', border: 'border-red-600 shadow-red-600/50', accent: 'bg-red-600' },
+  Juventus: { bg: 'from-slate-800 via-zinc-900 to-black', border: 'border-white shadow-white/50', accent: 'bg-white text-black' },
+  Napoli: { bg: 'from-sky-700 via-sky-900 to-slate-950', border: 'border-sky-400 shadow-sky-400/50', accent: 'bg-sky-400 text-black' },
+  Roma: { bg: 'from-amber-700 via-red-950 to-slate-950', border: 'border-amber-500 shadow-amber-500/50', accent: 'bg-amber-500 text-black' },
+  Lazio: { bg: 'from-sky-500 via-slate-900 to-slate-950', border: 'border-sky-300 shadow-sky-300/50', accent: 'bg-sky-300 text-black' },
+  Atalanta: { bg: 'from-blue-800 via-slate-900 to-black', border: 'border-blue-400 shadow-blue-400/50', accent: 'bg-blue-500' },
+  Fiorentina: { bg: 'from-purple-900 via-indigo-950 to-slate-950', border: 'border-purple-500 shadow-purple-500/50', accent: 'bg-purple-500' },
+  Bologna: { bg: 'from-red-900 via-blue-950 to-slate-950', border: 'border-red-500 shadow-red-500/50', accent: 'bg-red-600' },
+  Torino: { bg: 'from-amber-950 via-red-950 to-black', border: 'border-amber-700 shadow-amber-700/50', accent: 'bg-amber-800' },
+  Monza: { bg: 'from-red-700 via-rose-950 to-black', border: 'border-red-400 shadow-red-400/50', accent: 'bg-red-500' },
+  Cagliari: { bg: 'from-blue-900 via-red-950 to-black', border: 'border-red-500 shadow-red-500/50', accent: 'bg-red-600' },
+  Udinese: { bg: 'from-zinc-700 via-stone-900 to-black', border: 'border-zinc-300 shadow-zinc-300/50', accent: 'bg-white text-black' },
+  Verona: { bg: 'from-yellow-700 via-blue-950 to-black', border: 'border-yellow-400 shadow-yellow-400/50', accent: 'bg-yellow-400 text-black' },
+  Genoa: { bg: 'from-blue-900 via-red-900 to-black', border: 'border-red-500 shadow-red-500/50', accent: 'bg-blue-600' },
+  Lecce: { bg: 'from-yellow-600 via-red-900 to-black', border: 'border-yellow-400 shadow-yellow-400/50', accent: 'bg-yellow-400 text-black' },
+  Como: { bg: 'from-blue-600 via-blue-900 to-slate-950', border: 'border-blue-300 shadow-blue-300/50', accent: 'bg-blue-400 text-black' },
+  Parma: { bg: 'from-yellow-600 via-blue-900 to-black', border: 'border-yellow-400 shadow-yellow-400/50', accent: 'bg-yellow-400 text-black' },
+  Sassuolo: { bg: 'from-emerald-800 via-slate-900 to-black', border: 'border-emerald-400 shadow-emerald-400/50', accent: 'bg-emerald-500' },
+  Venezia: { bg: 'from-orange-800 via-emerald-950 to-black', border: 'border-orange-500 shadow-orange-500/50', accent: 'bg-orange-500' },
 };
 
 const ROLE_LIMITS: Record<string, number> = { P: 3, D: 8, C: 8, A: 6 };
 
-const getTeamStyle = (teamName: string) => teamColors[teamName] || { bg: 'from-slate-800 via-slate-900 to-black', border: 'border-amber-400', accent: 'bg-amber-400 text-black' };
+const getTeamStyle = (teamName: string) => teamColors[teamName] || { bg: 'from-slate-800 via-slate-900 to-black', border: 'border-amber-400 shadow-amber-400/50', accent: 'bg-amber-400 text-black' };
 
 const getRoleBadge = (role: string) => {
   switch (role) {
-    case 'P': return 'bg-yellow-400 text-slate-950';
-    case 'D': return 'bg-emerald-500 text-white';
-    case 'C': return 'bg-blue-500 text-white';
-    case 'A': return 'bg-red-500 text-white';
+    case 'P': return 'bg-yellow-400 text-slate-950 shadow-[0_0_12px_rgba(250,204,21,0.6)]';
+    case 'D': return 'bg-emerald-500 text-white shadow-[0_0_12px_rgba(16,185,129,0.6)]';
+    case 'C': return 'bg-blue-500 text-white shadow-[0_0_12px_rgba(59,130,246,0.6)]';
+    case 'A': return 'bg-red-500 text-white shadow-[0_0_12px_rgba(239,68,68,0.6)]';
     default: return 'bg-slate-500 text-white';
   }
 };
@@ -361,6 +361,10 @@ export default function App() {
 
   const handleRaise = async (stepVal: number) => {
     if (awardModal?.show) return;
+
+    if (navigator.vibrate) {
+      navigator.vibrate(50);
+    }
 
     const activeName = userRole === 'PRESIDENT' ? 'Presidente (Tu)' : playerName;
     const nuovaOfferta = highestBidder ? currentBid + stepVal : stepVal;
@@ -884,23 +888,23 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className={`hidden lg:flex w-[220px] h-[280px] relative flex-col justify-between p-4 rounded-3xl border-4 bg-gradient-to-b ${teamStyle.bg} ${teamStyle.border} shadow-[0_0_60px_rgba(0,0,0,0.85)] transition-all transform z-10 my-4 ${isBlinking ? 'scale-105 brightness-125' : 'hover:scale-102'}`}>
+                  <div className={`hidden lg:flex w-[230px] h-[290px] relative flex-col justify-between p-4 rounded-3xl border-4 bg-gradient-to-b ${teamStyle.bg} ${teamStyle.border} shadow-2xl transition-all transform z-10 my-4 ${isBlinking ? 'scale-105 brightness-125 ring-4 ring-amber-400' : 'hover:scale-102'}`}>
                     {isTopPlayer && (
                       <div className="absolute -top-3 -right-3 z-30 bg-gradient-to-r from-amber-400 to-red-500 text-slate-950 font-black px-2.5 py-1 rounded-full border border-white text-[9px] uppercase tracking-wider flex items-center gap-1 shadow-lg animate-pulse">
                         <Flame size={12} className="fill-slate-950" /> TOP
                       </div>
                     )}
                     <div className="flex justify-between items-center z-10">
-                      <span className={`text-xs font-black px-2.5 py-0.5 rounded-full uppercase shadow-md ${getRoleBadge(activePlayer.role)}`}>{activePlayer.role}</span>
+                      <span className={`text-xs font-black px-2.5 py-0.5 rounded-full uppercase ${getRoleBadge(activePlayer.role)}`}>{activePlayer.role}</span>
                       <span className="text-[11px] font-black bg-black/80 text-white px-2.5 py-1 rounded-xl uppercase border border-white/20">{activePlayer.team}</span>
                     </div>
                     <div className="flex-1 flex items-center justify-center my-1 relative">
-                      <div className="w-24 h-24 rounded-full bg-black/40 border-2 border-white/20 flex items-center justify-center backdrop-blur-md shadow-2xl">
-                        <span className="text-4xl font-black text-white">{activePlayer.name.charAt(0)}</span>
+                      <div className="w-24 h-24 rounded-full bg-gradient-to-br from-black/80 to-slate-900/90 border-2 border-white/30 flex items-center justify-center backdrop-blur-md shadow-[0_0_30px_rgba(0,0,0,0.8)]">
+                        <span className="text-4xl font-black text-amber-300 drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]">{activePlayer.name.charAt(0)}</span>
                       </div>
                     </div>
-                    <div className="bg-black/80 text-white rounded-2xl p-2 text-center border border-white/20 z-10 shadow-xl">
-                      <h3 className="text-sm font-black uppercase truncate">{activePlayer.name}</h3>
+                    <div className="bg-gradient-to-r from-black/90 via-slate-950/90 to-black/90 text-white rounded-2xl p-2 text-center border border-white/20 z-10 shadow-xl">
+                      <h3 className="text-sm font-black uppercase truncate tracking-wide">{activePlayer.name}</h3>
                       <div className="mt-1 pt-1 border-t border-white/10 text-[11px] font-bold text-amber-300">Base: <strong>{activePlayer.basePrice} FM</strong></div>
                     </div>
                   </div>
@@ -909,14 +913,14 @@ export default function App() {
                     <div className={`absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-b ${teamStyle.bg}`}></div>
                     <div className="pl-3">
                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase shadow-md ${getRoleBadge(activePlayer.role)}`}>{activePlayer.role}</span>
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${getRoleBadge(activePlayer.role)}`}>{activePlayer.role}</span>
                           {isTopPlayer && <span className="text-[9px] font-black text-amber-400 uppercase flex items-center gap-1"><Flame size={10}/> TOP</span>}
                        </div>
                        <h3 className="text-xl font-black text-white uppercase leading-tight">{activePlayer.name}</h3>
                        <p className="text-[11px] text-[#80bca8] uppercase font-bold">{activePlayer.team} • Base: {activePlayer.basePrice} FM</p>
                     </div>
                     <div className="w-12 h-12 rounded-full bg-[#124235] border border-white/20 flex items-center justify-center shadow-inner">
-                       <span className="text-xl font-black text-white">{activePlayer.name.charAt(0)}</span>
+                       <span className="text-xl font-black text-amber-300">{activePlayer.name.charAt(0)}</span>
                     </div>
                   </div>
 
@@ -964,8 +968,8 @@ export default function App() {
                             {highestBidder ? <p className="text-xs text-emerald-400 font-bold truncate max-w-[90px]">{highestBidder}</p> : <p className="text-xs text-[#80bca8]">Base {activePlayer.basePrice}</p>}
                           </div>
 
-                          <div className={`text-4xl font-black text-amber-400 transition-all transform ${isSlotSpinning ? 'scale-125 -translate-y-1 blur-[1px]' : 'scale-100'}`}>
-                            {displayBid} <span className="text-lg text-amber-500">FM</span>
+                          <div className={`text-4xl md:text-5xl font-black bg-gradient-to-b from-amber-300 to-amber-500 bg-clip-text text-transparent transition-all transform ${isSlotSpinning ? 'scale-125 -translate-y-1 blur-[0.5px]' : 'scale-100'}`}>
+                            {displayBid} <span className="text-lg md:text-xl text-amber-500">FM</span>
                           </div>
 
                           <div className="flex flex-col items-end gap-1.5">
@@ -977,7 +981,7 @@ export default function App() {
                             </button>
                             <div className="flex gap-1.5">
                               <button onClick={handleNextPlayer} className="px-3 py-2 bg-[#072019] text-[#e2e8f0] font-bold rounded-xl text-[11px] uppercase flex items-center gap-1 border cursor-pointer"><SkipForward size={12} /> Salta</button>
-                              <button onClick={handleAward} className="px-3 py-2 bg-emerald-500 text-slate-950 font-black rounded-xl text-[11px] uppercase flex items-center justify-center gap-1 cursor-pointer shadow-lg"><Check size={14} /> Aggiudica</button>
+                              <button onClick={handleAward} className="px-3 py-2 bg-emerald-500 text-slate-950 font-black rounded-xl text-[11px] uppercase flex items-center gap-1 cursor-pointer shadow-lg"><Check size={14} /> Aggiudica</button>
                             </div>
                           </div>
                         </div>
@@ -1031,39 +1035,39 @@ export default function App() {
               </main>
             ) : (
               <main className="flex-1 flex flex-col gap-3 max-w-sm mx-auto w-full my-1 overflow-hidden items-center justify-between relative">
-                <div className={`w-[190px] h-[230px] relative flex flex-col justify-between p-3 rounded-3xl border-2 bg-gradient-to-b ${teamStyle.bg} ${teamStyle.border} shadow-[0_0_30px_rgba(0,0,0,0.8)]`}>
+                <div className={`w-[200px] h-[240px] relative flex flex-col justify-between p-3.5 rounded-3xl border-4 bg-gradient-to-b ${teamStyle.bg} ${teamStyle.border} shadow-2xl`}>
                   <div className="flex justify-between items-center z-10">
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase shadow-md ${getRoleBadge(activePlayer.role)}`}>{activePlayer.role}</span>
-                    <span className="text-[10px] font-black bg-black/80 text-white px-2 py-0.5 rounded-xl uppercase border">{activePlayer.team}</span>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${getRoleBadge(activePlayer.role)}`}>{activePlayer.role}</span>
+                    <span className="text-[10px] font-black bg-black/80 text-white px-2 py-0.5 rounded-xl uppercase border border-white/20">{activePlayer.team}</span>
                   </div>
                   <div className="flex-1 flex items-center justify-center my-1">
-                    <div className="w-16 h-16 rounded-full bg-black/40 border border-white/20 flex items-center justify-center shadow-xl">
-                      <span className="text-2xl font-black text-white">{activePlayer.name.charAt(0)}</span>
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-black/80 to-slate-900/90 border border-white/30 flex items-center justify-center shadow-xl">
+                      <span className="text-2xl font-black text-amber-300">{activePlayer.name.charAt(0)}</span>
                     </div>
                   </div>
-                  <div className="bg-black/80 text-white rounded-xl p-1.5 text-center border z-10">
+                  <div className="bg-black/80 text-white rounded-xl p-1.5 text-center border border-white/10 z-10">
                     <h3 className="text-xs font-black uppercase truncate">{activePlayer.name}</h3>
                     <p className="text-[9px] text-amber-300 font-bold mt-0.5">Base: {activePlayer.basePrice} FM</p>
                   </div>
                 </div>
 
-                <div className="w-full bg-[#08281d] border-2 border-emerald-500/40 rounded-3xl p-4 flex flex-col items-center gap-3 shadow-[0_0_40px_rgba(16,185,129,0.2)]">
+                <div className="w-full bg-[#08281d] border-2 border-emerald-500/40 rounded-3xl p-4 flex flex-col items-center gap-3 shadow-[0_0_40px_rgba(16,185,129,0.25)]">
                   <div className="text-center">
                     <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest block">Offerta Corrente</span>
-                    <div className="text-4xl font-black text-amber-400">{currentBid} <span className="text-lg">FM</span></div>
+                    <div className="text-4xl font-black bg-gradient-to-b from-amber-300 to-amber-500 bg-clip-text text-transparent">{currentBid} <span className="text-lg text-amber-500">FM</span></div>
                     {highestBidder ? <p className="text-xs text-emerald-300 font-bold mt-0.5">Rilancio da: {highestBidder}</p> : <p className="text-xs text-[#80bca8]">Base: {activePlayer.basePrice} FM</p>}
                   </div>
 
                   <button 
                     disabled={Boolean(awardModal?.show)}
                     onClick={() => handleRaise(selectedStep)} 
-                    className={`w-36 h-36 rounded-full flex flex-col items-center justify-center gap-0.5 transition-all ${
+                    className={`w-38 h-38 rounded-full flex flex-col items-center justify-center gap-0.5 transition-all transform ${
                       awardModal?.show 
                         ? 'bg-slate-700 border-4 border-slate-500 text-slate-400 cursor-not-allowed opacity-50' 
-                        : 'bg-gradient-to-b from-emerald-400 to-emerald-600 active:scale-90 border-4 border-emerald-300 text-slate-950 font-black shadow-[0_0_50px_rgba(16,185,129,0.7)] cursor-pointer'
+                        : 'bg-gradient-to-b from-emerald-400 via-emerald-500 to-emerald-700 active:scale-90 border-4 border-emerald-200 text-slate-950 font-black shadow-[0_0_60px_rgba(16,185,129,0.8)] cursor-pointer hover:brightness-110 animate-pulse'
                     }`}
                   >
-                    <Zap size={40} className={awardModal?.show ? 'fill-slate-400' : 'fill-slate-950'} />
+                    <Zap size={44} className={awardModal?.show ? 'fill-slate-400' : 'fill-slate-950'} />
                     <span className="text-2xl tracking-widest uppercase font-black">
                       {awardModal?.show ? 'BLOCCATO' : 'BUZZ'}
                     </span>
