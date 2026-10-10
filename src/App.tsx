@@ -173,7 +173,12 @@ export default function App() {
 
   useEffect(() => {
     if (!roomCode) return;
-    const channel = supabase.channel(`room_${roomCode}`);
+
+    const channel = supabase.channel(`room_${roomCode}`, {
+      config: {
+        broadcast: { self: true },
+      },
+    });
     
     channel
       .on('broadcast', { event: 'new_bid' }, (payload: any) => {
@@ -291,8 +296,8 @@ export default function App() {
     setInitialBudget(500);
     setCoaches([
       { name: 'Presidente (Tu)', teamName: 'Real Presidente', budget: 500, playersCount: 0 },
-      { name: 'Luca (Demo)', teamName: 'Atletico Luca', budget: 500, playersCount: 0 },
-      { name: 'Marco (Demo)', teamName: 'Marco City', budget: 500, playersCount: 0 },
+      { name: 'Pasquale', teamName: 'FC Vesuvio', budget: 500, playersCount: 0 },
+      { name: 'Gianni', teamName: 'Spartak Gianni', budget: 500, playersCount: 0 },
     ]);
     setCoachesCount(3);
     setSelectedRosterCoach('Presidente (Tu)');
@@ -1262,7 +1267,6 @@ export default function App() {
             </div>
           )}
 
-          {/* MODALE DI AVVISO GRAFICO PERSONALIZZATO */}
           {customAlertMessage && (
             <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
               <div className="bg-[#0d1322] border-2 border-amber-400 rounded-3xl p-6 max-w-sm w-full flex flex-col gap-4 shadow-[0_0_50px_rgba(245,158,11,0.4)] text-center relative">
