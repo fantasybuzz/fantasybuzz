@@ -171,7 +171,6 @@ export default function App() {
   const [newTeamName, setNewTeamName] = useState('');
   const [awardModal, setAwardModal] = useState<{ show: boolean; player: any; winner: string; price: number; } | null>(null);
 
-  // Ascolta le nuove offerte inserite nella tabella 'room_bids' di Supabase
   useEffect(() => {
     if (!roomCode) return;
 
@@ -201,6 +200,14 @@ export default function App() {
           setManualPriceInput('');
           setCountdown(null);
           setLatestBidAlert(null);
+          setAwardModal(null);
+        }
+      })
+      .on('broadcast', { event: 'player_awarded' }, (payload: any) => {
+        const { player, winner, price } = payload.payload;
+        if (player) {
+          playWinSound();
+          setAwardModal({ show: true, player, winner, price });
         }
       })
       .subscribe((status) => {
@@ -339,6 +346,7 @@ export default function App() {
     setManualPriceInput('');
     setCountdown(null);
     setLatestBidAlert(null);
+    setAwardModal(null);
 
     if (activeChannel) {
       try {
@@ -351,8 +359,9 @@ export default function App() {
     }
   };
 
-  // Funzione di rilancio UNIFICATA sia per Presidente che per i Giocatori (Buzzer)
   const handleRaise = async (stepVal: number) => {
+    if (awardModal?.show) return;
+
     const activeName = userRole === 'PRESIDENT' ? 'Presidente (Tu)' : playerName;
     const nuovaOfferta = highestBidder ? currentBid + stepVal : stepVal;
 
@@ -378,6 +387,7 @@ export default function App() {
     setManualPriceInput('');
     setCountdown(null);
     setLatestBidAlert(null);
+    setAwardModal(null);
 
     if (activeChannel) {
       try {
@@ -390,7 +400,7 @@ export default function App() {
     }
   };
 
-  const handleAward = () => {
+  const handleAward = async () => {
     let finalPrice = currentBid;
     let winnerName = highestBidder || coaches[0].name;
 
@@ -426,6 +436,16 @@ export default function App() {
     setCoaches(prev => prev.map(c => c.name === winnerName ? { ...c, budget: c.budget - finalPrice, playersCount: c.playersCount + 1 } : c));
     setPurchasedPlayers(prev => ({ ...prev, [winnerName]: [...(prev[winnerName] || []), { player: activePlayer, price: finalPrice }] }));
     setAwardModal({ show: true, player: activePlayer, winner: winnerName, price: finalPrice });
+
+    if (activeChannel) {
+      try {
+        await activeChannel.send({
+          type: 'broadcast',
+          event: 'player_awarded',
+          payload: { player: activePlayer, winner: winnerName, price: finalPrice },
+        });
+      } catch (e) { console.error("Errore sync aggiudicazione", e); }
+    }
   };
 
   const handleDownloadSocialCard = () => {
@@ -957,7 +977,7 @@ export default function App() {
                             </button>
                             <div className="flex gap-1.5">
                               <button onClick={handleNextPlayer} className="px-3 py-2 bg-[#072019] text-[#e2e8f0] font-bold rounded-xl text-[11px] uppercase flex items-center gap-1 border cursor-pointer"><SkipForward size={12} /> Salta</button>
-                              <button onClick={handleAward} className="px-3 py-2 bg-emerald-500 text-slate-950 font-black rounded-xl text-[11px] uppercase flex items-center gap-1 cursor-pointer shadow-lg"><Check size={14} /> Aggiudica</button>
+                              <button onClick={handleAward} className="px-3 py-2 bg-emerald-500 text-slate-950 font-black rounded-xl text-[11px] uppercase flex items-center justify-center gap-1 cursor-pointer shadow-lg"><Check size={14} /> Aggiudica</button>
                             </div>
                           </div>
                         </div>
@@ -1034,15 +1054,37 @@ export default function App() {
                     {highestBidder ? <p className="text-xs text-emerald-300 font-bold mt-0.5">Rilancio da: {highestBidder}</p> : <p className="text-xs text-[#80bca8]">Base: {activePlayer.basePrice} FM</p>}
                   </div>
 
-                  {/* Pulsante BUZZ che ora esegue la funzione handleRaise corretta */}
-                  <button onClick={() => handleRaise(selectedStep)} className="w-36 h-36 rounded-full bg-gradient-to-b from-emerald-400 to-emerald-600 active:scale-90 border-4 border-emerald-300 text-slate-950 font-black flex flex-col items-center justify-center gap-0.5 shadow-[0_0_50px_rgba(16,185,129,0.7)] cursor-pointer my-1 transition-all">
-                    <Zap size={40} className="fill-slate-950" />
-                    <span className="text-2xl tracking-widest uppercase font-black">BUZZ</span>
+                  <button 
+                    disabled={Boolean(awardModal?.show)}
+                    onClick={() => handleRaise(selectedStep)} 
+                    className={`w-36 h-36 rounded-full flex flex-col items-center justify-center gap-0.5 transition-all ${
+                      awardModal?.show 
+                        ? 'bg-slate-700 border-4 border-slate-500 text-slate-400 cursor-not-allowed opacity-50' 
+                        : 'bg-gradient-to-b from-emerald-400 to-emerald-600 active:scale-90 border-4 border-emerald-300 text-slate-950 font-black shadow-[0_0_50px_rgba(16,185,129,0.7)] cursor-pointer'
+                    }`}
+                  >
+                    <Zap size={40} className={awardModal?.show ? 'fill-slate-400' : 'fill-slate-950'} />
+                    <span className="text-2xl tracking-widest uppercase font-black">
+                      {awardModal?.show ? 'BLOCCATO' : 'BUZZ'}
+                    </span>
                   </button>
 
                   <div className="w-full grid grid-cols-4 gap-2">
                     {[1, 5, 10, 20].map(step => (
-                      <button key={step} onClick={() => { setSelectedStep(step); handleRaise(step); }} className={`py-3 border text-sm font-black rounded-2xl cursor-pointer transition-all ${selectedStep === step ? 'bg-emerald-400 text-slate-950 border-emerald-200 scale-105 shadow-md' : 'bg-[#041710] text-white border-emerald-900'}`}>+{step}</button>
+                      <button 
+                        key={step} 
+                        disabled={Boolean(awardModal?.show)}
+                        onClick={() => { setSelectedStep(step); handleRaise(step); }} 
+                        className={`py-3 border text-sm font-black rounded-2xl transition-all ${
+                          awardModal?.show 
+                            ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed' 
+                            : selectedStep === step 
+                              ? 'bg-emerald-400 text-slate-950 border-emerald-200 scale-105 shadow-md cursor-pointer' 
+                              : 'bg-[#041710] text-white border-emerald-900 cursor-pointer'
+                        }`}
+                      >
+                        +{step}
+                      </button>
                     ))}
                   </div>
                 </div>
