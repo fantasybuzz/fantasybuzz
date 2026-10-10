@@ -171,6 +171,7 @@ export default function App() {
   const [newTeamName, setNewTeamName] = useState('');
   const [awardModal, setAwardModal] = useState<{ show: boolean; player: any; winner: string; price: number; } | null>(null);
 
+  // Ascolta le nuove offerte inserite nella tabella 'room_bids' di Supabase
   useEffect(() => {
     if (!roomCode) return;
 
@@ -350,6 +351,7 @@ export default function App() {
     }
   };
 
+  // Funzione di rilancio UNIFICATA sia per Presidente che per i Giocatori (Buzzer)
   const handleRaise = async (stepVal: number) => {
     const activeName = userRole === 'PRESIDENT' ? 'Presidente (Tu)' : playerName;
     const nuovaOfferta = highestBidder ? currentBid + stepVal : stepVal;
@@ -1032,6 +1034,7 @@ export default function App() {
                     {highestBidder ? <p className="text-xs text-emerald-300 font-bold mt-0.5">Rilancio da: {highestBidder}</p> : <p className="text-xs text-[#80bca8]">Base: {activePlayer.basePrice} FM</p>}
                   </div>
 
+                  {/* Pulsante BUZZ che ora esegue la funzione handleRaise corretta */}
                   <button onClick={() => handleRaise(selectedStep)} className="w-36 h-36 rounded-full bg-gradient-to-b from-emerald-400 to-emerald-600 active:scale-90 border-4 border-emerald-300 text-slate-950 font-black flex flex-col items-center justify-center gap-0.5 shadow-[0_0_50px_rgba(16,185,129,0.7)] cursor-pointer my-1 transition-all">
                     <Zap size={40} className="fill-slate-950" />
                     <span className="text-2xl tracking-widest uppercase font-black">BUZZ</span>
