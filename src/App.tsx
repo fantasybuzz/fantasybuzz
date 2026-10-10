@@ -1008,12 +1008,20 @@ export default function App() {
                   </div>
                 </aside>
 
-                <section className={`w-full lg:flex-1 shrink-0 min-h-[580px] lg:min-h-0 bg-[#0B132B] ${
+                {/* CONTAINER CENTRALE: INTERO CAMPO DA CALCIO FULL-PANEL */}
+                <section className={`w-full lg:flex-1 shrink-0 min-h-[580px] lg:min-h-0 bg-gradient-to-b from-[#06331C] via-[#0B4A2B] to-[#042012] ${
                   countdown !== null && countdown <= 2 
                     ? 'border-2 border-red-500 animate-pulse' 
-                    : 'border border-slate-800'
-                } rounded-2xl p-4 flex flex-col items-center justify-between relative overflow-hidden transition-all duration-300 shadow-2xl`}>
+                    : 'border-2 border-emerald-500/40'
+                } rounded-2xl p-4 flex flex-col items-center justify-between relative overflow-hidden transition-all duration-300 shadow-[0_0_50px_rgba(16,185,129,0.2)]`}>
                   
+                  {/* Linee del campo da calcio estese su tutto il box */}
+                  <div className="absolute inset-0 pointer-events-none opacity-20">
+                    <div className="w-full h-full border-2 border-white rounded-xl m-2"></div>
+                    <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white -translate-y-1/2"></div>
+                    <div className="absolute top-1/2 left-1/2 w-48 h-48 border-2 border-white rounded-full -translate-x-1/2 -translate-y-1/2"></div>
+                  </div>
+
                   {countdown !== null && (
                     <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-sm z-30 flex flex-col items-center justify-center gap-2">
                       <span className={`font-black text-sm uppercase tracking-widest ${countdown <= 2 ? 'text-red-400 animate-bounce' : 'text-amber-400 animate-pulse'}`}>
@@ -1026,7 +1034,8 @@ export default function App() {
                     </div>
                   )}
 
-                  <div className="w-full bg-[#060D1E] rounded-2xl p-3 flex flex-col gap-2 z-10 border border-slate-800">
+                  {/* Cerca Calciatore (Overlay Semi-Trasparente) */}
+                  <div className="w-full bg-[#060D1E]/90 backdrop-blur-md rounded-2xl p-3 flex flex-col gap-2 z-10 border border-slate-700/60 shadow-lg">
                     <div className="flex flex-wrap md:flex-nowrap items-center gap-2">
                       <div className="relative flex-1 min-w-[200px]">
                         <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
@@ -1047,31 +1056,23 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* CAMPO DA CALCIO CENTRALE SKY SPORT */}
-                  <div className="hidden lg:flex flex-col items-center justify-center my-auto z-10 text-center space-y-3 w-full max-w-xl py-6 px-4 rounded-3xl bg-gradient-to-b from-[#06331C] via-[#0B4A2B] to-[#042012] border-2 border-emerald-500/40 shadow-[0_0_50px_rgba(16,185,129,0.25)] relative overflow-hidden">
-                    
-                    {/* Linee tattiche erba / stadio */}
-                    <div className="absolute inset-0 pointer-events-none opacity-20">
-                      <div className="w-full h-full border-2 border-white rounded-2xl m-2"></div>
-                      <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white -translate-y-1/2"></div>
-                      <div className="absolute top-1/2 left-1/2 w-32 h-32 border-2 border-white rounded-full -translate-x-1/2 -translate-y-1/2"></div>
-                    </div>
-
-                    <div className="flex items-center gap-3 z-10">
+                  {/* GIOCATORE AL CENTRO SUL PRATO STADIO */}
+                  <div className="hidden lg:flex flex-col items-center justify-center my-auto z-10 text-center space-y-3">
+                    <div className="flex items-center gap-3">
                       <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-400/30 bg-rose-500/20 px-2.5 py-1 text-[10px] font-black tracking-widest text-rose-300"><span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-70" /><span className="relative inline-flex h-2 w-2 rounded-full bg-rose-400" /></span>LIVE</span>
                       <span className={`text-sm font-black px-3 py-1 rounded-full uppercase tracking-wider ${getRoleBadge(activePlayer.role)}`}>{activePlayer.role}</span>
                       <div className="flex items-center gap-2 text-xs font-bold text-slate-200 bg-[#060D1E]/90 pl-1.5 pr-3 py-1 rounded-full uppercase border border-slate-700 shadow-md"><TeamBadge team={activePlayer.team} size={22} /><span>{activePlayer.team}</span></div>
                       {isTopPlayer && <span className="text-xs font-black text-amber-400 uppercase flex items-center gap-1 bg-amber-500/20 px-2.5 py-1 rounded-full border border-amber-400/40"><Flame size={12}/> TOP PLAYER</span>}
                     </div>
 
-                    <h2 className={`text-5xl md:text-6xl font-black text-white uppercase tracking-tight transition-all z-10 drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)] ${isBlinking ? 'scale-105 text-amber-300' : ''}`}>
+                    <h2 className={`text-6xl md:text-7xl font-black text-white uppercase tracking-tight transition-all z-10 drop-shadow-[0_4px_16px_rgba(0,0,0,0.9)] ${isBlinking ? 'scale-105 text-amber-300' : ''}`}>
                       {activePlayer.name}
                     </h2>
 
-                    <p className="text-sm font-bold text-slate-200 bg-slate-950/60 px-4 py-1 rounded-full border border-slate-700/60 z-10">Quotazione Base: <strong className="text-amber-400 font-extrabold">{activePlayer.basePrice} FM</strong></p>
+                    <p className="text-sm font-bold text-slate-200 bg-slate-950/70 px-4 py-1 rounded-full border border-slate-700/80 z-10 backdrop-blur-sm">Quotazione Base: <strong className="text-amber-400 font-extrabold">{activePlayer.basePrice} FM</strong></p>
                   </div>
 
-                  <div className="flex lg:hidden w-full bg-gradient-to-r from-[#06331C] to-[#042012] rounded-2xl p-3.5 items-center justify-between my-2 z-10 relative border border-emerald-500/40 shadow-lg">
+                  <div className="flex lg:hidden w-full bg-[#060D1E]/90 backdrop-blur-md rounded-2xl p-3.5 items-center justify-between my-2 z-10 relative border border-slate-700/60 shadow-lg">
                     <div>
                        <div className="flex items-center gap-2 mb-1">
                           <span className="inline-flex items-center gap-1 rounded-full border border-rose-400/30 bg-rose-500/20 px-2 py-0.5 text-[9px] font-black tracking-wider text-rose-300"><span className="h-1.5 w-1.5 rounded-full bg-rose-400" />LIVE</span>
@@ -1083,7 +1084,8 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="w-full max-w-2xl bg-[#060D1E] p-5 rounded-2xl flex flex-col gap-4 z-10 border border-slate-800 shadow-xl">
+                  {/* BANNER AUMENTO OFFERTA / CONTROLLI */}
+                  <div className="w-full max-w-2xl bg-[#060D1E]/95 backdrop-blur-md p-5 rounded-2xl flex flex-col gap-4 z-10 border border-slate-700/80 shadow-2xl">
                     {activePackage === 'TV' && !isDemoMode ? (
                       <div className="flex flex-col gap-2">
                         <div className="flex flex-col md:flex-row justify-between md:items-center gap-2">
@@ -1140,7 +1142,7 @@ export default function App() {
                             </button>
                             <div className="flex gap-1.5">
                               <button onClick={handleNextPlayer} className="px-3 py-2 bg-[#0B132B] text-slate-300 font-bold rounded-xl text-xs uppercase flex items-center gap-1 cursor-pointer"><SkipForward size={12} /> Salta</button>
-                              <button onClick={handleAward} className="px-3 py-2 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center gap-1 cursor-pointer shadow-lg"><Check size={14} /> Aggiudica</button>
+                              <button onClick={handleAward} className="px-3 py-2 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-1 cursor-pointer shadow-lg"><Check size={14} /> Aggiudica</button>
                             </div>
                           </div>
                         </div>
