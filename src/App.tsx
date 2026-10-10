@@ -668,7 +668,7 @@ export default function App() {
     ctx.fill();
     fittedText(awardModal.player.role, 204, 622, 90, 33, 30, 900, '#0B132B');
     drawTeamBadgeOnCanvas(ctx, awardModal.player.team, 612, 585, 60);
-    fittedText(String(awardModal.player.team || '').toUpperCase(), 814, 622, 286, 28, 22, 800, '#d4e5dc');
+    fittedText(String(awardModal.player.team || '').toUpperCase(), 814, 622, 286, 22, 18, 800, '#d4e5dc');
 
     const avatarGlow = ctx.createRadialGradient(540, 820, 12, 540, 820, 168);
     avatarGlow.addColorStop(0, 'rgba(245,158,11,0.25)');
@@ -1008,18 +1008,24 @@ export default function App() {
                   </div>
                 </aside>
 
-                {/* CONTAINER CENTRALE: INTERO CAMPO DA CALCIO FULL-PANEL */}
-                <section className={`w-full lg:flex-1 shrink-0 min-h-[580px] lg:min-h-0 bg-gradient-to-b from-[#06331C] via-[#0B4A2B] to-[#042012] ${
+                {/* CONTAINER CENTRALE: STADIO CON ERBA STRISCIATA TATTICA E RIFLETTORI */}
+                <section className={`w-full lg:flex-1 shrink-0 min-h-[580px] lg:min-h-0 ${
                   countdown !== null && countdown <= 2 
                     ? 'border-2 border-red-500 animate-pulse' 
-                    : 'border-2 border-emerald-500/40'
-                } rounded-2xl p-4 flex flex-col items-center justify-between relative overflow-hidden transition-all duration-300 shadow-[0_0_50px_rgba(16,185,129,0.2)]`}>
+                    : 'border-2 border-emerald-500/50'
+                } rounded-2xl p-4 flex flex-col items-center justify-between relative overflow-hidden transition-all duration-300 shadow-[0_0_60px_rgba(16,185,129,0.25)]`}
+                style={{
+                  background: `
+                    radial-gradient(circle at 50% 45%, rgba(16, 185, 129, 0.35) 0%, rgba(6, 40, 24, 0.95) 70%, rgba(2, 20, 12, 1) 100%),
+                    repeating-linear-gradient(90deg, rgba(10, 80, 45, 0.45) 0px, rgba(10, 80, 45, 0.45) 60px, rgba(6, 60, 34, 0.45) 60px, rgba(6, 60, 34, 0.45) 120px)
+                  `
+                }}>
                   
-                  {/* Linee del campo da calcio estese su tutto il box */}
-                  <div className="absolute inset-0 pointer-events-none opacity-20">
-                    <div className="w-full h-full border-2 border-white rounded-xl m-2"></div>
-                    <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white -translate-y-1/2"></div>
-                    <div className="absolute top-1/2 left-1/2 w-48 h-48 border-2 border-white rounded-full -translate-x-1/2 -translate-y-1/2"></div>
+                  {/* Linee tattiche dello stadio con leggero bagliore neon */}
+                  <div className="absolute inset-0 pointer-events-none opacity-25">
+                    <div className="w-full h-full border-2 border-emerald-200 rounded-xl m-2 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
+                    <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-emerald-200 -translate-y-1/2 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
+                    <div className="absolute top-1/2 left-1/2 w-52 h-52 border-2 border-emerald-200 rounded-full -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
                   </div>
 
                   {countdown !== null && (
@@ -1056,7 +1062,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* GIOCATORE AL CENTRO SUL PRATO STADIO */}
+                  {/* GIOCATORE AL CENTRO SOTTO I RIFLETTORI DELLO STADIO */}
                   <div className="hidden lg:flex flex-col items-center justify-center my-auto z-10 text-center space-y-3">
                     <div className="flex items-center gap-3">
                       <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-400/30 bg-rose-500/20 px-2.5 py-1 text-[10px] font-black tracking-widest text-rose-300"><span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-70" /><span className="relative inline-flex h-2 w-2 rounded-full bg-rose-400" /></span>LIVE</span>
@@ -1065,11 +1071,11 @@ export default function App() {
                       {isTopPlayer && <span className="text-xs font-black text-amber-400 uppercase flex items-center gap-1 bg-amber-500/20 px-2.5 py-1 rounded-full border border-amber-400/40"><Flame size={12}/> TOP PLAYER</span>}
                     </div>
 
-                    <h2 className={`text-6xl md:text-7xl font-black text-white uppercase tracking-tight transition-all z-10 drop-shadow-[0_4px_16px_rgba(0,0,0,0.9)] ${isBlinking ? 'scale-105 text-amber-300' : ''}`}>
+                    <h2 className={`text-6xl md:text-7xl font-black text-white uppercase tracking-tight transition-all z-10 drop-shadow-[0_6px_20px_rgba(0,0,0,0.95)] ${isBlinking ? 'scale-105 text-amber-300' : ''}`}>
                       {activePlayer.name}
                     </h2>
 
-                    <p className="text-sm font-bold text-slate-200 bg-slate-950/70 px-4 py-1 rounded-full border border-slate-700/80 z-10 backdrop-blur-sm">Quotazione Base: <strong className="text-amber-400 font-extrabold">{activePlayer.basePrice} FM</strong></p>
+                    <p className="text-sm font-bold text-slate-100 bg-slate-950/80 px-4 py-1 rounded-full border border-slate-700/80 z-10 backdrop-blur-md shadow-lg">Quotazione Base: <strong className="text-amber-400 font-extrabold">{activePlayer.basePrice} FM</strong></p>
                   </div>
 
                   <div className="flex lg:hidden w-full bg-[#060D1E]/90 backdrop-blur-md rounded-2xl p-3.5 items-center justify-between my-2 z-10 relative border border-slate-700/60 shadow-lg">
