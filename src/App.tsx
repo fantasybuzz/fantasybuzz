@@ -1019,12 +1019,12 @@ export default function App() {
                 } rounded-2xl p-3 md:p-4 flex flex-col items-center justify-between relative overflow-hidden transition-all duration-300`}
                 style={{
                   background: `
-                    radial-gradient(circle at 50% 40%, rgba(16, 185, 129, 0.28) 0%, rgba(6, 35, 22, 0.95) 75%, rgba(2, 18, 11, 1) 100%),
+                    radial-gradient(circle at 50% 40%, rgba(16, 185, 129, 0.28) 0%, rgba(6, 35, 22, 0.96) 75%, rgba(2, 18, 11, 1) 100%),
                     repeating-linear-gradient(90deg, rgba(10, 80, 45, 0.35) 0px, rgba(10, 80, 45, 0.35) 50px, rgba(6, 60, 34, 0.35) 50px, rgba(6, 60, 34, 0.35) 100px)
                   `
                 }}>
                   
-                  {/* Riflettori tattici d'angolo molto sottili */}
+                  {/* Riflettori tattici d'angolo */}
                   <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-amber-400/10 via-emerald-400/5 to-transparent pointer-events-none"></div>
                   <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-amber-400/10 via-emerald-400/5 to-transparent pointer-events-none"></div>
 
@@ -1208,53 +1208,100 @@ export default function App() {
                 </aside>
               </main>
             ) : (
-              /* PAGINA BUZZER DEDICATA A SMARTPHONE */
-              <main className="flex-1 flex flex-col gap-3 max-w-sm mx-auto w-full my-auto overflow-hidden items-center justify-between relative py-1 px-1">
-                <div className="text-center space-y-1 w-full bg-[#0B132B] p-3 rounded-2xl border border-slate-800 shadow-md">
+              /* PAGINA BUZZER DEDICATA A SMARTPHONE (CON EFFETTO CAMPO DA CALCIO) */
+              <main 
+                className={`flex-1 flex flex-col gap-2 max-w-sm mx-auto w-full my-auto overflow-hidden items-center justify-between relative py-2.5 px-2 rounded-3xl border-2 transition-all duration-300 ${
+                  isBlinking 
+                    ? 'border-amber-400 shadow-[0_0_50px_rgba(245,158,11,0.5)]' 
+                    : 'border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.2)]'
+                }`}
+                style={{
+                  background: `
+                    radial-gradient(circle at 50% 40%, rgba(16, 185, 129, 0.32) 0%, rgba(6, 35, 22, 0.96) 75%, rgba(2, 18, 11, 1) 100%),
+                    repeating-linear-gradient(90deg, rgba(10, 80, 45, 0.35) 0px, rgba(10, 80, 45, 0.35) 45px, rgba(6, 60, 34, 0.35) 45px, rgba(6, 60, 34, 0.35) 90px)
+                  `
+                }}
+              >
+                {/* Linee tattiche del campo sullo sfondo mobile */}
+                <div className="absolute inset-0 pointer-events-none opacity-20">
+                  <div className="w-full h-full border border-emerald-200/80 rounded-2xl m-1"></div>
+                  <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-emerald-200/80 -translate-y-1/2"></div>
+                  <div className="absolute top-1/2 left-1/2 w-36 h-36 border border-emerald-200/80 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
+                </div>
+
+                {/* 1. CARD CALCIATORE IN ALTO */}
+                <div className="text-center space-y-1 w-full bg-[#060D1E]/90 backdrop-blur-md p-3 rounded-2xl border border-slate-700/70 shadow-lg z-10">
                   <div className="flex items-center justify-center gap-2 mb-0.5">
-                    <span className="inline-flex items-center gap-1 rounded-full border border-rose-400/30 bg-rose-500/20 px-2 py-0.2 text-[8px] font-black tracking-wider text-rose-300"><span className="h-1 w-1 rounded-full bg-rose-400" />LIVE</span>
-                    <span className={`text-[9px] font-black px-2 py-0.2 rounded-full uppercase ${getRoleBadge(activePlayer.role)}`}>{activePlayer.role}</span>
-                    <div className="flex items-center gap-1 text-[9px] font-bold text-slate-300 bg-[#060D1E] pl-1 pr-2 py-0.2 rounded-full uppercase border border-slate-800"><TeamBadge team={activePlayer.team} size={14} /><span>{activePlayer.team}</span></div>
+                    <span className="inline-flex items-center gap-1 rounded-full border border-rose-400/30 bg-rose-500/20 px-2 py-0.2 text-[8px] font-black tracking-wider text-rose-300">
+                      <span className="h-1 w-1 rounded-full bg-rose-400" />LIVE
+                    </span>
+                    <span className={`text-[9px] font-black px-2 py-0.2 rounded-full uppercase ${getRoleBadge(activePlayer.role)}`}>
+                      {activePlayer.role}
+                    </span>
+                    <div className="flex items-center gap-1 text-[9px] font-bold text-slate-300 bg-[#0B132B] pl-1 pr-2 py-0.2 rounded-full uppercase border border-slate-800">
+                      <TeamBadge team={activePlayer.team} size={14} />
+                      <span>{activePlayer.team}</span>
+                    </div>
                   </div>
                   <h2 className="text-2xl font-black text-white uppercase tracking-tight truncate">{activePlayer.name}</h2>
                   <p className="text-xs font-bold text-slate-400">Base D'Asta: <strong className="text-amber-400">{activePlayer.basePrice} FM</strong></p>
                 </div>
 
-                <div className="w-full bg-[#0B132B] border border-slate-800 rounded-3xl p-4 flex flex-col items-center gap-3 shadow-xl">
+                {/* 2. AREA CENTRALE: POPUP RILANCIO DINAMICO (RIEMPIE IL VUOTO) */}
+                <div className="w-full flex-1 flex items-center justify-center min-h-[85px] my-1 z-10">
+                  {latestBidAlert ? (
+                    <div className="w-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 font-black p-3.5 rounded-2xl shadow-2xl border-2 border-white animate-bounce text-center flex flex-col items-center justify-center gap-0.5">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-900 opacity-90">⚡ RILANCIO IN DIRETTA!</span>
+                      <span className="text-sm font-black uppercase">{latestBidAlert.bidder} → {latestBidAlert.amount} FM</span>
+                    </div>
+                  ) : highestBidder ? (
+                    <div className="w-full bg-[#060D1E]/90 border border-emerald-500/40 p-3 rounded-2xl text-center flex flex-col items-center justify-center gap-0.5 backdrop-blur-md">
+                      <span className="text-[9px] font-extrabold uppercase text-slate-400 tracking-wider">Miglior Offerente</span>
+                      <span className="text-xs font-black text-emerald-400 uppercase">{highestBidder}</span>
+                    </div>
+                  ) : (
+                    <div className="w-full bg-[#060D1E]/60 backdrop-blur-sm border border-dashed border-slate-700 p-3 rounded-2xl text-center">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">In attesa del primo rilancio...</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. BLOCCO BUZZER E CONTROLLI (INGRANDITO E CENTRATO) */}
+                <div className="w-full bg-[#060D1E]/95 backdrop-blur-md border border-slate-700/80 rounded-3xl p-4 flex flex-col items-center gap-3 shadow-2xl z-10">
                   <div className="text-center">
                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Offerta Corrente</span>
                     <div className="text-4xl font-black text-amber-400">{currentBid} <span className="text-lg text-amber-300">FM</span></div>
-                    {highestBidder ? <p className="text-xs text-emerald-400 font-extrabold mt-0.5 truncate max-w-[200px]">Rilancio da: {highestBidder}</p> : <p className="text-[10px] text-slate-500">In attesa di offerte</p>}
                   </div>
 
-                  {/* PULSANTE BUZZ GRANDE E BEN VISIBILE DA SMARTPHONE */}
+                  {/* PULSANTE BUZZER INGRANDITO */}
                   <button 
                     disabled={Boolean(awardModal?.show)}
                     onClick={() => handleRaise(selectedStep)} 
-                    className={`w-36 h-36 rounded-full flex flex-col items-center justify-center gap-1 transition-all active:scale-95 ${
+                    className={`w-44 h-44 rounded-full flex flex-col items-center justify-center gap-1 transition-all active:scale-95 ${
                       awardModal?.show 
                         ? 'bg-slate-800 border-2 border-slate-700 text-slate-500 cursor-not-allowed opacity-50' 
-                        : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black shadow-[0_0_40px_rgba(16,185,129,0.3)] ring-4 ring-emerald-500/20 cursor-pointer'
+                        : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black shadow-[0_0_50px_rgba(16,185,129,0.4)] ring-4 ring-emerald-500/20 cursor-pointer'
                     }`}
                   >
-                    <Zap size={40} className={awardModal?.show ? 'fill-slate-500' : 'fill-slate-950'} />
-                    <span className="text-xl tracking-widest uppercase font-black">
+                    <Zap size={48} className={awardModal?.show ? 'fill-slate-500' : 'fill-slate-950'} />
+                    <span className="text-2xl tracking-widest uppercase font-black">
                       {awardModal?.show ? 'BLOCCATO' : 'BUZZ'}
                     </span>
                   </button>
 
-                  <div className="w-full grid grid-cols-4 gap-1.5">
+                  {/* TASTI RILANCIO EVIDENZIATI */}
+                  <div className="w-full grid grid-cols-4 gap-2">
                     {[1, 5, 10, 20].map(step => (
                       <button 
                         key={step} 
                         disabled={Boolean(awardModal?.show)}
                         onClick={() => { setSelectedStep(step); handleRaise(step); }} 
-                        className={`py-2.5 text-xs font-black rounded-xl transition-all ${
+                        className={`py-3 text-xs font-black rounded-xl transition-all border ${
                           awardModal?.show 
-                            ? 'bg-slate-900 text-slate-600 cursor-not-allowed' 
+                            ? 'bg-slate-900 border-slate-800 text-slate-600 cursor-not-allowed' 
                             : selectedStep === step 
-                              ? 'bg-amber-500 text-slate-950 scale-105 shadow-md cursor-pointer' 
-                              : 'bg-[#060D1E] text-white hover:bg-slate-800 cursor-pointer'
+                              ? 'bg-amber-500 border-amber-400 text-slate-950 scale-105 shadow-lg cursor-pointer' 
+                              : 'bg-[#0B132B] border-slate-700/80 text-white hover:border-amber-400/50 cursor-pointer'
                         }`}
                       >
                         +{step}
@@ -1543,7 +1590,7 @@ export default function App() {
                 </div>
                 <div className="bg-[#060D1E] p-3 rounded-2xl border border-slate-800 space-y-2">
                   <button onClick={() => setShowIncompleteWarning(false)} className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-1.5 cursor-pointer"><Users size={14} /> Aspetta altri allenatori</button>
-                  <button onClick={() => { setCoachesCount(coaches.length); setShowIncompleteWarning(false); setUserRole('PRESIDENT'); setActiveTab('AUCTION'); }} className="w-full py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-1.5 cursor-pointer"><Check size={15} /> Adatta a {coaches.length} ed avvia</button>
+                  <button onClick={() => { setCoachesCount(coaches.length); setShowIncompleteWarning(false); setUserRole('PRESIDENT'); setActiveTab('AUCTION'); }} className="w-full py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-1.5 cursor-pointer"><Check size={15} /> Adalta a {coaches.length} ed avvia</button>
                 </div>
               </div>
             </div>
@@ -1615,7 +1662,7 @@ export default function App() {
             </div>
           )}
 
-          {/* GUIDA RAPIDA DEMO: ORA È MINIMIZZATA DI DEFAULT IN BASSO A DESTRA PER NON COPRIRE I COMANDI */}
+          {/* GUIDA RAPIDA DEMO MINIMIZZATA DI DEFAULT */}
           {demoStep !== null && userRole === 'PRESIDENT' && (
             isDemoGuideMinimized ? (
               <button 
@@ -1683,26 +1730,90 @@ export default function App() {
             </div>
           )}
 
+          {/* MODALE AGGIUDICAZIONE GIOCATORE (CELEBRAZIONE COLPO D'ASTA) */}
           {awardModal?.show && (
-            <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
-              <div className="bg-[#0B132B] border border-slate-800 rounded-3xl p-5 max-w-sm w-full text-center shadow-2xl relative flex flex-col items-center gap-3">
-                <button onClick={() => { setAwardModal(null); if (userRole === 'PRESIDENT') handleNextPlayer(); }} className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer"><X size={16} /></button>
-                <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/30 rounded-full flex items-center justify-center text-amber-400 shadow-inner animate-bounce"><Sparkles size={28} /></div>
-                <div>
-                  <span className="text-[9px] font-black uppercase text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/30">Colpo Aggiudicato! ⚽</span>
-                  <h2 className="text-xl font-black text-white uppercase mt-1">{awardModal.player.name}</h2>
-                  <div className="mt-0.5 flex items-center justify-center gap-1.5"><TeamBadge team={awardModal.player.team} size={18} /><p className="text-[11px] text-slate-400">{awardModal.player.team} • Ruolo {awardModal.player.role}</p></div>
+            <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-3 md:p-6 z-50 animate-in fade-in duration-300">
+              <div className="bg-[#0B132B] border-2 border-amber-400/80 rounded-3xl p-5 md:p-8 max-w-md w-full text-center shadow-[0_0_80px_rgba(245,158,11,0.3)] relative flex flex-col items-center gap-4 overflow-hidden">
+                
+                {/* Effetto Riflettori di Sfondo */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-amber-500/15 rounded-full blur-3xl pointer-events-none"></div>
+                <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-amber-500 via-emerald-400 to-amber-500"></div>
+
+                <button 
+                  onClick={() => { setAwardModal(null); if (userRole === 'PRESIDENT') handleNextPlayer(); }} 
+                  className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-full bg-[#060D1E] border border-slate-800 transition-all cursor-pointer z-20"
+                >
+                  <X size={18} />
+                </button>
+
+                {/* Badge Aggiudicato */}
+                <div className="inline-flex items-center gap-1.5 bg-amber-500/20 border border-amber-400/60 px-3.5 py-1 rounded-full text-amber-300 font-black text-[10px] md:text-xs uppercase tracking-widest z-10 shadow-md">
+                  <Sparkles size={14} className="text-amber-400 animate-spin" />
+                  <span>COLPO AGGIUDICATO!</span>
                 </div>
-                <div className="w-full bg-[#060D1E] border border-slate-800 rounded-xl p-2.5 flex justify-between items-center">
-                  <div className="text-left"><span className="text-[8px] text-slate-400 uppercase font-bold block">Acquistato da</span><span className="text-sm font-black text-amber-400">{awardModal.winner}</span></div>
-                  <div className="text-right"><span className="text-[8px] text-slate-400 uppercase font-bold block">Prezzo Finale</span><span className="text-lg font-black text-emerald-400">{awardModal.price} FM</span></div>
+
+                {/* Card Giocatore & Badge Squadra */}
+                <div className="flex flex-col items-center gap-2 z-10 my-1 w-full">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-black px-2.5 py-0.5 rounded-full uppercase shadow-md ${getRoleBadge(awardModal.player.role)}`}>
+                      {awardModal.player.role}
+                    </span>
+                    <div className="flex items-center gap-1.5 text-xs font-extrabold text-slate-200 bg-[#060D1E] px-2.5 py-0.5 rounded-full border border-slate-700 uppercase">
+                      <TeamBadge team={awardModal.player.team} size={18} />
+                      <span>{awardModal.player.team}</span>
+                    </div>
+                  </div>
+
+                  <h2 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tight drop-shadow-md truncate max-w-full">
+                    {awardModal.player.name}
+                  </h2>
+                  <p className="text-xs text-slate-400 font-semibold">
+                    Base d'Asta originale: <span className="text-amber-400 font-extrabold">{awardModal.player.basePrice} FM</span>
+                  </p>
                 </div>
-                <button onClick={handleDownloadSocialCard} className="w-full py-2 bg-[#060D1E] border border-amber-400/60 hover:bg-amber-400 hover:text-slate-950 text-amber-300 font-extrabold rounded-xl text-xs uppercase flex items-center justify-center gap-1 transition-all cursor-pointer"><Share2 size={14} /> ⚡ Condividi Card</button>
-                {userRole === 'PRESIDENT' ? (
-                  <button onClick={() => { setAwardModal(null); handleNextPlayer(); }} className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs uppercase cursor-pointer shadow-md">Prossimo Giocatore ⚽</button>
-                ) : (
-                  <button onClick={() => setAwardModal(null)} className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-black rounded-xl text-xs uppercase cursor-pointer">Chiudi</button>
-                )}
+
+                {/* Box Dettagli Acquisto */}
+                <div className="w-full bg-[#060D1E] border border-slate-800 rounded-2xl p-4 flex justify-between items-center z-10 shadow-inner">
+                  <div className="text-left">
+                    <span className="text-[9px] font-black uppercase text-slate-400 block tracking-wider">Acquistato da</span>
+                    <span className="text-base md:text-lg font-black text-emerald-400 truncate block max-w-[150px]">
+                      {awardModal.winner}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[9px] font-black uppercase text-slate-400 block tracking-wider">Prezzo Finale</span>
+                    <span className="text-2xl md:text-3xl font-black text-amber-400">
+                      {awardModal.price} <span className="text-sm text-amber-300">FM</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Pulsanti Azione */}
+                <div className="w-full space-y-2.5 z-10 mt-1">
+                  <button 
+                    onClick={handleDownloadSocialCard} 
+                    className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black rounded-2xl text-xs uppercase flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer active:scale-95"
+                  >
+                    <Share2 size={16} /> Condividi Card Social ⚡
+                  </button>
+
+                  {userRole === 'PRESIDENT' ? (
+                    <button 
+                      onClick={() => { setAwardModal(null); handleNextPlayer(); }} 
+                      className="w-full py-3 bg-[#060D1E] border border-slate-700 hover:border-emerald-400 text-white hover:text-emerald-400 font-black rounded-2xl text-xs uppercase flex items-center justify-center gap-2 transition-all cursor-pointer"
+                    >
+                      Prossimo Giocatore in Asta <ArrowRight size={14} />
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => setAwardModal(null)} 
+                      className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-2xl text-xs uppercase transition-all cursor-pointer"
+                    >
+                      Chiudi
+                    </button>
+                  )}
+                </div>
+
               </div>
             </div>
           )}
