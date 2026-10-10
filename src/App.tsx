@@ -609,7 +609,13 @@ export default function App() {
                     type="text"
                     placeholder="Es. FantaLega Serie A"
                     value={inputLeagueName}
-                    onChange={(e) => setInputLeagueName(e.target.value)}
+                    onChange={(e) => {
+                      setInputLeagueName(e.target.value);
+                      if (e.target.value.trim() !== '') {
+                        setLeagueName(e.target.value.trim());
+                        setRoomCode(e.target.value.trim().toUpperCase().replace(/\s+/g, ''));
+                      }
+                    }}
                     className="w-full bg-[#0d1322] border border-[#1e2d4a] rounded-xl p-2.5 text-xs text-white font-semibold focus:outline-none"
                   />
                 </div>
@@ -636,10 +642,12 @@ export default function App() {
 
               <button
                 onClick={() => {
-                  if (!leagueName || leagueName.trim() === '' || leagueName === 'FantaLega Serie A') {
-                    setShowCustomLeagueModal(true);
-                  } else {
+                  if (inputLeagueName && inputLeagueName.trim() !== '' && inputLeagueName !== 'FantaLega Serie A') {
+                    setLeagueName(inputLeagueName.trim());
+                    setRoomCode(inputLeagueName.trim().toUpperCase().replace(/\s+/g, ''));
                     setShowPaywall(true);
+                  } else {
+                    setShowCustomLeagueModal(true);
                   }
                 }}
                 className="w-full py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg hover:brightness-110 active:scale-98 transition-all cursor-pointer"
@@ -1324,7 +1332,7 @@ export default function App() {
                 <div className="bg-[#030d0a] p-3 rounded-2xl border border-[#124235] space-y-2">
                   <span className="text-[10px] font-bold text-[#80bca8] uppercase block">Cosa desideri fare?</span>
                   <button onClick={() => setShowIncompleteWarning(false)} className="w-full py-2.5 bg-amber-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-2 cursor-pointer"><Users size={15} /> Aspetta che entrino tutti (Chiudi)</button>
-                  <button onClick={() => { setCoachesCount(coaches.length); setShowIncompleteWarning(false); setUserRole('PRESIDENT'); setActiveTab('AUCTION'); }} className="w-full py-2.5 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-2 cursor-pointer"><Check size={16} /> Adatta Lega a {coaches.length} partecipanti e Avvia</button>
+                  <button onClick={() => { setCoachesCount(coaches.length); setShowIncompleteWarning(false); setUserRole('PRESIDENT'); setActiveTab('AUCTION'); }} className="w-full py-2.5 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-2 cursor-pointer"><Check size={16} /> Adalta Lega a {coaches.length} partecipanti e Avvia</button>
                 </div>
                 <button onClick={() => setShowIncompleteWarning(false)} className="text-center text-xs text-[#80bca8] hover:text-white underline cursor-pointer mt-1">Torna alla Configurazione</button>
               </div>
