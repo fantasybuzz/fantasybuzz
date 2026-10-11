@@ -1208,7 +1208,7 @@ export default function App() {
                 </aside>
               </main>
             ) : (
-              /* PAGINA BUZZER DEDICATA A SMARTPHONE (CON EFFETTO CAMPO DA CALCIO) */
+              /* PAGINA BUZZER DEDICATA A SMARTPHONE (CON EVIDENZA MIGLIOR OFFERENTE) */
               <main 
                 className={`flex-1 flex flex-col gap-2 max-w-sm mx-auto w-full my-auto overflow-hidden items-center justify-between relative py-2.5 px-2 rounded-3xl border-2 transition-all duration-300 ${
                   isBlinking 
@@ -1229,25 +1229,35 @@ export default function App() {
                   <div className="absolute top-1/2 left-1/2 w-36 h-36 border border-emerald-200/80 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
                 </div>
 
-                {/* 1. CARD CALCIATORE IN ALTO */}
+                {/* 1. CARD CALCIATORE IN ALTO CON BUDGET RESIDUO */}
                 <div className="text-center space-y-1 w-full bg-[#060D1E]/90 backdrop-blur-md p-3 rounded-2xl border border-slate-700/70 shadow-lg z-10">
-                  <div className="flex items-center justify-center gap-2 mb-0.5">
-                    <span className="inline-flex items-center gap-1 rounded-full border border-rose-400/30 bg-rose-500/20 px-2 py-0.2 text-[8px] font-black tracking-wider text-rose-300">
-                      <span className="h-1 w-1 rounded-full bg-rose-400" />LIVE
-                    </span>
-                    <span className={`text-[9px] font-black px-2 py-0.2 rounded-full uppercase ${getRoleBadge(activePlayer.role)}`}>
-                      {activePlayer.role}
-                    </span>
-                    <div className="flex items-center gap-1 text-[9px] font-bold text-slate-300 bg-[#0B132B] pl-1 pr-2 py-0.2 rounded-full uppercase border border-slate-800">
-                      <TeamBadge team={activePlayer.team} size={14} />
-                      <span>{activePlayer.team}</span>
+                  <div className="flex items-center justify-between px-1 mb-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-rose-400/30 bg-rose-500/20 px-2 py-0.2 text-[8px] font-black tracking-wider text-rose-300">
+                        <span className="h-1 w-1 rounded-full bg-rose-400 animate-pulse" />LIVE
+                      </span>
+                      <span className={`text-[9px] font-black px-2 py-0.2 rounded-full uppercase ${getRoleBadge(activePlayer.role)}`}>
+                        {activePlayer.role}
+                      </span>
+                      <div className="flex items-center gap-1 text-[9px] font-bold text-slate-300 bg-[#0B132B] pl-1 pr-2 py-0.2 rounded-full uppercase border border-slate-800">
+                        <TeamBadge team={activePlayer.team} size={14} />
+                        <span>{activePlayer.team}</span>
+                      </div>
+                    </div>
+                    {/* BUDGET PERSONALE IN EVIDENZA */}
+                    <div className="bg-amber-500/10 border border-amber-500/40 px-2 py-0.5 rounded-full text-[9px] font-black text-amber-400">
+                      {coaches.find(c => c.name === playerName)?.budget || initialBudget} FM
                     </div>
                   </div>
+
                   <h2 className="text-2xl font-black text-white uppercase tracking-tight truncate">{activePlayer.name}</h2>
-                  <p className="text-xs font-bold text-slate-400">Base D'Asta: <strong className="text-amber-400">{activePlayer.basePrice} FM</strong></p>
+                  
+                  <div className="inline-block bg-[#0B132B] px-3 py-0.5 rounded-full border border-slate-800 text-[11px] font-bold text-slate-400">
+                    Base D'Asta: <strong className="text-amber-400 font-black">{activePlayer.basePrice} FM</strong>
+                  </div>
                 </div>
 
-                {/* 2. AREA CENTRALE: POPUP RILANCIO DINAMICO (RIEMPIE IL VUOTO) */}
+                {/* 2. AREA CENTRALE: BANNER RILANCIO CON RICONOSCIMENTO "SEI TU IN TESTA" */}
                 <div className="w-full flex-1 flex items-center justify-center min-h-[85px] my-1 z-10">
                   {latestBidAlert ? (
                     <div className="w-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 font-black p-3.5 rounded-2xl shadow-2xl border-2 border-white animate-bounce text-center flex flex-col items-center justify-center gap-0.5">
@@ -1255,10 +1265,21 @@ export default function App() {
                       <span className="text-sm font-black uppercase">{latestBidAlert.bidder} → {latestBidAlert.amount} FM</span>
                     </div>
                   ) : highestBidder ? (
-                    <div className="w-full bg-[#060D1E]/90 border border-emerald-500/40 p-3 rounded-2xl text-center flex flex-col items-center justify-center gap-0.5 backdrop-blur-md">
-                      <span className="text-[9px] font-extrabold uppercase text-slate-400 tracking-wider">Miglior Offerente</span>
-                      <span className="text-xs font-black text-emerald-400 uppercase">{highestBidder}</span>
-                    </div>
+                    highestBidder === playerName ? (
+                      /* STATO: SEI TU IN TESTA */
+                      <div className="w-full bg-emerald-500/20 border-2 border-emerald-400 p-3 rounded-2xl text-center flex flex-col items-center justify-center gap-0.5 backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                        <span className="text-[10px] font-black uppercase text-emerald-300 tracking-widest flex items-center gap-1">
+                          <Check size={12} /> SEI TU IL MIGLIOR OFFERENTE!
+                        </span>
+                        <span className="text-xs font-black text-white uppercase">{highestBidder} ({currentBid} FM)</span>
+                      </div>
+                    ) : (
+                      /* STATO: ALTRO OFFERENTE IN TESTA */
+                      <div className="w-full bg-[#060D1E]/90 border border-amber-500/40 p-3 rounded-2xl text-center flex flex-col items-center justify-center gap-0.5 backdrop-blur-md">
+                        <span className="text-[9px] font-extrabold uppercase text-amber-400 tracking-wider">Miglior Offerente Attuale</span>
+                        <span className="text-xs font-black text-white uppercase">{highestBidder}</span>
+                      </div>
+                    )
                   ) : (
                     <div className="w-full bg-[#060D1E]/60 backdrop-blur-sm border border-dashed border-slate-700 p-3 rounded-2xl text-center">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">In attesa del primo rilancio...</span>
@@ -1266,21 +1287,23 @@ export default function App() {
                   )}
                 </div>
 
-                {/* 3. BLOCCO BUZZER E CONTROLLI (INGRANDITO E CENTRATO) */}
+                {/* 3. BLOCCO BUZZER E CONTROLLI */}
                 <div className="w-full bg-[#060D1E]/95 backdrop-blur-md border border-slate-700/80 rounded-3xl p-4 flex flex-col items-center gap-3 shadow-2xl z-10">
                   <div className="text-center">
                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Offerta Corrente</span>
                     <div className="text-4xl font-black text-amber-400">{currentBid} <span className="text-lg text-amber-300">FM</span></div>
                   </div>
 
-                  {/* PULSANTE BUZZER INGRANDITO */}
+                  {/* PULSANTE BUZZER */}
                   <button 
                     disabled={Boolean(awardModal?.show)}
                     onClick={() => handleRaise(selectedStep)} 
                     className={`w-44 h-44 rounded-full flex flex-col items-center justify-center gap-1 transition-all active:scale-95 ${
                       awardModal?.show 
                         ? 'bg-slate-800 border-2 border-slate-700 text-slate-500 cursor-not-allowed opacity-50' 
-                        : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black shadow-[0_0_50px_rgba(16,185,129,0.4)] ring-4 ring-emerald-500/20 cursor-pointer'
+                        : highestBidder === playerName
+                          ? 'bg-emerald-600 border-2 border-emerald-400 text-slate-950 font-black shadow-[0_0_30px_rgba(16,185,129,0.3)] ring-4 ring-emerald-500/20 cursor-pointer'
+                          : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black shadow-[0_0_50px_rgba(16,185,129,0.4)] ring-4 ring-emerald-500/20 cursor-pointer'
                     }`}
                   >
                     <Zap size={48} className={awardModal?.show ? 'fill-slate-500' : 'fill-slate-950'} />
@@ -1289,7 +1312,7 @@ export default function App() {
                     </span>
                   </button>
 
-                  {/* TASTI RILANCIO EVIDENZIATI */}
+                  {/* TASTI RILANCIO (+1, +5, +10, +20) */}
                   <div className="w-full grid grid-cols-4 gap-2">
                     {[1, 5, 10, 20].map(step => (
                       <button 
