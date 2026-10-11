@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuctionStore } from './store/useAuctionStore';
-import { Trophy, Check, Zap, Sparkles, X, SkipForward, History, Users, ShieldCheck, LogOut, Settings, Plus, Trash2, Share2, Search, Download, Shirt, Play, ArrowRight, CreditCard, Tv, Smartphone, Users2, Monitor, Timer, Flame, Award, PieChart, AlertCircle, TrendingUp, MessageCircle, Send, HelpCircle, Gavel } from 'lucide-react';
+import { Trophy, Check, Zap, Sparkles, X, SkipForward, History, Users, ShieldCheck, LogOut, Settings, Plus, Trash2, Share2, Search, Download, Shirt, Play, ArrowRight, CreditCard, Tv, Smartphone, Users2, Monitor, Timer, Flame, Award, PieChart, AlertCircle, TrendingUp, MessageCircle, Send, HelpCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import rawListone from './data/listone.json';
 import { supabase } from './supabase';
@@ -41,13 +41,12 @@ const TEAM_BADGES = [
   { aliases: ['sampdoria', 'samp'], short: 'SAM', primary: '#16427e', secondary: '#d62942', ink: '#ffffff' },
   { aliases: ['monza'], short: 'MON', primary: '#c5223c', secondary: '#f4f4f4', ink: '#ffffff' },
   { aliases: ['genoa', 'genoacfc'], short: 'GEN', primary: '#b21f34', secondary: '#193e69', ink: '#ffffff' },
-  { aliases: ['cagliari'], short: 'CAG', primary: '#bd2637', secondary: '#16477c', ink: '#ffffff' },
+  { aliases: ['cagliari', 'cagliari calcio'], short: 'CAG', primary: '#bd2637', secondary: '#16477c', ink: '#ffffff' },
   { aliases: ['parma'], short: 'PAR', primary: '#19519a', secondary: '#f2d12a', ink: '#ffffff' },
   { aliases: ['como', 'como 1907'], short: 'COM', primary: '#2187ae', secondary: '#f2f7fa', ink: '#ffffff' },
   { aliases: ['pisa', 'pisa sc'], short: 'PIS', primary: '#1455a0', secondary: '#171717', ink: '#ffffff' },
   { aliases: ['cremonese', 'cremonese us'], short: 'CRE', primary: '#c92336', secondary: '#f2f2f2', ink: '#ffffff' },
   { aliases: ['venezia'], short: 'VEN', primary: '#171717', secondary: '#bd2639', ink: '#ffffff' },
-  { aliases: ['cagliari calcio'], short: 'CAG', primary: '#bd2637', secondary: '#16477c', ink: '#ffffff' },
 ] as const;
 
 type TeamBadgeStyle = { short: string; primary: string; secondary: string; ink: string };
@@ -79,6 +78,23 @@ const BuzzMark = ({ size = 32 }: { size?: number }) => (
       <path d="M27 7 14 26h9l-3 15 15-21h-9l4-13Z" fill="#0B132B" />
     </svg>
   </span>
+);
+
+/* Icona Martello Stilizzato e Fuso con Fulmine Arancio/Oro */
+const StylizedAuctionIcons = ({ size = 32, disabled = false }: { size?: number; disabled?: boolean }) => (
+  <div className="flex items-center justify-center gap-2">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={disabled ? "#64748B" : "#0B132B"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-md -rotate-12">
+      <path d="m14 13 5 5" />
+      <path d="m11 16 5 5" />
+      <path d="m18 11 3 3" />
+      <path d="m8 6 8 8" />
+      <path d="m3 11 8 8" />
+      <path d="M4 3h7l-4 4Z" fill={disabled ? "#64748B" : "#0B132B"} />
+    </svg>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={disabled ? "#64748B" : "#F59E0B"} stroke={disabled ? "#64748B" : "#FDE68A"} strokeWidth="1" className="drop-shadow-[0_2px_8px_rgba(245,158,11,0.6)]">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  </div>
 );
 
 const TeamBadge = ({ team, size = 30 }: { team: string; size?: number }) => {
@@ -779,7 +795,7 @@ export default function App() {
             <div className="text-center">
               <h1 className="text-3xl font-black text-white uppercase tracking-wider">FantasyBuzz</h1>
               <p className="text-xs text-amber-400 font-extrabold mt-1 tracking-widest">LIVE ARENA SHOWDOWN</p>
-              <p className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">IL TUO TAVOLO. LA TUA DIRETTA.</p>
+              <p className="mt-2 text-[11px] font-black uppercase tracking-[0.18em] text-emerald-400">IL FANTACALCIO A UN NUOVO LIVELLO</p>
             </div>
 
             <div className="w-full bg-[#060D1E] p-4 rounded-2xl space-y-3 border border-slate-800">
@@ -1122,8 +1138,16 @@ export default function App() {
                           <button onClick={handleNextPlayer} className="flex-1 py-2 bg-[#0B132B] text-white font-bold rounded-lg text-xs uppercase flex items-center justify-center gap-1 cursor-pointer">
                             <SkipForward size={13} /> Salta
                           </button>
-                          <button onClick={handleAward} className="flex-1 py-2 bg-emerald-500 text-slate-950 font-black rounded-lg text-xs uppercase flex items-center justify-center gap-1 cursor-pointer shadow-md">
-                            <Check size={15} /> Aggiudica
+                          <button onClick={handleAward} className="flex-1 py-2 bg-emerald-500 text-slate-950 font-black rounded-lg text-xs uppercase flex items-center justify-center gap-1.5 cursor-pointer shadow-md">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="-rotate-12">
+                              <path d="m14 13 5 5" />
+                              <path d="m11 16 5 5" />
+                              <path d="m18 11 3 3" />
+                              <path d="m8 6 8 8" />
+                              <path d="m3 11 8 8" />
+                              <path d="M4 3h7l-4 4Z" fill="currentColor" />
+                            </svg>
+                            <span>Aggiudica</span>
                           </button>
                         </div>
                       </div>
@@ -1148,7 +1172,19 @@ export default function App() {
                             </button>
                             <div className="flex gap-1">
                               <button onClick={handleNextPlayer} className="px-2.5 py-1.5 bg-[#0B132B] text-slate-300 font-bold rounded-lg text-[11px] uppercase flex items-center gap-1 cursor-pointer"><SkipForward size={11} /> Salta</button>
-                              <button onClick={handleAward} className="px-2.5 py-1.5 bg-emerald-500 text-slate-950 font-black rounded-lg text-[11px] uppercase flex items-center justify-center gap-1 cursor-pointer shadow-sm"><Check size={13} /> Prendi</button>
+                              
+                              {/* NUOVO PULSANTE AGGIUDICA CON ICONA MARTELLO STILIZZATO */}
+                              <button onClick={handleAward} className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-lg text-[11px] uppercase flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition-all">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="-rotate-12">
+                                  <path d="m14 13 5 5" />
+                                  <path d="m11 16 5 5" />
+                                  <path d="m18 11 3 3" />
+                                  <path d="m8 6 8 8" />
+                                  <path d="m3 11 8 8" />
+                                  <path d="M4 3h7l-4 4Z" fill="currentColor" />
+                                </svg>
+                                <span>Aggiudica</span>
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -1201,7 +1237,7 @@ export default function App() {
                 </aside>
               </main>
             ) : (
-              /* SCHERMATA BUZZER SMARTPHONE CON BUZZER 3D "BANDITORE D'ASTA" CON MECCANISMO A PRESSIONE FISICA */
+              /* SCHERMATA BUZZER SMARTPHONE */
               <main 
                 className={`flex-1 flex flex-col gap-2 max-w-sm mx-auto w-full my-auto overflow-hidden items-center justify-between relative py-2.5 px-2 rounded-3xl border-2 transition-all duration-300 ${
                   isBlinking 
@@ -1215,14 +1251,12 @@ export default function App() {
                   `
                 }}
               >
-                {/* Sfondo linee tattiche */}
                 <div className="absolute inset-0 pointer-events-none opacity-20">
                   <div className="w-full h-full border border-emerald-200/80 rounded-2xl m-1"></div>
                   <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-emerald-200/80 -translate-y-1/2"></div>
                   <div className="absolute top-1/2 left-1/2 w-36 h-36 border border-emerald-200/80 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
                 </div>
 
-                {/* 1. Header Calciatore in Asta */}
                 <div className="text-center space-y-1 w-full bg-[#060D1E]/90 backdrop-blur-md p-3 rounded-2xl border border-slate-700/70 shadow-lg z-10">
                   <div className="flex items-center justify-between px-1 mb-0.5">
                     <div className="flex items-center gap-1.5">
@@ -1249,7 +1283,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 2. Banner Stato Offerta */}
                 <div className="w-full flex-1 flex items-center justify-center min-h-[75px] my-1 z-10">
                   {latestBidAlert ? (
                     <div className="w-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 font-black p-3 rounded-2xl shadow-2xl border-2 border-white animate-bounce text-center flex flex-col items-center justify-center gap-0.5">
@@ -1277,17 +1310,13 @@ export default function App() {
                   )}
                 </div>
 
-                {/* 3. CONTENITORE BUZZER 3D REALISTICO CON BASE METALLICA & PRESSIONE MECCANICA */}
                 <div className="w-full bg-[#060D1E]/95 backdrop-blur-md border border-slate-700/80 rounded-3xl p-3.5 flex flex-col items-center gap-2.5 shadow-2xl z-10">
                   <div className="text-center">
                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Offerta Corrente</span>
                     <div className="text-3xl font-black text-amber-400">{currentBid} <span className="text-base text-amber-300">FM</span></div>
                   </div>
 
-                  {/* ANELLO DI BASE METALLICO SCANALATO DEL BUZZER */}
                   <div className="p-3 bg-gradient-to-b from-slate-600 via-slate-800 to-slate-950 rounded-full shadow-[0_15px_30px_rgba(0,0,0,0.8)] border-2 border-slate-500/50 flex items-center justify-center">
-                    
-                    {/* PULSANTE A CUPOLA 3D CON EFFETTO MARTELLO / BUZZ */}
                     <button 
                       disabled={Boolean(awardModal?.show)}
                       onClick={() => handleRaise(selectedStep)} 
@@ -1295,29 +1324,22 @@ export default function App() {
                         awardModal?.show 
                           ? 'bg-slate-800 border-4 border-slate-700 text-slate-500 cursor-not-allowed opacity-50 shadow-none' 
                           : highestBidder === playerName
-                            /* CUPOLA EMERALD CON RIFLESSO CONCAVO & LUMINOSO */
                             ? 'bg-gradient-to-b from-emerald-300 via-emerald-500 to-emerald-800 text-slate-950 font-black border-4 border-emerald-300 shadow-[0_12px_25px_rgba(16,185,129,0.7),inset_0_6px_12px_rgba(255,255,255,0.7),inset_0_-8px_16px_rgba(0,0,0,0.6)] active:translate-y-2 active:shadow-[0_4px_10px_rgba(16,185,129,0.5),inset_0_2px_6px_rgba(0,0,0,0.8)] cursor-pointer'
-                            /* CUPOLA EMERALD STANDARD PER RILANCIARE */
                             : 'bg-gradient-to-b from-emerald-400 via-emerald-500 to-emerald-900 text-slate-950 font-black border-4 border-emerald-300 shadow-[0_12px_30px_rgba(16,185,129,0.8),inset_0_8px_16px_rgba(255,255,255,0.8),inset_0_-10px_20px_rgba(0,0,0,0.7)] active:translate-y-2 active:shadow-[0_4px_10px_rgba(16,185,129,0.5),inset_0_2px_6px_rgba(0,0,0,0.9)] cursor-pointer'
                       }`}
                     >
-                      {/* Riflesso di luce superiore della cupola 3D */}
                       <div className="absolute top-2 left-1/2 -translate-x-1/2 w-24 h-8 bg-white/35 rounded-full blur-[2px] pointer-events-none"></div>
 
-                      {/* Icone combinate: Martello da Banditore + Fulmine */}
-                      <div className="flex items-center justify-center gap-1.5 relative z-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
-                        <Gavel size={32} className={awardModal?.show ? 'text-slate-500' : 'text-slate-950 -rotate-12'} />
-                        <Zap size={32} className={awardModal?.show ? 'fill-slate-500' : 'fill-slate-950'} />
+                      <div className="relative z-10">
+                        <StylizedAuctionIcons size={32} disabled={Boolean(awardModal?.show)} />
                       </div>
 
                       <span className="text-2xl tracking-widest uppercase font-black relative z-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
                         {awardModal?.show ? 'BLOCCATO' : 'BUZZ'}
                       </span>
                     </button>
-
                   </div>
 
-                  {/* Tasti di incremento (+1, +5, +10, +20) */}
                   <div className="w-full grid grid-cols-4 gap-1.5 pt-1">
                     {[1, 5, 10, 20].map(step => (
                       <button 
