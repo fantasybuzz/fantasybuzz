@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuctionStore } from './store/useAuctionStore';
-import { Trophy, Check, Zap, Sparkles, X, SkipForward, History, Users, ShieldCheck, LogOut, Settings, Plus, Trash2, Share2, Search, Download, Shirt, Play, ArrowRight, CreditCard, Tv, Smartphone, Users2, Monitor, Timer, Flame, Award, PieChart, AlertCircle, TrendingUp, MessageCircle, Send, HelpCircle } from 'lucide-react';
+import { Trophy, Check, Zap, Sparkles, X, SkipForward, History, Users, ShieldCheck, LogOut, Settings, Plus, Trash2, Share2, Search, Download, Shirt, Play, ArrowRight, CreditCard, Tv, Smartphone, Users2, Monitor, Timer, Flame, Award, PieChart, AlertCircle, TrendingUp, MessageCircle, Send, HelpCircle, Gavel } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import rawListone from './data/listone.json';
 import { supabase } from './supabase';
@@ -78,23 +78,6 @@ const BuzzMark = ({ size = 32 }: { size?: number }) => (
       <path d="M27 7 14 26h9l-3 15 15-21h-9l4-13Z" fill="#0B132B" />
     </svg>
   </span>
-);
-
-/* Icona Martello Stilizzato e Fuso con Fulmine Arancio/Oro */
-const StylizedAuctionIcons = ({ size = 32, disabled = false }: { size?: number; disabled?: boolean }) => (
-  <div className="flex items-center justify-center gap-2">
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={disabled ? "#64748B" : "#0B132B"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-md -rotate-12">
-      <path d="m14 13 5 5" />
-      <path d="m11 16 5 5" />
-      <path d="m18 11 3 3" />
-      <path d="m8 6 8 8" />
-      <path d="m3 11 8 8" />
-      <path d="M4 3h7l-4 4Z" fill={disabled ? "#64748B" : "#0B132B"} />
-    </svg>
-    <svg width={size} height={size} viewBox="0 0 24 24" fill={disabled ? "#64748B" : "#F59E0B"} stroke={disabled ? "#64748B" : "#FDE68A"} strokeWidth="1" className="drop-shadow-[0_2px_8px_rgba(245,158,11,0.6)]">
-      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-    </svg>
-  </div>
 );
 
 const TeamBadge = ({ team, size = 30 }: { team: string; size?: number }) => {
@@ -1139,14 +1122,7 @@ export default function App() {
                             <SkipForward size={13} /> Salta
                           </button>
                           <button onClick={handleAward} className="flex-1 py-2 bg-emerald-500 text-slate-950 font-black rounded-lg text-xs uppercase flex items-center justify-center gap-1.5 cursor-pointer shadow-md">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="-rotate-12">
-                              <path d="m14 13 5 5" />
-                              <path d="m11 16 5 5" />
-                              <path d="m18 11 3 3" />
-                              <path d="m8 6 8 8" />
-                              <path d="m3 11 8 8" />
-                              <path d="M4 3h7l-4 4Z" fill="currentColor" />
-                            </svg>
+                            <Gavel size={14} />
                             <span>Aggiudica</span>
                           </button>
                         </div>
@@ -1173,16 +1149,9 @@ export default function App() {
                             <div className="flex gap-1">
                               <button onClick={handleNextPlayer} className="px-2.5 py-1.5 bg-[#0B132B] text-slate-300 font-bold rounded-lg text-[11px] uppercase flex items-center gap-1 cursor-pointer"><SkipForward size={11} /> Salta</button>
                               
-                              {/* NUOVO PULSANTE AGGIUDICA CON ICONA MARTELLO STILIZZATO */}
+                              {/* PULSANTE AGGIUDICA CON MARTELLO CLASSICO */}
                               <button onClick={handleAward} className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-lg text-[11px] uppercase flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition-all">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="-rotate-12">
-                                  <path d="m14 13 5 5" />
-                                  <path d="m11 16 5 5" />
-                                  <path d="m18 11 3 3" />
-                                  <path d="m8 6 8 8" />
-                                  <path d="m3 11 8 8" />
-                                  <path d="M4 3h7l-4 4Z" fill="currentColor" />
-                                </svg>
+                                <Gavel size={13} />
                                 <span>Aggiudica</span>
                               </button>
                             </div>
@@ -1237,7 +1206,7 @@ export default function App() {
                 </aside>
               </main>
             ) : (
-              /* SCHERMATA BUZZER SMARTPHONE */
+              /* SCHERMATA BUZZER SMARTPHONE: BUZZER ARANCIO ORO E ICONE NERE CLASSICHE */
               <main 
                 className={`flex-1 flex flex-col gap-2 max-w-sm mx-auto w-full my-auto overflow-hidden items-center justify-between relative py-2.5 px-2 rounded-3xl border-2 transition-all duration-300 ${
                   isBlinking 
@@ -1316,28 +1285,33 @@ export default function App() {
                     <div className="text-3xl font-black text-amber-400">{currentBid} <span className="text-base text-amber-300">FM</span></div>
                   </div>
 
+                  {/* ANELLO DI BASE METALLICO SCANALATO DEL BUZZER */}
                   <div className="p-3 bg-gradient-to-b from-slate-600 via-slate-800 to-slate-950 rounded-full shadow-[0_15px_30px_rgba(0,0,0,0.8)] border-2 border-slate-500/50 flex items-center justify-center">
+                    
+                    {/* PULSANTE BUZZER 3D ARANCIO / ORO CON ICONE NERE CLASSICHE */}
                     <button 
                       disabled={Boolean(awardModal?.show)}
                       onClick={() => handleRaise(selectedStep)} 
                       className={`w-40 h-40 rounded-full flex flex-col items-center justify-center gap-1 transition-all duration-75 select-none relative overflow-hidden ${
                         awardModal?.show 
                           ? 'bg-slate-800 border-4 border-slate-700 text-slate-500 cursor-not-allowed opacity-50 shadow-none' 
-                          : highestBidder === playerName
-                            ? 'bg-gradient-to-b from-emerald-300 via-emerald-500 to-emerald-800 text-slate-950 font-black border-4 border-emerald-300 shadow-[0_12px_25px_rgba(16,185,129,0.7),inset_0_6px_12px_rgba(255,255,255,0.7),inset_0_-8px_16px_rgba(0,0,0,0.6)] active:translate-y-2 active:shadow-[0_4px_10px_rgba(16,185,129,0.5),inset_0_2px_6px_rgba(0,0,0,0.8)] cursor-pointer'
-                            : 'bg-gradient-to-b from-emerald-400 via-emerald-500 to-emerald-900 text-slate-950 font-black border-4 border-emerald-300 shadow-[0_12px_30px_rgba(16,185,129,0.8),inset_0_8px_16px_rgba(255,255,255,0.8),inset_0_-10px_20px_rgba(0,0,0,0.7)] active:translate-y-2 active:shadow-[0_4px_10px_rgba(16,185,129,0.5),inset_0_2px_6px_rgba(0,0,0,0.9)] cursor-pointer'
+                          : 'bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 text-slate-950 font-black border-4 border-amber-200 shadow-[0_12px_30px_rgba(245,158,11,0.8),inset_0_8px_16px_rgba(255,255,255,0.8),inset_0_-10px_20px_rgba(0,0,0,0.7)] active:translate-y-2 active:shadow-[0_4px_10px_rgba(245,158,11,0.5),inset_0_2px_6px_rgba(0,0,0,0.9)] cursor-pointer'
                       }`}
                     >
-                      <div className="absolute top-2 left-1/2 -translate-x-1/2 w-24 h-8 bg-white/35 rounded-full blur-[2px] pointer-events-none"></div>
+                      {/* Riflesso di luce superiore della cupola 3D */}
+                      <div className="absolute top-2 left-1/2 -translate-x-1/2 w-24 h-8 bg-white/40 rounded-full blur-[2px] pointer-events-none"></div>
 
-                      <div className="relative z-10">
-                        <StylizedAuctionIcons size={32} disabled={Boolean(awardModal?.show)} />
+                      {/* Icone Nere Classiched: Martello + Fulmine */}
+                      <div className="flex items-center justify-center gap-2 relative z-10 text-slate-950 drop-shadow-sm">
+                        <Gavel size={26} className="-rotate-12" />
+                        <Zap size={26} className="fill-slate-950" />
                       </div>
 
-                      <span className="text-2xl tracking-widest uppercase font-black relative z-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
+                      <span className="text-2xl tracking-widest uppercase font-black relative z-10 text-slate-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.4)]">
                         {awardModal?.show ? 'BLOCCATO' : 'BUZZ'}
                       </span>
                     </button>
+
                   </div>
 
                   <div className="w-full grid grid-cols-4 gap-1.5 pt-1">
@@ -1654,7 +1628,7 @@ export default function App() {
                 <span className="text-[9px] font-black uppercase text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">Guida • {playerGuideStep}/3</span>
                 {playerGuideStep === 1 && (<><h4 className="text-xs font-black text-white uppercase">1. Guarda lo Schermo TV 📺</h4><p className="text-[11px] text-slate-400">Segui la TV del salotto per vedere la card del calciatore e l'offerta in tempo reale.</p></>)}
                 {playerGuideStep === 2 && (<><h4 className="text-xs font-black text-white uppercase">2. Seleziona il Rilancio ➕</h4><p className="text-[11px] text-slate-400">Scegli di quanti crediti vuoi superare l'offerta (+1, +5, +10) con i tastini in basso.</p></>)}
-                {playerGuideStep === 3 && (<><h4 className="text-xs font-black text-white uppercase">3. Premi il BUZZER 3D! ⚡</h4><p className="text-[11px] text-slate-400">Schiaccia la cupola verde: farai risuonare il martello da banditore sulla TV!</p></>)}
+                {playerGuideStep === 3 && (<><h4 className="text-xs font-black text-white uppercase">3. Premi il BUZZER 3D! ⚡</h4><p className="text-[11px] text-slate-400">Schiaccia la cupola arancio/oro: farai risuonare il martello da banditore sulla TV!</p></>)}
                 <div className="w-full pt-2 border-t border-slate-800">
                   {playerGuideStep < 3 ? <button onClick={() => setPlayerGuideStep(playerGuideStep + 1)} className="w-full py-2 bg-amber-500 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-1">Avanti <ArrowRight size={13} /></button> : <button onClick={() => setPlayerGuideStep(null)} className="w-full py-2 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase shadow-md">Pronto! ⚽</button>}
                 </div>
