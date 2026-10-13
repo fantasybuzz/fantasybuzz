@@ -242,8 +242,16 @@ export default function App() {
   const [showCustomLeagueModal, setShowCustomLeagueModal] = useState(false);
   const [customLeagueInput, setCustomLeagueInput] = useState('');
 
+  // DEMO CONFIGURATION
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [demoStep, setDemoStep] = useState<number | null>(null);
+  const [demoAuctionCount, setDemoAuctionCount] = useState(0);
+  const [showDemoModal, setShowDemoModal] = useState(false);
+  const [demoRoleChoice, setDemoRoleChoice] = useState<'PRESIDENT' | 'PLAYER'>('PRESIDENT');
+  const [demoName1, setDemoName1] = useState('Presidente (Tu)');
+  const [demoName2, setDemoName2] = useState('Pasquale');
+  const [demoName3, setDemoName3] = useState('Gianni');
+
   const [isDemoGuideMinimized, setIsDemoGuideMinimized] = useState(true);
   const [playerGuideStep, setPlayerGuideStep] = useState<number | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
@@ -448,22 +456,37 @@ export default function App() {
   const activePlayer = currentPlayer || listoneUfficiale[0];
   const isTopPlayer = activePlayer.basePrice >= 15;
 
-  const handleStartDemo = () => {
+  const handleLaunchDemo = () => {
     setIsDemoMode(true);
     setActivePackage('LIVE');
-    setRoomCode('BUZZ2026');
+    setRoomCode('DEMO_ARENA');
     setLeagueName('Lega Demo (3 Partecipanti)');
     setInitialBudget(500);
+    setDemoAuctionCount(0);
+
+    const c1 = demoName1.trim() || 'Presidente';
+    const c2 = demoName2.trim() || 'Pasquale';
+    const c3 = demoName3.trim() || 'Gianni';
+
     setCoaches([
-      { name: 'Presidente (Tu)', teamName: 'Real Presidente', budget: 500, playersCount: 0 },
-      { name: 'Pasquale', teamName: 'FC Vesuvio', budget: 500, playersCount: 0 },
-      { name: 'Gianni', teamName: 'Spartak Gianni', budget: 500, playersCount: 0 },
+      { name: c1, teamName: `FC ${c1}`, budget: 500, playersCount: 0 },
+      { name: c2, teamName: `FC ${c2}`, budget: 500, playersCount: 0 },
+      { name: c3, teamName: `FC ${c3}`, budget: 500, playersCount: 0 },
     ]);
     setCoachesCount(3);
-    setSelectedRosterCoach('Presidente (Tu)');
-    setUserRole('PRESIDENT');
+
+    if (demoRoleChoice === 'PRESIDENT') {
+      setUserRole('PRESIDENT');
+    } else {
+      setPlayerName(c1);
+      setSelectedRosterCoach(c1);
+      setUserRole('PLAYER');
+      setPlayerGuideStep(1);
+    }
+
     setDemoStep(1);
     setIsDemoGuideMinimized(true);
+    setShowDemoModal(false);
   };
 
   const handleTryStartAuction = () => {
@@ -526,7 +549,7 @@ export default function App() {
       navigator.vibrate([30, 20, 30]);
     }
 
-    const activeName = userRole === 'PRESIDENT' ? 'Presidente (Tu)' : playerName;
+    const activeName = userRole === 'PRESIDENT' ? coaches[0].name : playerName;
     const nuovaOfferta = highestBidder ? currentBid + stepVal : stepVal;
 
     registerBidLocally(activeName, nuovaOfferta);
@@ -589,7 +612,7 @@ export default function App() {
     const currentRoleCount = coachRoster.filter(p => p.player.role === activePlayer.role).length;
     const maxRoleLimit = ROLE_LIMITS[activePlayer.role] || 8;
 
-    if (currentRoleCount >= maxRoleLimit) {
+    if (!isDemoMode && currentRoleCount >= maxRoleLimit) {
       setCustomAlertMessage(`⚠️ Blocco Acquisto: ${winnerName} ha già raggiunto il limite di ${maxRoleLimit} per il ruolo ${activePlayer.role}!`);
       return;
     }
@@ -604,6 +627,10 @@ export default function App() {
         colors: ['#F59E0B', '#10b981', '#3b82f6', '#ec4899', '#ffffff']
       });
     } catch (e) { console.error(e); }
+
+    if (isDemoMode) {
+      setDemoAuctionCount(prev => prev + 1);
+    }
 
     setCoaches(prev => prev.map(c => c.name === winnerName ? { ...c, budget: c.budget - finalPrice, playersCount: c.playersCount + 1 } : c));
     setPurchasedPlayers(prev => ({ ...prev, [winnerName]: [...(prev[winnerName] || []), { player: activePlayer, price: finalPrice }] }));
@@ -842,60 +869,28 @@ export default function App() {
     <>
       {!userRole ? (
         <div className="min-h-screen w-full bg-[#030914] text-white flex flex-col items-center justify-center p-4 select-none relative z-10 box-border">
-          <div className="max-w-md w-full bg-[#0B132B] border border-amber-500/30 rounded-3xl p-6 shadow-2xl flex flex-col items-center gap-5 my-auto relative overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 via-emerald-500 to-amber-500"></div>
+          <div className="max-w-md w-full bg-[#060D1E] border border-cyan-500/30 rounded-3xl p-6 shadow-[0_0_50px_rgba(6,182,212,0.15)] flex flex-col items-center gap-5 my-auto relative overflow-hidden backdrop-blur-xl">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-amber-500 to-emerald-500"></div>
             
             <BuzzMark size={62} />
 
             <div className="text-center">
-              <h1 className="text-3xl font-black text-white uppercase tracking-wider">FantasyBuzz</h1>
+              <h1 className="text-3xl font-black text-white uppercase tracking-wider drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">FantasyBuzz</h1>
               <p className="text-xs text-amber-400 font-extrabold mt-1 tracking-widest">LIVE ARENA SHOWDOWN</p>
-              <p className="mt-2 text-[11px] font-black uppercase tracking-[0.18em] text-emerald-400">IL FANTACALCIO A UN NUOVO LIVELLO</p>
-            </div>
-
-            <div className="w-full bg-[#060D1E] p-4 rounded-2xl space-y-3 border border-slate-800">
-              <span className="text-[10px] font-black uppercase text-amber-400 block tracking-wider">Accesso Partecipanti / Ospiti</span>
-              <div className="space-y-2.5">
-                <div>
-                  <label className="text-xs text-slate-300 font-bold uppercase block mb-1.5">Nome della Lega</label>
-                  <input
-                    type="text"
-                    placeholder="Es. FantaLega Serie A"
-                    value={inputLeagueName}
-                    onChange={(e) => {
-                      setInputLeagueName(e.target.value);
-                      if (e.target.value.trim() !== '') {
-                        setLeagueName(e.target.value.trim());
-                        setRoomCode(e.target.value.trim().toUpperCase().replace(/\s+/g, ''));
-                      }
-                    }}
-                    className="w-full bg-[#0B132B] border border-slate-700 rounded-xl p-2.5 text-xs text-white font-semibold focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-slate-300 font-bold uppercase block mb-1.5">Codice Stanza (Nome Lega o BUZZ2026 per Demo)</label>
-                  <input
-                    type="text"
-                    placeholder="Es. FANTALEGASERIEA"
-                    value={inputRoomCode}
-                    onChange={(e) => setInputRoomCode(e.target.value.toUpperCase())}
-                    className="w-full bg-[#0B132B] border border-slate-700 rounded-xl p-2.5 text-xs text-amber-400 font-black tracking-widest text-center focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-              </div>
+              <p className="mt-2 text-[11px] font-black uppercase tracking-[0.18em] text-cyan-400">IL FANTACALCIO A UN NUOVO LIVELLO</p>
             </div>
 
             <div className="w-full space-y-3">
               <button
-                onClick={handleStartDemo}
-                className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer"
+                onClick={() => setShowDemoModal(true)}
+                className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all cursor-pointer active:scale-95"
               >
-                <Play size={16} className="fill-slate-950" /> Prova la Demo Gratuita (Codice: BUZZ2026)
+                <Play size={18} className="fill-slate-950" /> PROVA LA DEMO GRATUITA 🚀
               </button>
 
               <button
                 onClick={() => {
-                  if (inputLeagueName && inputLeagueName.trim() !== '' && inputLeagueName !== 'FantaLega Serie A') {
+                  if (inputLeagueName && inputLeagueName.trim() !== '') {
                     setLeagueName(inputLeagueName.trim());
                     setRoomCode(inputLeagueName.trim().toUpperCase().replace(/\s+/g, ''));
                     setShowPaywall(true);
@@ -905,58 +900,67 @@ export default function App() {
                 }}
                 className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer"
               >
-                <ShieldCheck size={18} /> Crea Nuova Lega / Sblocca Stanza 🚀
+                <ShieldCheck size={18} /> Crea Nuova Lega / Sblocca Stanza
               </button>
+            </div>
 
-              <div className="flex items-center my-1 gap-2">
-                <div className="flex-1 h-px bg-slate-800"></div>
-                <span className="text-[10px] text-slate-400 font-bold uppercase">oppure seleziona il tuo profilo</span>
-                <div className="flex-1 h-px bg-slate-800"></div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 block text-center uppercase tracking-wider">
-                  Seleziona il tuo nome in lista
-                </label>
-                <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1">
-                  {coaches.map((c) => (
-                    <button
-                      key={c.name}
-                      onClick={() => {
-                        const cleanRoomCode = roomCode.toUpperCase().replace(/\s+/g, '');
-                        const inputClean = inputRoomCode.toUpperCase().replace(/\s+/g, '');
-
-                        if (inputClean !== cleanRoomCode && inputClean !== 'BUZZ2026') {
-                          setCustomAlertMessage(`❌ Codice stanza errato! Per entrare nella lega "${leagueName}", inserisci il codice corretto.`);
-                          return;
-                        }
-                        handlePlayerAuthClick(c);
-                      }}
-                      className="p-3 bg-[#060D1E] hover:bg-amber-500/20 hover:border-amber-500/50 border border-slate-800 rounded-xl font-bold text-xs text-white flex flex-col items-start gap-1 transition-all active:scale-95 cursor-pointer text-left"
-                    >
-                      <span className="font-extrabold text-amber-400 truncate w-full">{c.name}</span>
-                      <span className="text-[10px] text-slate-400 truncate w-full">{c.teamName}</span>
-                      <span className="text-[10px] text-emerald-400 font-black">{c.budget} FM</span>
-                    </button>
-                  ))}
+            <div className="w-full bg-[#0B132B] p-4 rounded-2xl space-y-3 border border-cyan-500/20 shadow-inner">
+              <span className="text-[10px] font-black uppercase text-cyan-400 block tracking-wider text-center">Accedi ad una Lega Esistente</span>
+              <div className="space-y-2.5">
+                <div>
+                  <label className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Nome Lega o Codice Stanza</label>
+                  <input
+                    type="text"
+                    placeholder="Es. FANTALEGASERIEA"
+                    value={inputLeagueName}
+                    onChange={(e) => {
+                      setInputLeagueName(e.target.value);
+                      if (e.target.value.trim() !== '') {
+                        setLeagueName(e.target.value.trim());
+                        setRoomCode(e.target.value.trim().toUpperCase().replace(/\s+/g, ''));
+                      }
+                    }}
+                    className="w-full bg-[#060D1E] border border-slate-700 rounded-xl p-2.5 text-xs text-amber-400 font-black tracking-widest text-center focus:outline-none focus:border-cyan-400"
+                  />
                 </div>
               </div>
+
+              {inputLeagueName.trim() !== '' && (
+                <div className="space-y-2 pt-2 border-t border-slate-800">
+                  <label className="text-[10px] font-bold text-slate-400 block text-center uppercase tracking-wider">
+                    Seleziona il tuo nome
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1">
+                    {coaches.map((c) => (
+                      <button
+                        key={c.name}
+                        onClick={() => handlePlayerAuthClick(c)}
+                        className="p-2.5 bg-[#060D1E] hover:bg-cyan-500/20 hover:border-cyan-500/50 border border-slate-800 rounded-xl font-bold text-xs text-white flex flex-col items-start gap-1 transition-all active:scale-95 cursor-pointer text-left"
+                      >
+                        <span className="font-extrabold text-amber-400 truncate w-full">{c.name}</span>
+                        <span className="text-[10px] text-slate-400 truncate w-full">{c.teamName}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
+
           </div>
         </div>
       ) : (
         <div className="h-screen w-screen font-sans flex flex-col justify-between p-2 md:p-5 select-none overflow-hidden relative z-10 bg-[#030914] text-slate-200">
           
           {isDemoMode && (
-            <div className="bg-emerald-500 text-slate-950 font-black text-center py-1 text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-md">
-              <span>🎮 Modalità DEMO Attiva</span>
-              <button onClick={() => setShowPaywall(true)} className="bg-slate-950 text-white px-2 py-0.5 rounded-lg text-[10px] lowercase font-semibold hover:bg-slate-800 cursor-pointer">
+            <div className="bg-gradient-to-r from-cyan-600 via-emerald-500 to-cyan-600 text-slate-950 font-black text-center py-1 text-xs uppercase tracking-widest flex items-center justify-center gap-3 shadow-md">
+              <span>🎮 DEMO ATTIVA ({demoAuctionCount}/10 GIOCATORI)</span>
+              <button onClick={() => setShowPaywall(true)} className="bg-slate-950 text-amber-400 px-2.5 py-0.5 rounded-lg text-[10px] uppercase font-black hover:bg-slate-900 cursor-pointer shadow-sm">
                 Sblocca Lega Completa 🚀
               </button>
             </div>
           )}
 
-          <header className="flex flex-col lg:flex-row justify-between items-center p-2.5 px-3 md:px-6 rounded-2xl bg-[#0B132B] border border-slate-800 flex-shrink-0 my-1 gap-2 lg:gap-0 lg:h-14 shadow-lg">
+          <header className="flex flex-col lg:flex-row justify-between items-center p-2.5 px-3 md:px-6 rounded-2xl bg-[#060D1E] border border-cyan-500/30 flex-shrink-0 my-1 gap-2 lg:gap-0 lg:h-14 shadow-[0_0_20px_rgba(6,182,212,0.15)]">
             <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 w-full lg:w-auto">
               <div className="flex items-center gap-2">
                 <BuzzMark size={32} />
@@ -968,7 +972,7 @@ export default function App() {
                         <Tv size={10} /> TABELLONE TV
                       </span>
                     ) : (
-                      <span className="bg-emerald-500 text-slate-950 px-2 py-0.5 rounded text-[9px] font-black tracking-widest flex items-center gap-1 shadow-md">
+                      <span className="bg-cyan-500 text-slate-950 px-2 py-0.5 rounded text-[9px] font-black tracking-widest flex items-center gap-1 shadow-md">
                         <Smartphone size={10} /> SMARTPHONE BUZZER
                       </span>
                     )}
@@ -981,7 +985,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="flex gap-1 overflow-x-auto bg-[#060D1E] p-1 rounded-xl border border-slate-800 w-full lg:w-auto justify-start lg:justify-center">
+              <div className="flex gap-1 overflow-x-auto bg-[#0B132B] p-1 rounded-xl border border-slate-800 w-full lg:w-auto justify-start lg:justify-center">
                 <button
                   onClick={() => setActiveTab('AUCTION')}
                   className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${activeTab === 'AUCTION' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'}`}
@@ -1026,7 +1030,7 @@ export default function App() {
               )}
 
               {activePackage === 'LIVE' && userRole === 'PRESIDENT' && (
-                <div className="inline-flex items-center gap-1.5 bg-[#060D1E] px-2.5 py-1.5 rounded-xl text-[11px] font-bold text-amber-400 border border-slate-800">
+                <div className="inline-flex items-center gap-1.5 bg-[#0B132B] px-2.5 py-1.5 rounded-xl text-[11px] font-bold text-amber-400 border border-slate-800">
                   <Share2 size={11} /> Codice: <strong className="text-white tracking-widest">{roomCode}</strong>
                 </div>
               )}
@@ -1063,26 +1067,30 @@ export default function App() {
                   </div>
                 )}
 
-                <aside className="hidden lg:flex w-[220px] shrink-0 bg-[#0B132B] rounded-2xl p-3.5 flex-col gap-3 overflow-hidden border border-slate-800">
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between pb-2 border-b border-slate-800">
+                {/* EFFETTO BLU NEON PER LA COLONNA ALLENATORI */}
+                <aside className="hidden lg:flex w-[220px] shrink-0 bg-[#060D1E] rounded-2xl p-3.5 flex-col gap-3 overflow-hidden border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.15)]">
+                  <h3 className="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center justify-between pb-2 border-b border-cyan-500/20">
                     <span className="flex items-center gap-1.5"><Trophy size={13} className="text-amber-400" /> Allenatori</span>
                     <span className="text-[10px] text-slate-500">Rosa / Budget</span>
                   </h3>
                   <div className="space-y-1.5 overflow-y-auto flex-1 pr-1">
-                    {coaches.map(c => (
-                      <div key={c.name} className={`flex justify-between items-center p-2 rounded-xl transition-all ${
-                        highestBidder === c.name 
-                          ? 'bg-amber-500/20 border border-amber-500/60 text-white' 
-                          : 'bg-[#060D1E]'
-                      }`}>
-                        <div>
-                          <span className="font-bold text-xs block text-white">{c.name}</span>
-                          <span className="text-[10px] text-slate-400 block">{c.teamName}</span>
-                          <span className="text-[9px] text-slate-500 flex items-center gap-1 mt-0.5"><Users size={9} /> {c.playersCount} slot</span>
+                    {coaches.map(c => {
+                      const isHighest = highestBidder === c.name;
+                      return (
+                        <div key={c.name} className={`flex justify-between items-center p-2.5 rounded-xl transition-all ${
+                          isHighest 
+                            ? 'bg-cyan-500/20 border border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.4)] text-white scale-[1.02]' 
+                            : 'bg-[#0B132B]/80 border border-slate-800'
+                        }`}>
+                          <div>
+                            <span className="font-extrabold text-xs block text-white">{c.name}</span>
+                            <span className="text-[10px] text-slate-400 block">{c.teamName}</span>
+                            <span className="text-[9px] text-slate-500 flex items-center gap-1 mt-0.5"><Users size={9} /> {c.playersCount} slot</span>
+                          </div>
+                          <span className="font-black text-amber-400 text-xs">{c.budget} FM</span>
                         </div>
-                        <span className="font-black text-amber-400 text-xs">{c.budget} FM</span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </aside>
 
@@ -1286,23 +1294,24 @@ export default function App() {
                   </div>
                 </section>
 
-                <aside className="hidden lg:flex w-[220px] shrink-0 bg-[#0B132B] rounded-2xl p-3.5 flex-col gap-3 overflow-hidden border border-slate-800">
+                {/* EFFETTO BLU NEON PER LA CRONOLOGIA LIVE */}
+                <aside className="hidden lg:flex w-[220px] shrink-0 bg-[#060D1E] rounded-2xl p-3.5 flex-col gap-3 overflow-hidden border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.15)]">
                   {activePackage === 'TV' && !isDemoMode ? (
                     <div className="flex flex-col items-center justify-center h-full text-center p-3">
-                      <div className="w-12 h-12 rounded-full bg-[#060D1E] flex items-center justify-center mb-3"><Tv size={24} className="text-slate-500" /></div>
+                      <div className="w-12 h-12 rounded-full bg-[#0B132B] flex items-center justify-center mb-3"><Tv size={24} className="text-slate-500" /></div>
                       <h3 className="text-xs font-black text-white uppercase">Modalità TV</h3>
-                      <p className="text-[11px] text-slate-400 mt-3 p-2.5 bg-[#060D1E] rounded-xl font-semibold border border-slate-800">Aggiudica a voce dal pannello centrale.</p>
+                      <p className="text-[11px] text-slate-400 mt-3 p-2.5 bg-[#0B132B] rounded-xl font-semibold border border-slate-800">Aggiudica a voce dal pannello centrale.</p>
                     </div>
                   ) : (
                     <>
-                      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 pb-2 border-b border-slate-800">
+                      <h3 className="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5 pb-2 border-b border-cyan-500/20">
                         <History size={13} className="text-emerald-400" /> Cronologia Live
                       </h3>
                       <div className="space-y-1.5 overflow-y-auto flex-1 pr-1">
                         {bidHistory.length > 0 ? (
                           bidHistory.map((item, idx) => (
-                            <div key={idx} className="bg-[#060D1E] p-2 rounded-lg flex justify-between items-center text-xs border border-slate-800/80">
-                              <div><span className="font-bold text-white block truncate max-w-[90px]">{item.bidder}</span><span className="text-[9px] text-slate-500">{item.time}</span></div>
+                            <div key={idx} className="bg-[#0B132B]/80 p-2.5 rounded-xl flex justify-between items-center text-xs border border-slate-800/80">
+                              <div><span className="font-extrabold text-white block truncate max-w-[90px]">{item.bidder}</span><span className="text-[9px] text-slate-500">{item.time}</span></div>
                               <span className="font-black text-emerald-400">{item.amount} FM</span>
                             </div>
                           ))
@@ -1335,7 +1344,6 @@ export default function App() {
                   <div className="absolute top-1/2 left-1/2 w-36 h-36 border border-emerald-200/80 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
                 </div>
 
-                {/* ANIMAZIONE CONTO ALLA ROVESCIA (GONG) CLICCABILE SU SMARTPHONE */}
                 {countdown !== null && (
                   <button 
                     onClick={() => handleRaise(selectedStep)}
@@ -1462,15 +1470,15 @@ export default function App() {
 
           {activeTab === 'ROSTERS' && (
              <main className="flex-1 flex flex-col lg:flex-row gap-3 items-stretch my-1 overflow-y-auto lg:overflow-hidden w-full pb-8 lg:pb-0">
-               <aside className="w-full lg:w-[220px] shrink-0 bg-[#0B132B] border border-slate-800 rounded-2xl p-3.5 flex flex-col gap-3 lg:overflow-hidden shadow-xl min-h-[200px] lg:min-h-0">
-                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between pb-2 border-b border-slate-800">
+               <aside className="w-full lg:w-[220px] shrink-0 bg-[#060D1E] border border-cyan-500/30 rounded-2xl p-3.5 flex flex-col gap-3 lg:overflow-hidden shadow-xl min-h-[200px] lg:min-h-0">
+                 <h3 className="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center justify-between pb-2 border-b border-cyan-500/20">
                    <span className="flex items-center gap-1.5"><Shirt size={13} className="text-amber-400" /> Rose</span>
                  </h3>
                  <div className="space-y-1.5 overflow-y-auto flex-1 pr-1">
                    {coaches.map(c => {
                      const isSelected = selectedRosterCoach === c.name;
                      return (
-                       <button key={c.name} onClick={() => setSelectedRosterCoach(c.name)} className={`w-full flex justify-between items-center p-2.5 rounded-xl border text-left cursor-pointer transition-all ${isSelected ? 'bg-amber-500/10 border-amber-500/50 text-amber-300' : 'bg-[#060D1E] border-slate-800 text-white'}`}>
+                       <button key={c.name} onClick={() => setSelectedRosterCoach(c.name)} className={`w-full flex justify-between items-center p-2.5 rounded-xl border text-left cursor-pointer transition-all ${isSelected ? 'bg-amber-500/10 border-amber-500/50 text-amber-300' : 'bg-[#0B132B] border-slate-800 text-white'}`}>
                          <div>
                            <span className="font-bold text-xs block">{c.name}</span>
                            <span className="text-[10px] text-slate-400 block">{c.teamName}</span>
@@ -1485,7 +1493,7 @@ export default function App() {
                  </div>
                </aside>
       
-               <section className="w-full lg:flex-1 shrink-0 bg-[#0B132B] border border-slate-800 rounded-2xl p-4 flex flex-col justify-between relative shadow-xl lg:overflow-y-auto min-h-[450px] lg:min-h-0">
+               <section className="w-full lg:flex-1 shrink-0 bg-[#060D1E] border border-cyan-500/30 rounded-2xl p-4 flex flex-col justify-between relative shadow-xl lg:overflow-y-auto min-h-[450px] lg:min-h-0">
                  {(() => {
                    const currentCoachData = coaches.find(c => c.name === selectedRosterCoach) || coaches[0];
                    const roster = (currentCoachData && purchasedPlayers[currentCoachData.name]) || [];
@@ -1496,17 +1504,17 @@ export default function App() {
       
                    return (
                    <div className="space-y-4">
-                     <div className="flex flex-col md:flex-row justify-between md:items-center bg-[#060D1E] p-3 rounded-xl border border-slate-800 gap-3">
+                     <div className="flex flex-col md:flex-row justify-between md:items-center bg-[#0B132B] p-3 rounded-xl border border-slate-800 gap-3">
                        <div>
                          <h2 className="text-lg font-black text-white uppercase tracking-wider">{currentCoachData?.name}</h2>
                          <p className="text-xs text-slate-400">{currentCoachData?.teamName}</p>
                        </div>
                        <div className="flex gap-3 text-center">
-                         <div className="flex-1 md:flex-none bg-[#0B132B] px-3 py-1.5 rounded-lg border border-slate-800">
+                         <div className="flex-1 md:flex-none bg-[#060D1E] px-3 py-1.5 rounded-lg border border-slate-800">
                            <span className="text-[9px] text-slate-400 block uppercase font-bold">Residui</span>
                            <span className="text-sm font-black text-amber-400">{currentCoachData?.budget} FM</span>
                          </div>
-                         <div className="flex-1 md:flex-none bg-[#0B132B] px-3 py-1.5 rounded-lg border border-slate-800">
+                         <div className="flex-1 md:flex-none bg-[#060D1E] px-3 py-1.5 rounded-lg border border-slate-800">
                            <span className="text-[9px] text-slate-400 block uppercase font-bold">In Rosa</span>
                            <span className="text-sm font-black text-emerald-400">{roster.length} Giocatori</span>
                          </div>
@@ -1530,7 +1538,7 @@ export default function App() {
                            {Array.from({ length: sec.max }).map((_, slotIdx) => {
                              const item = sec.items[slotIdx];
                              return item ? (
-                               <div key={slotIdx} className="bg-[#060D1E] border border-slate-800 p-2 rounded-lg flex flex-col justify-between min-h-[60px]">
+                               <div key={slotIdx} className="bg-[#0B132B] border border-slate-800 p-2 rounded-lg flex flex-col justify-between min-h-[60px]">
                                  <div>
                                    <span className="font-extrabold text-xs text-white block truncate">{item.player.name}</span>
                                    <span className="flex items-center gap-1 text-[9px] text-slate-400 truncate"><TeamBadge team={item.player.team} size={11} /><span className="truncate">{item.player.team}</span></span>
@@ -1538,7 +1546,7 @@ export default function App() {
                                  <span className="font-black text-amber-400 text-[10px] mt-0.5">{item.price} FM</span>
                                </div>
                              ) : (
-                               <div key={slotIdx} className="bg-[#060D1E]/50 border border-dashed border-slate-800 p-2 rounded-lg flex flex-col items-center justify-center min-h-[55px] text-slate-500">
+                               <div key={slotIdx} className="bg-[#0B132B]/50 border border-dashed border-slate-800 p-2 rounded-lg flex flex-col items-center justify-center min-h-[55px] text-slate-500">
                                  <span className="text-[9px] font-bold uppercase">Slot {slotIdx + 1}</span>
                                  <span className="text-[8px]">Vuoto</span>
                                </div>
@@ -1555,7 +1563,7 @@ export default function App() {
           )}
 
           {activeTab === 'HIGHLIGHTS' && (
-            <main className="flex-1 flex flex-col gap-3 items-center justify-center p-4 bg-[#0B132B] border border-slate-800 rounded-3xl my-1 relative overflow-y-auto shadow-2xl pb-8">
+            <main className="flex-1 flex flex-col gap-3 items-center justify-center p-4 bg-[#060D1E] border border-cyan-500/30 rounded-3xl my-1 relative overflow-y-auto shadow-2xl pb-8">
               <div className="text-center">
                 <span className="text-[9px] font-black uppercase text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/30">
                   Gran Gala • Report Ufficiale
@@ -1565,28 +1573,28 @@ export default function App() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5 w-full max-w-4xl my-1">
-                <div className="bg-[#060D1E] border border-slate-800 rounded-xl p-3 text-center flex flex-col items-center gap-1 shadow-md">
+                <div className="bg-[#0B132B] border border-slate-800 rounded-xl p-3 text-center flex flex-col items-center gap-1 shadow-md">
                   <Award size={22} className="text-amber-400" />
                   <span className="text-[9px] font-bold text-slate-400 uppercase">Mr. Budget Resiliente</span>
                   <strong className="text-xs text-white font-extrabold">{coaches.sort((a,b) => b.budget - a.budget)[0]?.name}</strong>
                   <span className="text-[11px] font-black text-emerald-400">{coaches.sort((a,b) => b.budget - a.budget)[0]?.budget} FM Residui</span>
                 </div>
 
-                <div className="bg-[#060D1E] border border-slate-800 rounded-xl p-3 text-center flex flex-col items-center gap-1 shadow-md">
+                <div className="bg-[#0B132B] border border-slate-800 rounded-xl p-3 text-center flex flex-col items-center gap-1 shadow-md">
                   <Flame size={22} className="text-emerald-400" />
                   <span className="text-[9px] font-bold text-slate-400 uppercase">Rosa Più Folta</span>
                   <strong className="text-xs text-white font-extrabold">{coaches.sort((a,b) => b.playersCount - a.playersCount)[0]?.name}</strong>
                   <span className="text-[11px] font-black text-amber-400">{coaches.sort((a,b) => b.playersCount - a.playersCount)[0]?.playersCount} Calciatori</span>
                 </div>
 
-                <div className="bg-[#060D1E] border border-slate-800 rounded-xl p-3 text-center flex flex-col items-center gap-1 shadow-md">
+                <div className="bg-[#0B132B] border border-slate-800 rounded-xl p-3 text-center flex flex-col items-center gap-1 shadow-md">
                   <PieChart size={22} className="text-sky-400" />
                   <span className="text-[9px] font-bold text-slate-400 uppercase">Totale Crediti Spesi</span>
                   <strong className="text-xs text-white font-extrabold">{coaches.reduce((acc, c) => acc + (initialBudget - c.budget), 0)} FM</strong>
                   <span className="text-[11px] font-black text-sky-400">Su tutta la Lega</span>
                 </div>
 
-                <div className="bg-[#060D1E] border border-slate-800 rounded-xl p-3 text-center flex flex-col items-center gap-1 shadow-md">
+                <div className="bg-[#0B132B] border border-slate-800 rounded-xl p-3 text-center flex flex-col items-center gap-1 shadow-md">
                   <TrendingUp size={22} className="text-purple-400" />
                   <span className="text-[9px] font-bold text-slate-400 uppercase">Media Spesa / Rosa</span>
                   <strong className="text-xs text-white font-extrabold">
@@ -1596,7 +1604,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="w-full max-w-4xl bg-[#060D1E] border border-slate-800 rounded-xl p-3">
+              <div className="w-full max-w-4xl bg-[#0B132B] border border-slate-800 rounded-xl p-3">
                 <h4 className="text-xs font-black uppercase text-amber-400 mb-2 flex items-center gap-1.5">
                   <Trophy size={13} /> Riepilogo Finanziario
                 </h4>
@@ -1605,7 +1613,7 @@ export default function App() {
                     const spesi = initialBudget - c.budget;
                     const percentuale = Math.round((spesi / initialBudget) * 100);
                     return (
-                      <div key={c.name} className="flex items-center justify-between p-2 bg-[#0B132B] rounded-lg text-xs border border-slate-800">
+                      <div key={c.name} className="flex items-center justify-between p-2 bg-[#060D1E] rounded-lg text-xs border border-slate-800">
                         <div className="flex items-center gap-2">
                           <span className="font-extrabold text-white text-xs">{c.name}</span>
                           <span className="text-[9px] text-slate-400">({c.teamName})</span>
@@ -1627,6 +1635,62 @@ export default function App() {
                 </button>
               </div>
             </main>
+          )}
+
+          {/* MODALE DI CONFIGURAZIONE PROVA DEMO */}
+          {showDemoModal && (
+            <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
+              <div className="bg-[#060D1E] border border-cyan-500/40 rounded-3xl p-5 max-w-sm w-full flex flex-col gap-3.5 shadow-[0_0_50px_rgba(6,182,212,0.2)] text-center relative">
+                <button onClick={() => setShowDemoModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer"><X size={16} /></button>
+                
+                <div className="w-10 h-10 bg-cyan-500/10 border border-cyan-500/30 rounded-full flex items-center justify-center text-cyan-400 mx-auto">
+                  <Play size={20} className="fill-cyan-400" />
+                </div>
+
+                <div>
+                  <span className="text-[9px] font-black uppercase text-cyan-400 bg-cyan-500/10 px-2.5 py-0.5 rounded-full border border-cyan-500/30">Configurazione Prova Demo</span>
+                  <h3 className="text-lg font-black text-white uppercase mt-1">Scegli la tua esperienza</h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Prova un'asta fino a 10 giocatori senza limiti di ruolo.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] text-slate-400 font-bold uppercase block text-left">Come vuoi provare l'asta?</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setDemoRoleChoice('PRESIDENT')}
+                      className={`p-3 rounded-xl border flex flex-col items-center gap-1 transition-all cursor-pointer ${
+                        demoRoleChoice === 'PRESIDENT' ? 'bg-amber-500/20 border-amber-400 text-white shadow-md' : 'bg-[#0B132B] border-slate-800 text-slate-400'
+                      }`}
+                    >
+                      <Tv size={18} className={demoRoleChoice === 'PRESIDENT' ? 'text-amber-400' : 'text-slate-400'} />
+                      <span className="text-xs font-black uppercase">Presidente (Regia TV)</span>
+                    </button>
+                    <button
+                      onClick={() => setDemoRoleChoice('PLAYER')}
+                      className={`p-3 rounded-xl border flex flex-col items-center gap-1 transition-all cursor-pointer ${
+                        demoRoleChoice === 'PLAYER' ? 'bg-cyan-500/20 border-cyan-400 text-white shadow-md' : 'bg-[#0B132B] border-slate-800 text-slate-400'
+                      }`}
+                    >
+                      <Smartphone size={18} className={demoRoleChoice === 'PLAYER' ? 'text-cyan-400' : 'text-slate-400'} />
+                      <span className="text-xs font-black uppercase">Fantallenatore (Buzzer)</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-left">
+                  <label className="text-[10px] text-slate-400 font-bold uppercase block">I Tuoi 3 Allenatori in Demo</label>
+                  <div className="space-y-1.5">
+                    <input type="text" placeholder="Allenatore 1 (Tu)" value={demoName1} onChange={(e) => setDemoName1(e.target.value)} className="w-full bg-[#0B132B] border border-slate-700 rounded-xl p-2 text-xs text-amber-400 font-bold focus:outline-none" />
+                    <input type="text" placeholder="Allenatore 2" value={demoName2} onChange={(e) => setDemoName2(e.target.value)} className="w-full bg-[#0B132B] border border-slate-700 rounded-xl p-2 text-xs text-white font-semibold focus:outline-none" />
+                    <input type="text" placeholder="Allenatore 3" value={demoName3} onChange={(e) => setDemoName3(e.target.value)} className="w-full bg-[#0B132B] border border-slate-700 rounded-xl p-2 text-xs text-white font-semibold focus:outline-none" />
+                  </div>
+                </div>
+
+                <button onClick={handleLaunchDemo} className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black rounded-xl text-xs uppercase cursor-pointer shadow-lg tracking-wider">
+                  Avvia Demo Ora 🚀
+                </button>
+              </div>
+            </div>
           )}
 
           {showMobileCoaches && (
