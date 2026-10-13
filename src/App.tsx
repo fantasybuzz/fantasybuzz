@@ -167,6 +167,23 @@ const playBuzzSound = () => {
   } catch (e) { console.error(e); }
 };
 
+const playGongSound = () => {
+  try {
+    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(110, audioCtx.currentTime + 1.2);
+    gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 1.2);
+  } catch (e) { console.error(e); }
+};
+
 const playTickSound = (isGongZone = false) => {
   try {
     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -254,6 +271,7 @@ export default function App() {
   const [showConfig, setShowConfig] = useState(false);
   
   const [activeChannel, setActiveChannel] = useState<any>(null);
+  const [isConnected, setIsConnected] = useState<boolean>(false);
 
   const [initialBudget, setInitialBudget] = useState(500);
   const [leagueName, setLeagueName] = useState('FantaLega Serie A');
@@ -267,6 +285,21 @@ export default function App() {
   const [newTeamName, setNewTeamName] = useState('');
   const [awardModal, setAwardModal] = useState<{ show: boolean; player: any; winner: string; price: number; } | null>(null);
 
+  const registerBidLocally = (bidder: string, amount: number) => {
+    playBuzzSound();
+    setIsBlinking(true);
+    setCountdown(null);
+    setTimeout(() => setIsBlinking(false), 300);
+
+    placeBid(bidder, amount);
+
+    setLatestBidAlert({ bidder, amount });
+    setTimeout(() => setLatestBidAlert(null), 2500);
+
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setBidHistory(prev => [{ bidder, amount, time: timeStr }, ...prev]);
+  };
+
   useEffect(() => {
     if (!roomCode) return;
 
@@ -274,18 +307,13 @@ export default function App() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'room_bids', filter: `room_code=eq.${roomCode}` }, (payload) => {
         const newBid = payload.new;
         if (newBid && newBid.bidder_name) {
-          playBuzzSound();
-          setIsBlinking(true);
-          setCountdown(null);
-          setTimeout(() => setIsBlinking(false), 300);
-
-          placeBid(newBid.bidder_name, newBid.bid_amount);
-
-          setLatestBidAlert({ bidder: newBid.bidder_name, amount: newBid.bid_amount });
-          setTimeout(() => setLatestBidAlert(null), 2500);
-
-          const timeStr = new Date(newBid.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-          setBidHistory(prev => [{ bidder: newBid.bidder_name, amount: newBid.bid_amount, time: timeStr }, ...prev]);
+          registerBidLocally(newBid.bidder_name, newBid.bid_amount);
+        }
+      })
+      .on('broadcast', { event: 'quick_bid' }, (payload: any) => {
+        const { bidder, amount } = payload.payload;
+        if (bidder && amount) {
+          registerBidLocally(bidder, amount);
         }
       })
       .on('broadcast', { event: 'change_player' }, (payload: any) => {
@@ -309,12 +337,16 @@ export default function App() {
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           setActiveChannel(channel);
+          setIsConnected(true);
+        } else {
+          setIsConnected(false);
         }
       });
 
     return () => { 
       supabase.removeChannel(channel); 
       setActiveChannel(null);
+      setIsConnected(false);
     };
   }, [roomCode, placeBid, setCurrentPlayer]);
 
@@ -324,7 +356,7 @@ export default function App() {
       const timer = setTimeout(() => {
         setDisplayBid(currentBid);
         setIsSlotSpinning(false);
-      }, 150);
+      }, 100);
       return () => clearTimeout(timer);
     }
   }, [currentBid]);
@@ -332,7 +364,9 @@ export default function App() {
   useEffect(() => {
     if (countdown === null) return;
     if (countdown > 0) {
-      playTickSound(countdown <= 2);
+      if (countdown === 3) playGongSound();
+      else playTickSound(countdown <= 2);
+      
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
     } else {
@@ -341,7 +375,6 @@ export default function App() {
     }
   }, [countdown]);
 
-  // SCORCIATOIE DA TASTIERA PER IL PRESIDENTE (PC)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (userRole !== 'PRESIDENT' || activeTab !== 'AUCTION' || awardModal?.show) return;
@@ -473,11 +506,8 @@ export default function App() {
     }
   };
 
-  const isCurrentPlayerHighestBidder = userRole === 'PLAYER' && highestBidder === playerName;
-
   const handleRaise = async (stepVal: number) => {
     if (awardModal?.show) return;
-    if (userRole === 'PLAYER' && isCurrentPlayerHighestBidder) return; // Blocco rilancio da solo
 
     if (navigator.vibrate) {
       navigator.vibrate([30, 20, 30]);
@@ -485,6 +515,18 @@ export default function App() {
 
     const activeName = userRole === 'PRESIDENT' ? 'Presidente (Tu)' : playerName;
     const nuovaOfferta = highestBidder ? currentBid + stepVal : stepVal;
+
+    registerBidLocally(activeName, nuovaOfferta);
+
+    if (activeChannel) {
+      try {
+        await activeChannel.send({
+          type: 'broadcast',
+          event: 'quick_bid',
+          payload: { bidder: activeName, amount: nuovaOfferta }
+        });
+      } catch (err) { console.error("Errore broadcast", err); }
+    }
 
     try {
       await supabase.from('room_bids').insert([
@@ -958,6 +1000,11 @@ export default function App() {
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-2 w-full lg:w-auto">
+              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold ${isConnected ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse'}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                {isConnected ? 'Connesso ⚡' : 'Sincronizzazione...'}
+              </span>
+
               {userRole === 'PRESIDENT' && (
                 <button
                   onClick={() => setIsPureTvDisplay(!isPureTvDisplay)}
@@ -1111,7 +1158,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* PANNELLO DI COMANDO PRINCIPALE PER IL PRESIDENTE (DESKTOP / PC) */}
+                  {/* PANNELLO DI COMANDO REGIA PRESIDENTE (DESKTOP) */}
                   <div className="w-full max-w-3xl bg-[#060D1E]/95 backdrop-blur-md p-4 rounded-2xl flex flex-col gap-3 z-10 border border-slate-700/80 shadow-2xl">
                     {activePackage === 'TV' && !isDemoMode ? (
                       <div className="flex flex-col gap-2">
@@ -1154,10 +1201,10 @@ export default function App() {
                         <div className="flex justify-between items-center px-1">
                           <div>
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Offerta Corrente</span>
-                            {highestBidder ? <p className="text-sm text-emerald-400 font-extrabold truncate max-w-[150px]">{highestBidder}</p> : <p className="text-xs text-slate-500 font-semibold">Base {activePlayer.basePrice} FM</p>}
+                            {highestBidder ? <p className="text-sm text-emerald-400 font-extrabold truncate max-w-[150px] animate-pulse">{highestBidder}</p> : <p className="text-xs text-slate-500 font-semibold">Base {activePlayer.basePrice} FM</p>}
                           </div>
 
-                          <div className={`text-5xl md:text-6xl font-black text-amber-400 tabular-nums transition-all ${isSlotSpinning ? 'scale-110' : 'scale-100'} drop-shadow-[0_2px_10px_rgba(245,158,11,0.3)]`}>
+                          <div className={`text-5xl md:text-6xl font-black text-amber-400 tabular-nums transition-all duration-100 ${isSlotSpinning ? 'scale-110 text-white' : 'scale-100'} drop-shadow-[0_2px_10px_rgba(245,158,11,0.3)]`}>
                             {displayBid} <span className="text-2xl text-amber-300 font-bold">FM</span>
                           </div>
 
@@ -1173,7 +1220,6 @@ export default function App() {
                                 <SkipForward size={13} /> Salta
                               </button>
                               
-                              {/* PULSANTE AGGIUDICA PC REGIA */}
                               <button onClick={handleAward} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-1.5 cursor-pointer shadow-lg transition-all active:scale-95">
                                 <Gavel size={15} />
                                 <span>Aggiudica (Invio)</span>
@@ -1182,7 +1228,6 @@ export default function App() {
                           </div>
                         </div>
 
-                        {/* RIVOLUZIONE TASTI RILANCIO PER IL PRESIDENTE SU PC / DESKTOP */}
                         {!isPureTvDisplay && (
                           <div className="pt-2 border-t border-slate-800/80">
                             <div className="flex justify-between items-center mb-1.5 px-1">
@@ -1259,14 +1304,12 @@ export default function App() {
                 </aside>
               </main>
             ) : (
-              /* SCHERMATA BUZZER SMARTPHONE PER I FANTALLENATORI */
+              /* SCHERMATA BUZZER SMARTPHONE */
               <main 
                 className={`flex-1 flex flex-col gap-2 max-w-sm mx-auto w-full my-auto overflow-hidden items-center justify-between relative py-2.5 px-2 rounded-3xl border-2 transition-all duration-300 ${
-                  isCurrentPlayerHighestBidder
-                    ? 'border-emerald-400 shadow-[0_0_50px_rgba(16,185,129,0.5)]'
-                    : isBlinking 
-                      ? 'border-amber-400 shadow-[0_0_50px_rgba(245,158,11,0.5)]' 
-                      : 'border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.2)]'
+                  isBlinking 
+                    ? 'border-amber-400 shadow-[0_0_50px_rgba(245,158,11,0.5)]' 
+                    : 'border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.2)]'
                 }`}
                 style={{
                   background: `
@@ -1315,7 +1358,7 @@ export default function App() {
                     </div>
                   ) : highestBidder ? (
                     highestBidder === playerName ? (
-                      <div className="w-full bg-emerald-500/20 border-2 border-emerald-400 p-2.5 rounded-2xl text-center flex flex-col items-center justify-center gap-0.5 backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.3)] animate-pulse">
+                      <div className="w-full bg-emerald-500/20 border-2 border-emerald-400 p-2.5 rounded-2xl text-center flex flex-col items-center justify-center gap-0.5 backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.3)]">
                         <span className="text-[10px] font-black uppercase text-emerald-300 tracking-widest flex items-center justify-center gap-1">
                           <Check size={14} /> SEI TU IL MIGLIOR OFFERENTE!
                         </span>
@@ -1340,19 +1383,13 @@ export default function App() {
                     <div className="text-3xl font-black text-amber-400">{currentBid} <span className="text-base text-amber-300">FM</span></div>
                   </div>
 
-                  {/* ANELLO METALLICO CON GLOW VERDE SE SEI IN TESTA */}
-                  <div className={`p-3 rounded-full transition-all duration-300 ${
-                    isCurrentPlayerHighestBidder 
-                      ? 'bg-gradient-to-b from-emerald-500 via-emerald-700 to-slate-900 shadow-[0_0_40px_rgba(16,185,129,0.6)] border-2 border-emerald-400' 
-                      : 'bg-gradient-to-b from-slate-600 via-slate-800 to-slate-950 shadow-[0_15px_30px_rgba(0,0,0,0.8)] border-2 border-slate-500/50'
-                  }`}>
+                  <div className="p-3 rounded-full bg-gradient-to-b from-slate-600 via-slate-800 to-slate-950 shadow-[0_15px_30px_rgba(0,0,0,0.8)] border-2 border-slate-500/50">
                     
-                    {/* PULSANTE BUZZER 3D ARANCIO ORO */}
                     <button 
-                      disabled={Boolean(awardModal?.show) || isCurrentPlayerHighestBidder}
+                      disabled={Boolean(awardModal?.show)}
                       onClick={() => handleRaise(selectedStep)} 
                       className={`w-40 h-40 rounded-full flex flex-col items-center justify-center gap-1 transition-all duration-75 select-none relative overflow-hidden ${
-                        awardModal?.show || isCurrentPlayerHighestBidder
+                        awardModal?.show
                           ? 'bg-slate-800 border-4 border-slate-700 text-slate-500 cursor-not-allowed opacity-60 shadow-none' 
                           : 'bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 text-slate-950 font-black border-4 border-amber-200 shadow-[0_12px_30px_rgba(245,158,11,0.8),inset_0_8px_16px_rgba(255,255,255,0.8),inset_0_-10px_20px_rgba(0,0,0,0.7)] active:translate-y-2 active:shadow-[0_4px_10px_rgba(245,158,11,0.5),inset_0_2px_6px_rgba(0,0,0,0.9)] cursor-pointer'
                       }`}
@@ -1365,7 +1402,7 @@ export default function App() {
                       </div>
 
                       <span className="text-2xl tracking-widest uppercase font-black relative z-10 text-slate-950">
-                        {awardModal?.show ? 'BLOCCATO' : isCurrentPlayerHighestBidder ? 'SEI PRIMO' : 'BUZZ'}
+                        {awardModal?.show ? 'BLOCCATO' : 'BUZZ'}
                       </span>
                     </button>
 
@@ -1375,10 +1412,10 @@ export default function App() {
                     {[1, 5, 10, 20].map(step => (
                       <button 
                         key={step} 
-                        disabled={Boolean(awardModal?.show) || isCurrentPlayerHighestBidder}
+                        disabled={Boolean(awardModal?.show)}
                         onClick={() => { setSelectedStep(step); handleRaise(step); }} 
                         className={`py-2.5 text-xs font-black rounded-xl transition-all border ${
-                          awardModal?.show || isCurrentPlayerHighestBidder
+                          awardModal?.show
                             ? 'bg-slate-900 border-slate-800 text-slate-600 cursor-not-allowed' 
                             : selectedStep === step 
                               ? 'bg-amber-500 border-amber-400 text-slate-950 scale-105 shadow-md cursor-pointer' 
