@@ -300,21 +300,32 @@ export default function App() {
     setBidHistory(prev => [{ bidder, amount, time: timeStr }, ...prev]);
   };
 
+  const startGongTimer = async (seconds = 3) => {
+    setCountdown(seconds);
+    if (activeChannel) {
+      try {
+        await activeChannel.send({
+          type: 'broadcast',
+          event: 'start_countdown',
+          payload: { seconds }
+        });
+      } catch (e) { console.error("Errore broadcast gong", e); }
+    }
+  };
+
   useEffect(() => {
     if (!roomCode) return;
 
     const channel = supabase.channel(`room_${roomCode}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'room_bids', filter: `room_code=eq.${roomCode}` }, (payload) => {
-        const newBid = payload.new;
-        if (newBid && newBid.bidder_name) {
-          registerBidLocally(newBid.bidder_name, newBid.bid_amount);
-        }
-      })
       .on('broadcast', { event: 'quick_bid' }, (payload: any) => {
         const { bidder, amount } = payload.payload;
         if (bidder && amount) {
           registerBidLocally(bidder, amount);
         }
+      })
+      .on('broadcast', { event: 'start_countdown' }, (payload: any) => {
+        const { seconds } = payload.payload;
+        setCountdown(seconds || 3);
       })
       .on('broadcast', { event: 'change_player' }, (payload: any) => {
         const { player } = payload.payload;
@@ -371,9 +382,11 @@ export default function App() {
       return () => clearTimeout(timer);
     } else {
       setCountdown(null);
-      handleAward();
+      if (userRole === 'PRESIDENT') {
+        handleAward();
+      }
     }
-  }, [countdown]);
+  }, [countdown, userRole]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -516,8 +529,10 @@ export default function App() {
     const activeName = userRole === 'PRESIDENT' ? 'Presidente (Tu)' : playerName;
     const nuovaOfferta = highestBidder ? currentBid + stepVal : stepVal;
 
+    // 1. Aggiornamento Locale Istantaneo a Latenza Zero (Annulla anche il GONG se attivo)
     registerBidLocally(activeName, nuovaOfferta);
 
+    // 2. Unico Broadcast ultra-veloce a tutti i dispositivi
     if (activeChannel) {
       try {
         await activeChannel.send({
@@ -528,17 +543,14 @@ export default function App() {
       } catch (err) { console.error("Errore broadcast", err); }
     }
 
-    try {
-      await supabase.from('room_bids').insert([
-        {
-          room_code: roomCode,
-          bidder_name: activeName,
-          bid_amount: nuovaOfferta
-        }
-      ]);
-    } catch (e) {
-      console.error("Errore salvataggio offerta:", e);
-    }
+    // 3. Salva sul database in background senza attivare re-trigger duplicati
+    supabase.from('room_bids').insert([
+      {
+        room_code: roomCode,
+        bidder_name: activeName,
+        bid_amount: nuovaOfferta
+      }
+    ]).then(({ error }) => { if (error) console.error(error); });
   };
 
   const handleNextPlayer = async () => {
@@ -1107,7 +1119,7 @@ export default function App() {
                       <div className={`text-7xl font-black ${countdown <= 2 ? 'text-red-500' : 'text-white'} drop-shadow-2xl animate-ping`}>
                         {countdown}
                       </div>
-                      <p className="text-xs text-slate-400">Premi BUZZ per interrompere!</p>
+                      <p className="text-xs text-slate-400">Premi BUZZ da smartphone per superare!</p>
                     </div>
                   )}
 
@@ -1210,7 +1222,7 @@ export default function App() {
 
                           <div className="flex flex-col items-end gap-1.5">
                             <button
-                              onClick={() => setCountdown(3)}
+                              onClick={() => startGongTimer(3)}
                               className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center gap-1.5 cursor-pointer shadow-md transition-all active:scale-95"
                             >
                               <Timer size={14} /> 3 SEC (GONG)
@@ -1307,15 +1319,17 @@ export default function App() {
               /* SCHERMATA BUZZER SMARTPHONE */
               <main 
                 className={`flex-1 flex flex-col gap-2 max-w-sm mx-auto w-full my-auto overflow-hidden items-center justify-between relative py-2.5 px-2 rounded-3xl border-2 transition-all duration-300 ${
-                  isBlinking 
-                    ? 'border-amber-400 shadow-[0_0_50px_rgba(245,158,11,0.5)]' 
-                    : 'border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.2)]'
+                  countdown !== null 
+                    ? 'border-red-500 shadow-[0_0_50px_rgba(239,68,68,0.8)] animate-pulse' 
+                    : isBlinking 
+                      ? 'border-amber-400 shadow-[0_0_50px_rgba(245,158,11,0.5)]' 
+                      : 'border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.2)]'
                 }`}
                 style={{
-                  background: `
-                    radial-gradient(circle at 50% 40%, rgba(16, 185, 129, 0.32) 0%, rgba(6, 35, 22, 0.96) 75%, rgba(2, 18, 11, 1) 100%),
-                    repeating-linear-gradient(90deg, rgba(10, 80, 45, 0.35) 0px, rgba(10, 80, 45, 0.35) 45px, rgba(6, 60, 34, 0.35) 45px, rgba(6, 60, 34, 0.35) 90px)
-                  `
+                  background: countdown !== null 
+                    ? `radial-gradient(circle at 50% 40%, rgba(220, 38, 38, 0.4) 0%, rgba(6, 15, 22, 0.98) 75%, rgba(2, 8, 11, 1) 100%)`
+                    : `radial-gradient(circle at 50% 40%, rgba(16, 185, 129, 0.32) 0%, rgba(6, 35, 22, 0.96) 75%, rgba(2, 18, 11, 1) 100%),
+                       repeating-linear-gradient(90deg, rgba(10, 80, 45, 0.35) 0px, rgba(10, 80, 45, 0.35) 45px, rgba(6, 60, 34, 0.35) 45px, rgba(6, 60, 34, 0.35) 90px)`
                 }}
               >
                 <div className="absolute inset-0 pointer-events-none opacity-20">
@@ -1323,6 +1337,21 @@ export default function App() {
                   <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-emerald-200/80 -translate-y-1/2"></div>
                   <div className="absolute top-1/2 left-1/2 w-36 h-36 border border-emerald-200/80 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
                 </div>
+
+                {/* ANIMAZIONE CONTO ALLA ROVESCIA (GONG) SU SMARTPHONE */}
+                {countdown !== null && (
+                  <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md z-40 flex flex-col items-center justify-center gap-2 p-4 text-center">
+                    <span className="font-black text-xs uppercase tracking-widest text-red-400 animate-bounce">
+                      🚨 GONG ZONE - ULTIMI SECONDI!
+                    </span>
+                    <div className="text-8xl font-black text-red-500 drop-shadow-[0_0_30px_rgba(239,68,68,0.8)] animate-ping">
+                      {countdown}
+                    </div>
+                    <p className="text-xs text-slate-300 font-bold mt-2">
+                      Premi il BUZZER ora per interrompere e rilanciare!
+                    </p>
+                  </div>
+                )}
 
                 <div className="text-center space-y-1 w-full bg-[#060D1E]/90 backdrop-blur-md p-3 rounded-2xl border border-slate-700/70 shadow-lg z-10">
                   <div className="flex items-center justify-between px-1 mb-0.5">
