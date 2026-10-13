@@ -341,6 +341,24 @@ export default function App() {
     }
   }, [countdown]);
 
+  // SCORCIATOIE DA TASTIERA PER IL PRESIDENTE (PC)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (userRole !== 'PRESIDENT' || activeTab !== 'AUCTION' || awardModal?.show) return;
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName)) return;
+
+      if (e.key === '1') { setSelectedStep(1); handleRaise(1); }
+      else if (e.key === '5') { setSelectedStep(5); handleRaise(5); }
+      else if (e.key === '0') { setSelectedStep(10); handleRaise(10); }
+      else if (e.key === '2') { setSelectedStep(20); handleRaise(20); }
+      else if (e.key === ' ') { e.preventDefault(); handleRaise(selectedStep); }
+      else if (e.key === 'Enter' || e.key === 'a' || e.key === 'A') { handleAward(); }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [userRole, activeTab, awardModal, selectedStep, currentBid, highestBidder]);
+
   const calculatePrice = () => {
     if (selectedPackage === 'TV') return 4.99;
     if (coachesCount <= 8) return 9.99;
@@ -455,8 +473,11 @@ export default function App() {
     }
   };
 
+  const isCurrentPlayerHighestBidder = userRole === 'PLAYER' && highestBidder === playerName;
+
   const handleRaise = async (stepVal: number) => {
     if (awardModal?.show) return;
+    if (userRole === 'PLAYER' && isCurrentPlayerHighestBidder) return; // Blocco rilancio da solo
 
     if (navigator.vibrate) {
       navigator.vibrate([30, 20, 30]);
@@ -1090,7 +1111,8 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="w-full max-w-2xl bg-[#060D1E]/95 backdrop-blur-md p-3 md:p-4 rounded-xl flex flex-col gap-3 z-10 border border-slate-700/80 shadow-xl">
+                  {/* PANNELLO DI COMANDO PRINCIPALE PER IL PRESIDENTE (DESKTOP / PC) */}
+                  <div className="w-full max-w-3xl bg-[#060D1E]/95 backdrop-blur-md p-4 rounded-2xl flex flex-col gap-3 z-10 border border-slate-700/80 shadow-2xl">
                     {activePackage === 'TV' && !isDemoMode ? (
                       <div className="flex flex-col gap-2">
                         <div className="flex flex-col md:flex-row justify-between md:items-center gap-2">
@@ -1128,41 +1150,72 @@ export default function App() {
                         </div>
                       </div>
                     ) : (
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-3">
                         <div className="flex justify-between items-center px-1">
                           <div>
-                            <span className="text-[9px] font-bold text-slate-400 uppercase block">Offerta Corrente</span>
-                            {highestBidder ? <p className="text-xs text-emerald-400 font-extrabold truncate max-w-[100px]">{highestBidder}</p> : <p className="text-[10px] text-slate-500">Base {activePlayer.basePrice} FM</p>}
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Offerta Corrente</span>
+                            {highestBidder ? <p className="text-sm text-emerald-400 font-extrabold truncate max-w-[150px]">{highestBidder}</p> : <p className="text-xs text-slate-500 font-semibold">Base {activePlayer.basePrice} FM</p>}
                           </div>
 
-                          <div className={`text-4xl md:text-5xl font-black text-amber-400 tabular-nums transition-all ${isSlotSpinning ? 'scale-110' : 'scale-100'}`}>
-                            {displayBid} <span className="text-lg md:text-xl text-amber-300">FM</span>
+                          <div className={`text-5xl md:text-6xl font-black text-amber-400 tabular-nums transition-all ${isSlotSpinning ? 'scale-110' : 'scale-100'} drop-shadow-[0_2px_10px_rgba(245,158,11,0.3)]`}>
+                            {displayBid} <span className="text-2xl text-amber-300 font-bold">FM</span>
                           </div>
 
-                          <div className="flex flex-col items-end gap-1">
+                          <div className="flex flex-col items-end gap-1.5">
                             <button
                               onClick={() => setCountdown(3)}
-                              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-lg text-xs uppercase flex items-center gap-1 cursor-pointer shadow-sm"
+                              className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center gap-1.5 cursor-pointer shadow-md transition-all active:scale-95"
                             >
-                              <Timer size={12} /> 3 sec
+                              <Timer size={14} /> 3 SEC (GONG)
                             </button>
-                            <div className="flex gap-1">
-                              <button onClick={handleNextPlayer} className="px-2.5 py-1.5 bg-[#0B132B] text-slate-300 font-bold rounded-lg text-[11px] uppercase flex items-center gap-1 cursor-pointer"><SkipForward size={11} /> Salta</button>
+                            <div className="flex gap-1.5">
+                              <button onClick={handleNextPlayer} className="px-3 py-2 bg-[#0B132B] hover:bg-slate-800 text-slate-300 font-bold rounded-xl text-xs uppercase flex items-center gap-1 cursor-pointer transition-all">
+                                <SkipForward size={13} /> Salta
+                              </button>
                               
-                              {/* PULSANTE AGGIUDICA CON MARTELLO CLASSICO */}
-                              <button onClick={handleAward} className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-lg text-[11px] uppercase flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition-all">
-                                <Gavel size={13} />
-                                <span>Aggiudica</span>
+                              {/* PULSANTE AGGIUDICA PC REGIA */}
+                              <button onClick={handleAward} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-1.5 cursor-pointer shadow-lg transition-all active:scale-95">
+                                <Gavel size={15} />
+                                <span>Aggiudica (Invio)</span>
                               </button>
                             </div>
                           </div>
                         </div>
 
+                        {/* RIVOLUZIONE TASTI RILANCIO PER IL PRESIDENTE SU PC / DESKTOP */}
                         {!isPureTvDisplay && (
-                          <div className="grid grid-cols-4 gap-1 pt-1.5 border-t border-slate-800">
-                            {[1, 5, 10, 20].map(step => (
-                              <button key={step} onClick={() => handleRaise(step)} className="py-2.5 bg-[#0B132B] hover:bg-amber-500 hover:text-slate-950 text-white font-black text-xs rounded-lg cursor-pointer transition-all">+{step}</button>
-                            ))}
+                          <div className="pt-2 border-t border-slate-800/80">
+                            <div className="flex justify-between items-center mb-1.5 px-1">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Pulsanti di Rilancio Rapido</span>
+                              <span className="text-[9px] text-amber-400 font-bold hidden md:inline">⌨️ Tasti Rapidi: Premere 1, 5, 0 (per +10), 2 (per +20) o Spazio</span>
+                            </div>
+
+                            <div className="grid grid-cols-4 gap-2">
+                              {[
+                                { step: 1, keyHint: '1' },
+                                { step: 5, keyHint: '5' },
+                                { step: 10, keyHint: '0' },
+                                { step: 20, keyHint: '2' }
+                              ].map(({ step, keyHint }) => {
+                                const isSelected = selectedStep === step;
+                                return (
+                                  <button
+                                    key={step}
+                                    onClick={() => { setSelectedStep(step); handleRaise(step); }}
+                                    className={`py-3 px-2 rounded-xl text-sm font-black uppercase tracking-wider transition-all duration-100 flex flex-col items-center justify-center gap-0.5 cursor-pointer relative overflow-hidden select-none active:translate-y-0.5 ${
+                                      isSelected
+                                        ? 'bg-gradient-to-b from-amber-400 via-amber-500 to-amber-600 text-slate-950 border-2 border-amber-200 shadow-[0_4px_15px_rgba(245,158,11,0.5),inset_0_2px_4px_rgba(255,255,255,0.6)] scale-[1.02]'
+                                        : 'bg-[#0B132B] hover:bg-slate-800 text-slate-100 border border-slate-700/80 hover:border-amber-400/60 shadow-md'
+                                    }`}
+                                  >
+                                    <span className="text-base font-black">+{step} FM</span>
+                                    <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded ${isSelected ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-900 text-slate-400'}`}>
+                                      Tasto [{keyHint}]
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1206,12 +1259,14 @@ export default function App() {
                 </aside>
               </main>
             ) : (
-              /* SCHERMATA BUZZER SMARTPHONE: BUZZER ARANCIO ORO E ICONE NERE CLASSICHE */
+              /* SCHERMATA BUZZER SMARTPHONE PER I FANTALLENATORI */
               <main 
                 className={`flex-1 flex flex-col gap-2 max-w-sm mx-auto w-full my-auto overflow-hidden items-center justify-between relative py-2.5 px-2 rounded-3xl border-2 transition-all duration-300 ${
-                  isBlinking 
-                    ? 'border-amber-400 shadow-[0_0_50px_rgba(245,158,11,0.5)]' 
-                    : 'border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.2)]'
+                  isCurrentPlayerHighestBidder
+                    ? 'border-emerald-400 shadow-[0_0_50px_rgba(16,185,129,0.5)]'
+                    : isBlinking 
+                      ? 'border-amber-400 shadow-[0_0_50px_rgba(245,158,11,0.5)]' 
+                      : 'border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.2)]'
                 }`}
                 style={{
                   background: `
@@ -1260,9 +1315,9 @@ export default function App() {
                     </div>
                   ) : highestBidder ? (
                     highestBidder === playerName ? (
-                      <div className="w-full bg-emerald-500/20 border-2 border-emerald-400 p-2.5 rounded-2xl text-center flex flex-col items-center justify-center gap-0.5 backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-                        <span className="text-[10px] font-black uppercase text-emerald-300 tracking-widest flex items-center gap-1">
-                          <Check size={12} /> SEI TU IL MIGLIOR OFFERENTE!
+                      <div className="w-full bg-emerald-500/20 border-2 border-emerald-400 p-2.5 rounded-2xl text-center flex flex-col items-center justify-center gap-0.5 backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.3)] animate-pulse">
+                        <span className="text-[10px] font-black uppercase text-emerald-300 tracking-widest flex items-center justify-center gap-1">
+                          <Check size={14} /> SEI TU IL MIGLIOR OFFERENTE!
                         </span>
                         <span className="text-xs font-black text-white uppercase">{highestBidder} ({currentBid} FM)</span>
                       </div>
@@ -1285,30 +1340,32 @@ export default function App() {
                     <div className="text-3xl font-black text-amber-400">{currentBid} <span className="text-base text-amber-300">FM</span></div>
                   </div>
 
-                  {/* ANELLO DI BASE METALLICO SCANALATO DEL BUZZER */}
-                  <div className="p-3 bg-gradient-to-b from-slate-600 via-slate-800 to-slate-950 rounded-full shadow-[0_15px_30px_rgba(0,0,0,0.8)] border-2 border-slate-500/50 flex items-center justify-center">
+                  {/* ANELLO METALLICO CON GLOW VERDE SE SEI IN TESTA */}
+                  <div className={`p-3 rounded-full transition-all duration-300 ${
+                    isCurrentPlayerHighestBidder 
+                      ? 'bg-gradient-to-b from-emerald-500 via-emerald-700 to-slate-900 shadow-[0_0_40px_rgba(16,185,129,0.6)] border-2 border-emerald-400' 
+                      : 'bg-gradient-to-b from-slate-600 via-slate-800 to-slate-950 shadow-[0_15px_30px_rgba(0,0,0,0.8)] border-2 border-slate-500/50'
+                  }`}>
                     
-                    {/* PULSANTE BUZZER 3D ARANCIO / ORO CON ICONE NERE CLASSICHE */}
+                    {/* PULSANTE BUZZER 3D ARANCIO ORO */}
                     <button 
-                      disabled={Boolean(awardModal?.show)}
+                      disabled={Boolean(awardModal?.show) || isCurrentPlayerHighestBidder}
                       onClick={() => handleRaise(selectedStep)} 
                       className={`w-40 h-40 rounded-full flex flex-col items-center justify-center gap-1 transition-all duration-75 select-none relative overflow-hidden ${
-                        awardModal?.show 
-                          ? 'bg-slate-800 border-4 border-slate-700 text-slate-500 cursor-not-allowed opacity-50 shadow-none' 
+                        awardModal?.show || isCurrentPlayerHighestBidder
+                          ? 'bg-slate-800 border-4 border-slate-700 text-slate-500 cursor-not-allowed opacity-60 shadow-none' 
                           : 'bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 text-slate-950 font-black border-4 border-amber-200 shadow-[0_12px_30px_rgba(245,158,11,0.8),inset_0_8px_16px_rgba(255,255,255,0.8),inset_0_-10px_20px_rgba(0,0,0,0.7)] active:translate-y-2 active:shadow-[0_4px_10px_rgba(245,158,11,0.5),inset_0_2px_6px_rgba(0,0,0,0.9)] cursor-pointer'
                       }`}
                     >
-                      {/* Riflesso di luce superiore della cupola 3D */}
                       <div className="absolute top-2 left-1/2 -translate-x-1/2 w-24 h-8 bg-white/40 rounded-full blur-[2px] pointer-events-none"></div>
 
-                      {/* Icone Nere Classiched: Martello + Fulmine */}
-                      <div className="flex items-center justify-center gap-2 relative z-10 text-slate-950 drop-shadow-sm">
+                      <div className="flex items-center justify-center gap-2 relative z-10 text-slate-950">
                         <Gavel size={26} className="-rotate-12" />
                         <Zap size={26} className="fill-slate-950" />
                       </div>
 
-                      <span className="text-2xl tracking-widest uppercase font-black relative z-10 text-slate-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.4)]">
-                        {awardModal?.show ? 'BLOCCATO' : 'BUZZ'}
+                      <span className="text-2xl tracking-widest uppercase font-black relative z-10 text-slate-950">
+                        {awardModal?.show ? 'BLOCCATO' : isCurrentPlayerHighestBidder ? 'SEI PRIMO' : 'BUZZ'}
                       </span>
                     </button>
 
@@ -1318,10 +1375,10 @@ export default function App() {
                     {[1, 5, 10, 20].map(step => (
                       <button 
                         key={step} 
-                        disabled={Boolean(awardModal?.show)}
+                        disabled={Boolean(awardModal?.show) || isCurrentPlayerHighestBidder}
                         onClick={() => { setSelectedStep(step); handleRaise(step); }} 
                         className={`py-2.5 text-xs font-black rounded-xl transition-all border ${
-                          awardModal?.show 
+                          awardModal?.show || isCurrentPlayerHighestBidder
                             ? 'bg-slate-900 border-slate-800 text-slate-600 cursor-not-allowed' 
                             : selectedStep === step 
                               ? 'bg-amber-500 border-amber-400 text-slate-950 scale-105 shadow-md cursor-pointer' 
