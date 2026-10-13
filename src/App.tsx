@@ -274,7 +274,6 @@ export default function App() {
   const [userRole, setUserRole] = useState<'PRESIDENT' | 'PLAYER' | null>(null);
   const [playerName, setPlayerName] = useState<string>('');
   const [inputLeagueName, setInputLeagueName] = useState('');
-  const [inputRoomCode, setInputRoomCode] = useState('');
   const [roomCode, setRoomCode] = useState('BUZZ2026');
   const [showConfig, setShowConfig] = useState(false);
   
@@ -869,73 +868,75 @@ export default function App() {
     <>
       {!userRole ? (
         <div className="min-h-screen w-full bg-[#030914] text-white flex flex-col items-center justify-center p-4 select-none relative z-10 box-border">
-          <div className="max-w-md w-full bg-[#060D1E] border border-cyan-500/30 rounded-3xl p-6 shadow-[0_0_50px_rgba(6,182,212,0.15)] flex flex-col items-center gap-5 my-auto relative overflow-hidden backdrop-blur-xl">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-amber-500 to-emerald-500"></div>
+          <div className="max-w-md w-full bg-[#060D1E] border border-cyan-500/30 rounded-3xl p-6 shadow-[0_0_50px_rgba(6,182,212,0.15)] flex flex-col items-center gap-6 my-auto relative overflow-hidden backdrop-blur-xl">
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-cyan-500 via-amber-500 to-emerald-500"></div>
             
-            <BuzzMark size={62} />
+            <BuzzMark size={68} />
 
             <div className="text-center">
               <h1 className="text-3xl font-black text-white uppercase tracking-wider drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">FantasyBuzz</h1>
               <p className="text-xs text-amber-400 font-extrabold mt-1 tracking-widest">LIVE ARENA SHOWDOWN</p>
-              <p className="mt-2 text-[11px] font-black uppercase tracking-[0.18em] text-cyan-400">IL FANTACALCIO A UN NUOVO LIVELLO</p>
+              <p className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400">IL FANTACALCIO A UN NUOVO LIVELLO</p>
             </div>
 
-            <div className="w-full space-y-3">
+            {/* SEZIONE 1: TASTO DEMO PULITO */}
+            <div className="w-full">
               <button
                 onClick={() => setShowDemoModal(true)}
-                className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all cursor-pointer active:scale-95"
+                className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 rounded-2xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(16,185,129,0.4)] transition-all cursor-pointer active:scale-95 border border-emerald-300"
               >
-                <Play size={18} className="fill-slate-950" /> PROVA LA DEMO GRATUITA 🚀
-              </button>
-
-              <button
-                onClick={() => {
-                  if (inputLeagueName && inputLeagueName.trim() !== '') {
-                    setLeagueName(inputLeagueName.trim());
-                    setRoomCode(inputLeagueName.trim().toUpperCase().replace(/\s+/g, ''));
-                    setShowPaywall(true);
-                  } else {
-                    setShowCustomLeagueModal(true);
-                  }
-                }}
-                className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer"
-              >
-                <ShieldCheck size={18} /> Crea Nuova Lega / Sblocca Stanza
+                <Play size={20} className="fill-slate-950" /> PROVA LA DEMO GRATUITA 🚀
               </button>
             </div>
 
-            <div className="w-full bg-[#0B132B] p-4 rounded-2xl space-y-3 border border-cyan-500/20 shadow-inner">
-              <span className="text-[10px] font-black uppercase text-cyan-400 block tracking-wider text-center">Accedi ad una Lega Esistente</span>
-              <div className="space-y-2.5">
-                <div>
-                  <label className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Nome Lega o Codice Stanza</label>
-                  <input
-                    type="text"
-                    placeholder="Es. FANTALEGASERIEA"
-                    value={inputLeagueName}
-                    onChange={(e) => {
-                      setInputLeagueName(e.target.value);
-                      if (e.target.value.trim() !== '') {
-                        setLeagueName(e.target.value.trim());
-                        setRoomCode(e.target.value.trim().toUpperCase().replace(/\s+/g, ''));
-                      }
-                    }}
-                    className="w-full bg-[#060D1E] border border-slate-700 rounded-xl p-2.5 text-xs text-amber-400 font-black tracking-widest text-center focus:outline-none focus:border-cyan-400"
-                  />
-                </div>
+            {/* SEZIONE 2: ACCESSO / CREAZIONE LEGA */}
+            <div className="w-full bg-[#0B132B] p-4.5 rounded-2xl space-y-3.5 border border-cyan-500/20 shadow-inner text-center">
+              <span className="text-[10px] font-black uppercase text-cyan-400 block tracking-wider">
+                Accedi o Crea una Lega
+              </span>
+
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  placeholder="Inserisci Nome Lega o Codice Stanza..."
+                  value={inputLeagueName}
+                  onChange={(e) => {
+                    setInputLeagueName(e.target.value);
+                    if (e.target.value.trim() !== '') {
+                      setLeagueName(e.target.value.trim());
+                      setRoomCode(e.target.value.trim().toUpperCase().replace(/\s+/g, ''));
+                    }
+                  }}
+                  className="w-full bg-[#060D1E] border border-slate-700 rounded-xl p-3 text-xs text-amber-400 font-black tracking-widest text-center focus:outline-none focus:border-cyan-400 uppercase placeholder:text-slate-500 placeholder:normal-case"
+                />
+
+                <button
+                  onClick={() => {
+                    if (inputLeagueName && inputLeagueName.trim() !== '') {
+                      setLeagueName(inputLeagueName.trim());
+                      setRoomCode(inputLeagueName.trim().toUpperCase().replace(/\s+/g, ''));
+                      setShowPaywall(true);
+                    } else {
+                      setShowCustomLeagueModal(true);
+                    }
+                  }}
+                  className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+                >
+                  <ShieldCheck size={16} /> Crea / Sblocca Nuova Stanza
+                </button>
               </div>
 
               {inputLeagueName.trim() !== '' && (
-                <div className="space-y-2 pt-2 border-t border-slate-800">
+                <div className="space-y-2 pt-3 border-t border-slate-800/80 animate-in fade-in duration-200">
                   <label className="text-[10px] font-bold text-slate-400 block text-center uppercase tracking-wider">
-                    Seleziona il tuo nome
+                    Seleziona il tuo Profilo
                   </label>
                   <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1">
                     {coaches.map((c) => (
                       <button
                         key={c.name}
                         onClick={() => handlePlayerAuthClick(c)}
-                        className="p-2.5 bg-[#060D1E] hover:bg-cyan-500/20 hover:border-cyan-500/50 border border-slate-800 rounded-xl font-bold text-xs text-white flex flex-col items-start gap-1 transition-all active:scale-95 cursor-pointer text-left"
+                        className="p-2.5 bg-[#060D1E] hover:bg-cyan-500/20 hover:border-cyan-500/50 border border-slate-800 rounded-xl font-bold text-xs text-white flex flex-col items-start gap-0.5 transition-all active:scale-95 cursor-pointer text-left"
                       >
                         <span className="font-extrabold text-amber-400 truncate w-full">{c.name}</span>
                         <span className="text-[10px] text-slate-400 truncate w-full">{c.teamName}</span>
@@ -1067,7 +1068,7 @@ export default function App() {
                   </div>
                 )}
 
-                {/* EFFETTO BLU NEON PER LA COLONNA ALLENATORI */}
+                {/* COLONNA ALLENATORI CON BORDO AZZURRO GLOW */}
                 <aside className="hidden lg:flex w-[220px] shrink-0 bg-[#060D1E] rounded-2xl p-3.5 flex-col gap-3 overflow-hidden border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.15)]">
                   <h3 className="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center justify-between pb-2 border-b border-cyan-500/20">
                     <span className="flex items-center gap-1.5"><Trophy size={13} className="text-amber-400" /> Allenatori</span>
@@ -1175,7 +1176,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* PANNELLO DI COMANDO REGIA PRESIDENTE (DESKTOP) */}
+                  {/* REGIA PRESIDENTE */}
                   <div className="w-full max-w-3xl bg-[#060D1E]/95 backdrop-blur-md p-4 rounded-2xl flex flex-col gap-3 z-10 border border-slate-700/80 shadow-2xl">
                     {activePackage === 'TV' && !isDemoMode ? (
                       <div className="flex flex-col gap-2">
@@ -1294,7 +1295,7 @@ export default function App() {
                   </div>
                 </section>
 
-                {/* EFFETTO BLU NEON PER LA CRONOLOGIA LIVE */}
+                {/* CRONOLOGIA LIVE CON BORDO AZZURRO GLOW */}
                 <aside className="hidden lg:flex w-[220px] shrink-0 bg-[#060D1E] rounded-2xl p-3.5 flex-col gap-3 overflow-hidden border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.15)]">
                   {activePackage === 'TV' && !isDemoMode ? (
                     <div className="flex flex-col items-center justify-center h-full text-center p-3">
@@ -1322,7 +1323,7 @@ export default function App() {
                 </aside>
               </main>
             ) : (
-              /* SCHERMATA BUZZER SMARTPHONE */
+              /* SMARTPHONE BUZZER */
               <main 
                 className={`flex-1 flex flex-col gap-2 max-w-sm mx-auto w-full my-auto overflow-hidden items-center justify-between relative py-2.5 px-2 rounded-3xl border-2 transition-all duration-300 ${
                   countdown !== null 
