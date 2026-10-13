@@ -529,10 +529,8 @@ export default function App() {
     const activeName = userRole === 'PRESIDENT' ? 'Presidente (Tu)' : playerName;
     const nuovaOfferta = highestBidder ? currentBid + stepVal : stepVal;
 
-    // 1. Aggiornamento Locale Istantaneo a Latenza Zero (Annulla anche il GONG se attivo)
     registerBidLocally(activeName, nuovaOfferta);
 
-    // 2. Unico Broadcast ultra-veloce a tutti i dispositivi
     if (activeChannel) {
       try {
         await activeChannel.send({
@@ -543,7 +541,6 @@ export default function App() {
       } catch (err) { console.error("Errore broadcast", err); }
     }
 
-    // 3. Salva sul database in background senza attivare re-trigger duplicati
     supabase.from('room_bids').insert([
       {
         room_code: roomCode,
@@ -1338,19 +1335,22 @@ export default function App() {
                   <div className="absolute top-1/2 left-1/2 w-36 h-36 border border-emerald-200/80 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
                 </div>
 
-                {/* ANIMAZIONE CONTO ALLA ROVESCIA (GONG) SU SMARTPHONE */}
+                {/* ANIMAZIONE CONTO ALLA ROVESCIA (GONG) CLICCABILE SU SMARTPHONE */}
                 {countdown !== null && (
-                  <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md z-40 flex flex-col items-center justify-center gap-2 p-4 text-center">
+                  <button 
+                    onClick={() => handleRaise(selectedStep)}
+                    className="absolute inset-0 bg-slate-950/90 backdrop-blur-md z-40 flex flex-col items-center justify-center gap-2 p-4 text-center cursor-pointer w-full h-full select-none"
+                  >
                     <span className="font-black text-xs uppercase tracking-widest text-red-400 animate-bounce">
                       🚨 GONG ZONE - ULTIMI SECONDI!
                     </span>
                     <div className="text-8xl font-black text-red-500 drop-shadow-[0_0_30px_rgba(239,68,68,0.8)] animate-ping">
                       {countdown}
                     </div>
-                    <p className="text-xs text-slate-300 font-bold mt-2">
-                      Premi il BUZZER ora per interrompere e rilanciare!
-                    </p>
-                  </div>
+                    <div className="mt-4 px-6 py-3 bg-amber-500 text-slate-950 font-black rounded-2xl text-xs uppercase tracking-wider shadow-2xl border-2 border-amber-200 animate-pulse">
+                      ⚡ TOCCA QUI PER RILANCIARE (+{selectedStep} FM)
+                    </div>
+                  </button>
                 )}
 
                 <div className="text-center space-y-1 w-full bg-[#060D1E]/90 backdrop-blur-md p-3 rounded-2xl border border-slate-700/70 shadow-lg z-10">
