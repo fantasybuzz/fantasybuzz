@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Trophy, Zap, X, SkipForward, History, ShieldCheck, LogOut,
-  Share2, Search, Download, Shirt, Play, CreditCard, Tv, Smartphone,
+  Share2, Search, Download, Shirt, Play, Pause, CreditCard, Tv, Smartphone,
   Monitor, Timer, Flame, Award, PieChart, AlertCircle, TrendingUp, Gavel,
   RotateCcw, Shuffle, UserPlus, Trash2, Sparkles, QrCode, Volume2, VolumeX,
-  FileSignature, HelpCircle, ChevronDown, Coins, ArrowUp, Info, Copy
+  FileSignature, HelpCircle, ChevronDown, Coins, ArrowUp, Info, Copy, Users2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import rawListone from './data/listone.json';
@@ -12,9 +12,30 @@ import { supabase } from './supabase';
 
 // === 1. TIPI, COSTANTI E CONFIGURAZIONE ===
 type Role = 'P' | 'D' | 'C' | 'A';
-interface Player { id: string; name: string; role: Role; team: string; basePrice: number; mv?: string; fm?: string; }
-interface Coach { name: string; teamName: string; budget: number; playersCount: number; isOnline?: boolean; }
-interface PurchasedItem { player: Player; price: number; }
+
+export interface Player {
+  id: string;
+  name: string;
+  role: Role;
+  team: string;
+  basePrice: number;
+  mv?: string;
+  fm?: string;
+  overall?: number;
+}
+
+interface Coach {
+  name: string;
+  teamName: string;
+  budget: number;
+  playersCount: number;
+  isOnline?: boolean;
+}
+
+interface PurchasedItem {
+  player: Player;
+  price: number;
+}
 
 const ROLE_LIMITS: Record<Role, number> = { P: 3, D: 8, C: 8, A: 6 };
 const TOTAL_SLOTS = 25;
@@ -29,54 +50,133 @@ const EMOJI_CHOICES = [
   { emoji: '💤', name: 'Sveglia', msg: 'SVEGLIAAA! STATE DORMENDO?!' },
 ];
 
-const FAQ_ITEMS = [
-  { q: 'Come funziona la prova gratuita di 6 acquisti?', a: 'Puoi creare la tua stanza, far collegare gli amici col Codice Stanza e fare i primi 6 acquisti veri completamente gratuiti (con Regia TV, Telecronista vocale, Firma Contratto e Buzzer 3D). Zero carte richieste per iniziare.' },
-  { q: 'Chi paga nella lega?', a: 'Il Presidente sblocca la stanza una tantum per tutta la lega (€4,90 Solo TV o €9,90 TV + Buzzer). Puoi decidere se dividerla con gli amici o pagarla come sponsor della serata.' },
-  { q: 'Cosa succede se si disconnette il telefono di un amico?', a: 'Nessun problema! Rose, crediti e sessione sono salvati in tempo reale sul cloud. L’amico riapre il link o reinserisce il codice stanza e rientra esattamente dove era rimasto.' },
-  { q: 'Come funziona la garanzia di rimborso entro 24h?', a: 'Se durante la serata doveste riscontrare qualsiasi imprevisto tecnico o l’app non dovesse soddisfarvi, vi basta richiederlo via email entro 24 ore per ricevere il rimborso integrale.' }
+const TRAILER_SCENES = [
+  {
+    step: 1,
+    tag: 'SCENA 1/3 • REGIA DA TRASMISSIONE SPORTIVA',
+    player: 'LAUTARO MARTINEZ',
+    role: 'A' as Role,
+    team: 'Inter',
+    bid: '85 FM',
+    club: 'SEMPRE ULTIMI F.C. (Mario P.)',
+    eventText: '📱 Buzzer 3D premuto dallo smartphone in 0.2 secondi!',
+    stamp: 'ASTA IN CORSO ⚡',
+    accent: 'from-amber-500/20 to-emerald-500/10 border-amber-400',
+  },
+  {
+    step: 2,
+    tag: 'SCENA 2/3 • BUZZER 3D CON SFOTTÒ IN TEMPO REALE',
+    player: 'SVILAR',
+    role: 'P' as Role,
+    team: 'Roma',
+    bid: '1 FM',
+    club: 'REAL MADRINK (Pasquale R.)',
+    eventText: '🤘 GUFATA IN DIRETTA TV: "SI ROMPE DOMANI!"',
+    stamp: 'FURTO CON SCASSO 🥷',
+    accent: 'from-sky-500/20 to-purple-500/10 border-sky-400',
+  },
+  {
+    step: 3,
+    tag: 'SCENA 3/3 • ANIMAZIONE FIRMA DEL CONTRATTO',
+    player: 'BUONGIORNO',
+    role: 'D' as Role,
+    team: 'Napoli',
+    bid: '62 FM',
+    club: 'ATLETICO MA NON TROPPO (Gianni L.)',
+    eventText: '✍️ Firma autografa sul contratto, Timbro e Card Social pronta!',
+    stamp: 'COLPO DA NOVANTA 👑',
+    accent: 'from-emerald-500/20 to-amber-500/10 border-emerald-400',
+  },
 ];
 
-// Ordiniamo subito il listone dalla A alla Z all'avvio
+const FAQ_ITEMS = [
+  {
+    q: '1. Come funziona la prova gratuita di 6 acquisti?',
+    a: 'Zero carta di credito richiesta. Puoi creare la sala della tua lega, far collegare gli amici tramite QR Code o Codice Stanza e completare i primi 6 acquisti reali gratuitamente con tutte le funzioni attive (Regia TV, Telecronista vocale, Firma Contratto e Buzzer 3D). Decidi tu se sbloccare l’asta completa.'
+  },
+  {
+    q: '2. Chi paga nella lega?',
+    a: 'Il Presidente sblocca la stanza una sola volta per tutti (pagamento unico una tantum, nessun abbonamento ricorrente): €4,90 per tutta la lega in modalità Solo Tabellone TV oppure €9,90 per tutta la lega in modalità TV + Telefoni Buzzer (meno di 1€ a testa, gestibile con la Tabella Colletta integrata).'
+  },
+  {
+    q: '3. Cosa succede se si disconnette il telefono?',
+    a: 'Ripristino automatico immediato della sessione! Rose, crediti residui e stato dell’asta sono sincronizzati in tempo reale. Se un telefono si blocca o perde connessione, basta riaprire la pagina per ritrovare esattamente la propria squadra e i propri crediti.'
+  },
+  {
+    q: '4. Come funziona la garanzia di rimborso entro 24h?',
+    a: 'Acquisto a rischio zero: se durante la serata d’asta doveste riscontrare qualsiasi imprevisto tecnico o se l’esperienza non dovesse soddisfarvi, vi basta cliccare su Assistenza entro 24 ore dall’acquisto per ricevere il rimborso completo del 100%.'
+  }
+];
+
+// Listone ordinato rigorosamente in ordine alfabetico A -> Z
 const listoneUfficiale: Player[] = (Array.isArray(rawListone) && rawListone.length > 0
   ? rawListone.map((p: any, idx: number) => ({
       id: String(p?.Id || `p_${idx}`),
       name: String(p?.Nome || 'Calciatore').trim(),
       role: (['P', 'D', 'C', 'A'].includes(p?.R) ? p.R : 'C') as Role,
-      team: p?.Squadra || 'Serie A',
+      team: String(p?.Squadra || 'Serie A').trim(),
       basePrice: Number(p?.Qt?.A) || 1,
       mv: String(p?.Mv || '6.00'),
       fm: String(p?.Fm || '6.00'),
+      overall: (Number(p?.Qt?.A) || 1) > 20 ? 88 : 80,
     }))
   : [
-      { id: '1', name: 'Barella', role: 'C', team: 'Inter', basePrice: 22, mv: '6.45', fm: '7.10' },
-      { id: '2', name: 'Buongiorno', role: 'D', team: 'Napoli', basePrice: 16, mv: '6.35', fm: '6.80' },
-      { id: '3', name: 'Lautaro Martinez', role: 'A', team: 'Inter', basePrice: 38, mv: '6.65', fm: '8.40' },
-      { id: '4', name: 'Svilar', role: 'P', team: 'Roma', basePrice: 15, mv: '6.35', fm: '5.60' },
+      { id: '1', name: 'Barella', role: 'C', team: 'Inter', basePrice: 22, mv: '6.45', fm: '7.10', overall: 87 },
+      { id: '2', name: 'Buongiorno', role: 'D', team: 'Napoli', basePrice: 16, mv: '6.35', fm: '6.80', overall: 85 },
+      { id: '3', name: 'Lautaro Martinez', role: 'A', team: 'Inter', basePrice: 38, mv: '6.65', fm: '8.40', overall: 91 },
+      { id: '4', name: 'Maignan', role: 'P', team: 'Milan', basePrice: 18, mv: '6.25', fm: '5.40', overall: 86 },
+      { id: '5', name: 'Pulisic', role: 'C', team: 'Milan', basePrice: 25, mv: '6.50', fm: '7.65', overall: 88 },
+      { id: '6', name: 'Svilar', role: 'P', team: 'Roma', basePrice: 15, mv: '6.35', fm: '5.60', overall: 84 },
     ]
 ).sort((a, b) => a.name.localeCompare(b.name, 'it', { sensitivity: 'base' }));
 
 const TEAM_BADGES = [
-  { aliases: ['inter'], short: 'INT', primary: '#0756a5', ink: '#ffffff' },
-  { aliases: ['milan'], short: 'MIL', primary: '#c81d32', ink: '#ffffff' },
-  { aliases: ['juve'], short: 'JUV', primary: '#171717', ink: '#ffffff' },
-  { aliases: ['napoli'], short: 'NAP', primary: '#087fb5', ink: '#ffffff' },
-  { aliases: ['lazio'], short: 'LAZ', primary: '#77b8dd', ink: '#102743' },
-  { aliases: ['roma'], short: 'ROM', primary: '#8d1830', ink: '#ffffff' },
-  { aliases: ['atalanta'], short: 'ATA', primary: '#13295d', ink: '#ffffff' },
-  { aliases: ['fiorentina'], short: 'FIO', primary: '#563184', ink: '#ffffff' },
-  { aliases: ['bologna'], short: 'BOL', primary: '#153f83', ink: '#ffffff' },
-  { aliases: ['torino'], short: 'TOR', primary: '#7e1c2a', ink: '#ffffff' },
-  { aliases: ['como'], short: 'COM', primary: '#2187ae', ink: '#ffffff' },
+  { aliases: ['inter', 'internazionale'], short: 'INT', primary: '#0756a5', secondary: '#101820', ink: '#ffffff' },
+  { aliases: ['milan', 'ac milan'], short: 'MIL', primary: '#c81d32', secondary: '#151515', ink: '#ffffff' },
+  { aliases: ['juventus', 'juve'], short: 'JUV', primary: '#171717', secondary: '#f4f4f4', ink: '#ffffff' },
+  { aliases: ['napoli'], short: 'NAP', primary: '#087fb5', secondary: '#d9f4ff', ink: '#ffffff' },
+  { aliases: ['lazio'], short: 'LAZ', primary: '#77b8dd', secondary: '#f6f7f8', ink: '#102743' },
+  { aliases: ['roma'], short: 'ROM', primary: '#8d1830', secondary: '#f2a51a', ink: '#ffffff' },
+  { aliases: ['atalanta'], short: 'ATA', primary: '#13295d', secondary: '#101010', ink: '#ffffff' },
+  { aliases: ['fiorentina'], short: 'FIO', primary: '#563184', secondary: '#f5f2f8', ink: '#ffffff' },
+  { aliases: ['bologna'], short: 'BOL', primary: '#153f83', secondary: '#c72439', ink: '#ffffff' },
+  { aliases: ['torino'], short: 'TOR', primary: '#7e1c2a', secondary: '#f2e6e4', ink: '#ffffff' },
+  { aliases: ['como'], short: 'COM', primary: '#2187ae', secondary: '#f2f7fa', ink: '#ffffff' },
+  { aliases: ['udinese'], short: 'UDI', primary: '#171717', secondary: '#f3d52d', ink: '#ffffff' },
+  { aliases: ['genoa'], short: 'GEN', primary: '#b21f34', secondary: '#193e69', ink: '#ffffff' },
+  { aliases: ['parma'], short: 'PAR', primary: '#19519a', secondary: '#f2d12a', ink: '#ffffff' },
+  { aliases: ['cagliari'], short: 'CAG', primary: '#bd2637', secondary: '#16477c', ink: '#ffffff' },
+  { aliases: ['lecce'], short: 'LEC', primary: '#c42a35', secondary: '#e4c326', ink: '#ffffff' },
+  { aliases: ['verona'], short: 'VER', primary: '#f0c928', secondary: '#1e4e9b', ink: '#17213a' },
 ] as const;
 
 const getTeamBadgeStyle = (team: unknown) => {
   const norm = String(team || '').toLowerCase().trim();
-  return TEAM_BADGES.find(e => e.aliases.some(a => norm.includes(a))) || { short: norm.slice(0, 3).toUpperCase() || 'FC', primary: '#1e293b', ink: '#ffffff' };
+  const found = TEAM_BADGES.find(e => e.aliases.some(a => norm.includes(a)));
+  return found || { short: norm.slice(0, 3).toUpperCase() || 'FC', primary: '#1e293b', secondary: '#fbbf24', ink: '#ffffff' };
 };
 
-// === 2. MOTORE AUDIO E TELECRONISTA ===
+// Timbro Dinamico del Prezzo per Contratto e Social Card
+const getViralStampInfo = (price: number, basePrice: number, initialBudget: number) => {
+  const ratio = price / Math.max(1, basePrice);
+  if (price === 1 && basePrice >= 4) {
+    return { label: 'FURTO CON SCASSO 🥷', color: '#38bdf8', border: 'border-sky-400 text-sky-400' };
+  }
+  if (price >= initialBudget * 0.35 || ratio >= 4.5) {
+    return { label: 'FOLLIA PURA • SVENATO 💸', color: '#f43f5e', border: 'border-rose-500 text-rose-400' };
+  }
+  if (basePrice >= 18 && price >= 60) {
+    return { label: 'COLPO DA NOVANTA 👑', color: '#f59e0b', border: 'border-amber-400 text-amber-400' };
+  }
+  return { label: 'COLPO DI MERCATO 🔥', color: '#10b981', border: 'border-emerald-400 text-emerald-400' };
+};
+
+// === 2. MOTORE AUDIO E TELECRONISTA CON CONTROLLO MUTE TOTALE ===
 let sharedAudioCtx: AudioContext | null = null;
+let isGlobalSoundMuted = false;
+
 const getAudioCtx = (): AudioContext | null => {
+  if (isGlobalSoundMuted) return null;
   try {
     if (!sharedAudioCtx) sharedAudioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
     if (sharedAudioCtx.state === 'suspended') sharedAudioCtx.resume();
@@ -85,7 +185,7 @@ const getAudioCtx = (): AudioContext | null => {
 };
 
 const speakTelecronista = (text: string, enabled: boolean) => {
-  if (!enabled || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  if (!enabled || isGlobalSoundMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
   try {
     window.speechSynthesis.cancel();
     setTimeout(() => {
@@ -138,19 +238,50 @@ const TeamBadge = ({ team, size = 18 }: { team: string; size?: number }) => {
   );
 };
 
+const drawTeamBadgeOnCanvas = (ctx: CanvasRenderingContext2D, team: unknown, x: number, y: number, width: number) => {
+  const badge = getTeamBadgeStyle(team);
+  const height = width * 1.16;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(x + width * 0.5, y + height * 0.035);
+  ctx.lineTo(x + width * 0.92, y + height * 0.16);
+  ctx.lineTo(x + width * 0.88, y + height * 0.54);
+  ctx.quadraticCurveTo(x + width * 0.84, y + height * 0.82, x + width * 0.5, y + height * 0.97);
+  ctx.quadraticCurveTo(x + width * 0.16, y + height * 0.82, x + width * 0.12, y + height * 0.54);
+  ctx.lineTo(x + width * 0.08, y + height * 0.16);
+  ctx.closePath();
+  ctx.fillStyle = badge.primary;
+  ctx.fill();
+  ctx.strokeStyle = '#F59E0B';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `900 ${Math.round(width * 0.24)}px system-ui, sans-serif`;
+  ctx.fillStyle = badge.ink;
+  ctx.fillText(badge.short, x + width * 0.5, y + height * 0.55);
+  ctx.restore();
+};
+
 const getRoleBadge = (r: string) => r === 'P' ? 'bg-amber-500 text-slate-950' : r === 'D' ? 'bg-emerald-500 text-slate-950' : r === 'C' ? 'bg-sky-500 text-slate-950' : 'bg-rose-600 text-white';
 
 export default function App() {
-  // === 3. STATO ASTA E SINCRONIZZAZIONE ===
+  // === 3. STATI PRINCIPALI E CONFIGURAZIONE ===
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
   const [currentBid, setCurrentBid] = useState<number>(0);
   const [highestBidder, setHighestBidder] = useState<string | null>(null);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<'ALL' | Role>('ALL');
   const [hidePurchased, setHidePurchased] = useState(true);
-  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_startFromOne') !== 'false');
-  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_voiceEnabled') !== 'false');
+  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v3_startFromOne') !== 'false');
+  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v3_voiceEnabled') !== 'false');
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+  const [legalModalTitle, setLegalModalTitle] = useState<string | null>(null);
+
+  // Stato Video Trailer Flash in Home Page
+  const [trailerIdx, setTrailerIdx] = useState(0);
+  const [isTrailerPlaying, setIsTrailerPlaying] = useState(true);
 
   const [showWelcomeGuide, setShowWelcomeGuide] = useState(false);
   const [showRoomCodeArrow, setShowRoomCodeArrow] = useState(true);
@@ -164,21 +295,31 @@ export default function App() {
   const [customAlertMessage, setCustomAlertMessage] = useState<string | null>(null);
   const [liveReaction, setLiveReaction] = useState<{ sender: string; emoji: string; label: string } | null>(null);
 
-  const [presidentSelectedBidder, setPresidentSelectedBidder] = useState<string>('');
+  // Stati Regia, Demo e Pagamento (Tutti utilizzati senza warning TypeScript)
+  const [selectedWinnerManual, setSelectedWinnerManual] = useState<string>('');
   const [manualPriceInput, setManualPriceInput] = useState<string>('');
   const [customBidInput, setCustomBidInput] = useState<string>('');
 
-  const [activePackage, setActivePackage] = useState<'TV' | 'LIVE'>(() => (localStorage.getItem('fb_activePackage') as 'TV' | 'LIVE') || 'LIVE');
-  const [isLicenseUnlocked, setIsLicenseUnlocked] = useState<boolean>(() => localStorage.getItem('fb_unlocked') === 'true');
+  const [activePackage, setActivePackage] = useState<'TV' | 'LIVE'>(() => (localStorage.getItem('fb_v3_activePackage') as 'TV' | 'LIVE') || 'LIVE');
+  const [selectedPackage, setSelectedPackage] = useState<'TV' | 'LIVE'>('LIVE');
+  const [paymentType, setPaymentType] = useState<'SINGLE' | 'SPLIT'>('SPLIT');
+  const [isLicenseUnlocked, setIsLicenseUnlocked] = useState<boolean>(() => localStorage.getItem('fb_v3_unlocked') === 'true');
   const [collettaPaidCoaches, setCollettaPaidCoaches] = useState<string[]>([]);
 
   const [showCustomLeagueModal, setShowCustomLeagueModal] = useState(false);
   const [customLeagueInput, setCustomLeagueInput] = useState('');
   const [newCoachInput, setNewCoachInput] = useState('');
   const [newTeamNameInput, setNewTeamNameInput] = useState('');
+
+  // Stati Demo Personalizzabile
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [demoAuctionCount, setDemoAuctionCount] = useState(0);
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [demoRoleChoice, setDemoRoleChoice] = useState<'PRESIDENT' | 'PLAYER'>('PRESIDENT');
+  const [demoName1, setDemoName1] = useState('Sempre Ultimi F.C. (Mario P.)');
+  const [demoName2, setDemoName2] = useState('Real Madrink (Pasquale R.)');
+  const [demoName3, setDemoName3] = useState('Atletico Ma Non Troppo (Gianni L.)');
+
   const [showPaywall, setShowPaywall] = useState(false);
   const [selectedStep, setSelectedStep] = useState<number>(1);
   const [activeTab, setActiveTab] = useState<'AUCTION' | 'ROSTERS' | 'HIGHLIGHTS'>('AUCTION');
@@ -187,23 +328,24 @@ export default function App() {
   const [userRole, setUserRole] = useState<'PRESIDENT' | 'PLAYER' | null>(null);
   const [playerName, setPlayerName] = useState<string>('');
   const [inputLeagueName, setInputLeagueName] = useState('');
-  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_roomCode') || 'BUZZ2026');
+  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v3_roomCode') || 'BUZZ2026');
   const [isRoomCodeConfirmed, setIsRoomCodeConfirmed] = useState(false);
-  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_initialBudget')) || 500);
-  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_leagueName') || 'FantaLega Serie A');
+  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v3_initialBudget')) || 500);
+  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v3_leagueName') || 'FantaLega Serie A');
 
   const [coaches, setCoaches] = useState<Coach[]>(() => {
-    const saved = localStorage.getItem('fb_coaches');
+    const saved = localStorage.getItem('fb_v3_coaches');
     if (saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
     return [
       { name: 'Mario P.', teamName: 'Sempre Ultimi F.C.', budget: 500, playersCount: 0, isOnline: true },
       { name: 'Pasquale R.', teamName: 'Real Madrink', budget: 500, playersCount: 0, isOnline: true },
       { name: 'Gianni L.', teamName: 'Atletico Ma Non Troppo', budget: 500, playersCount: 0, isOnline: false },
+      { name: 'Marco T.', teamName: 'AC Tua', budget: 500, playersCount: 0, isOnline: true },
     ];
   });
 
   const [purchasedPlayers, setPurchasedPlayers] = useState<Record<string, PurchasedItem[]>>(() => {
-    const saved = localStorage.getItem('fb_purchasedPlayers');
+    const saved = localStorage.getItem('fb_v3_purchasedPlayers');
     if (saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
     return {};
   });
@@ -214,21 +356,40 @@ export default function App() {
   const [activeChannel, setActiveChannel] = useState<any>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
 
-  const currentPackagePrice = activePackage === 'TV' ? 4.90 : 9.90;
+  const currentPackagePrice = selectedPackage === 'TV' ? 4.90 : 9.90;
 
-  useEffect(() => { if (!presidentSelectedBidder && coaches.length > 0) setPresidentSelectedBidder(coaches[0].name); }, [coaches, presidentSelectedBidder]);
+  // Sincronizza il Mute Globale con il pulsante Audio ON/Mute
+  useEffect(() => {
+    isGlobalSoundMuted = !voiceEnabled;
+    if (!voiceEnabled && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+  }, [voiceEnabled]);
+
+  // Rotazione Video Trailer Flash in Home Page
+  useEffect(() => {
+    if (userRole || !isTrailerPlaying) return;
+    const timer = setInterval(() => {
+      setTrailerIdx(prev => (prev + 1) % TRAILER_SCENES.length);
+    }, 3400);
+    return () => clearInterval(timer);
+  }, [userRole, isTrailerPlaying]);
+
+  useEffect(() => {
+    if (!selectedWinnerManual && coaches.length > 0) setSelectedWinnerManual(coaches[0].name);
+  }, [coaches, selectedWinnerManual]);
 
   useEffect(() => {
     if (!isDemoMode) {
-      localStorage.setItem('fb_coaches', JSON.stringify(coaches));
-      localStorage.setItem('fb_purchasedPlayers', JSON.stringify(purchasedPlayers));
-      localStorage.setItem('fb_leagueName', leagueName);
-      localStorage.setItem('fb_roomCode', roomCode);
-      localStorage.setItem('fb_initialBudget', String(initialBudget));
-      localStorage.setItem('fb_startFromOne', String(startFromOne));
-      localStorage.setItem('fb_voiceEnabled', String(voiceEnabled));
-      localStorage.setItem('fb_activePackage', activePackage);
-      localStorage.setItem('fb_unlocked', String(isLicenseUnlocked));
+      localStorage.setItem('fb_v3_coaches', JSON.stringify(coaches));
+      localStorage.setItem('fb_v3_purchasedPlayers', JSON.stringify(purchasedPlayers));
+      localStorage.setItem('fb_v3_leagueName', leagueName);
+      localStorage.setItem('fb_v3_roomCode', roomCode);
+      localStorage.setItem('fb_v3_initialBudget', String(initialBudget));
+      localStorage.setItem('fb_v3_startFromOne', String(startFromOne));
+      localStorage.setItem('fb_v3_voiceEnabled', String(voiceEnabled));
+      localStorage.setItem('fb_v3_activePackage', activePackage);
+      localStorage.setItem('fb_v3_unlocked', String(isLicenseUnlocked));
     }
   }, [coaches, purchasedPlayers, leagueName, roomCode, initialBudget, startFromOne, voiceEnabled, activePackage, isLicenseUnlocked, isDemoMode]);
 
@@ -267,7 +428,7 @@ export default function App() {
 
   const getCoachRoleCount = useCallback((name: string, role: Role) => (purchasedPlayers[name] || []).filter(i => i.player.role === role).length, [purchasedPlayers]);
 
-  // ORDINAMENTO RIGOROSAMENTE ALFABETICO (A -> Z) PER RUOLO E RICERCA
+  // Lista calciatori ordinata rigorosamente dalla A alla Z
   const filteredList = useMemo(() => listoneUfficiale.filter(p => {
     if (hidePurchased && purchasedPlayerIds.has(p.id)) return false;
     if (selectedRole !== 'ALL' && p.role !== selectedRole) return false;
@@ -286,6 +447,7 @@ export default function App() {
     playBuzzSound(); setIsBlinking(true); setCountdown(null); setAwardModal(null);
     setTimeout(() => setIsBlinking(false), 300);
     setHighestBidder(bidder); setCurrentBid(amount);
+    setCoaches(prev => prev.map(c => c.name === bidder ? { ...c, isOnline: true } : c));
     setLatestBidAlert({ bidder, amount }); setTimeout(() => setLatestBidAlert(null), 2200);
     setBidHistory(prev => [{ bidder, amount, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }, ...prev]);
   }, []);
@@ -298,12 +460,13 @@ export default function App() {
     if (speak) {
       speakTelecronista(`Colpo di mercato! ${player.name} firma ufficialmente con ${clubLabel} per ${price} fantamilioni!`, voiceEnabled);
     }
+    if (isDemoMode) setDemoAuctionCount(prev => prev + 1);
     setCoaches(prev => prev.map(c => c.name === winner ? { ...c, budget: c.budget - price, playersCount: c.playersCount + 1 } : c));
     setPurchasedPlayers(prev => ({ ...prev, [winner]: [...(prev[winner] || []), { player, price }] }));
     setLastAwardHistory({ player, winner, price });
     setAwardModal({ show: true, player, winner, price });
     setCurrentBid(0); setHighestBidder(null); setCountdown(null);
-  }, [coaches, voiceEnabled]);
+  }, [coaches, voiceEnabled, isDemoMode]);
 
   const stateRef = useRef({ coaches, purchasedPlayers, activePlayer, currentBid, highestBidder, userRole, leagueName, startFromOne, isLicenseUnlocked });
   useEffect(() => { stateRef.current = { coaches, purchasedPlayers, activePlayer, currentBid, highestBidder, userRole, leagueName, startFromOne, isLicenseUnlocked }; }, [coaches, purchasedPlayers, activePlayer, currentBid, highestBidder, userRole, leagueName, startFromOne, isLicenseUnlocked]);
@@ -312,6 +475,9 @@ export default function App() {
     if (!roomCode) return;
     const ch = supabase.channel(`room_${roomCode}`)
       .on('broadcast', { event: 'quick_bid' }, ({ payload }: any) => payload?.bidder && registerBidLocally(payload.bidder, payload.amount))
+      .on('broadcast', { event: 'player_online' }, ({ payload }: any) => {
+        if (payload?.name) setCoaches(prev => prev.map(c => c.name === payload.name ? { ...c, isOnline: true } : c));
+      })
       .on('broadcast', { event: 'start_countdown' }, ({ payload }: any) => setCountdown(payload?.seconds || 3))
       .on('broadcast', { event: 'change_player' }, ({ payload }: any) => {
         if (payload?.player) { setCurrentPlayer(payload.player); setCurrentBid(0); setHighestBidder(null); setBidHistory([]); setCountdown(null); setAwardModal(null); }
@@ -335,7 +501,10 @@ export default function App() {
       })
       .subscribe(s => {
         setIsConnected(s === 'SUBSCRIBED');
-        if (s === 'SUBSCRIBED') { setActiveChannel(ch); ch.send({ type: 'broadcast', event: 'request_sync', payload: {} }); }
+        if (s === 'SUBSCRIBED') {
+          setActiveChannel(ch);
+          ch.send({ type: 'broadcast', event: 'request_sync', payload: {} });
+        }
       });
     return () => { supabase.removeChannel(ch); setActiveChannel(null); setIsConnected(false); };
   }, [roomCode, registerBidLocally, applyAwardState]);
@@ -346,7 +515,6 @@ export default function App() {
     if (activeChannel) await activeChannel.send({ type: 'broadcast', event: 'change_player', payload: { player } });
   }, [activeChannel, userRole, voiceEnabled]);
 
-  // Quando il Presidente cambia filtro Ruolo (Tutti, P, D, C, A), chiama subito il primo calciatore in ordine alfabetico di quel ruolo
   const handleRoleFilterChange = useCallback((newRole: 'ALL' | Role) => {
     setSelectedRole(newRole);
     const matching = listoneUfficiale
@@ -357,29 +525,22 @@ export default function App() {
       })
       .sort((a, b) => a.name.localeCompare(b.name, 'it', { sensitivity: 'base' }));
 
-    if (matching.length > 0) {
-      handleSelectPlayer(matching[0]);
-    }
+    if (matching.length > 0) handleSelectPlayer(matching[0]);
   }, [hidePurchased, purchasedPlayerIds, searchTerm, handleSelectPlayer]);
 
   const handleRandomPlayer = useCallback(() => {
     if (filteredList.length > 0) handleSelectPlayer(filteredList[Math.floor(Math.random() * filteredList.length)]);
   }, [filteredList, handleSelectPlayer]);
 
-  // TASTO SALTA CORRETTO: Avanza al calciatore successivo in ordine alfabetico seguendo il ruolo selezionato
+  // Tasto Salta sequenziale in rigoroso ordine alfabetico A -> Z
   const handleNextPlayer = useCallback(() => {
     if (filteredList.length === 0) return;
     const currentIndex = filteredList.findIndex(p => p.id === activePlayer.id);
     if (currentIndex !== -1) {
-      const nextIndex = (currentIndex + 1) % filteredList.length;
-      handleSelectPlayer(filteredList[nextIndex]);
+      handleSelectPlayer(filteredList[(currentIndex + 1) % filteredList.length]);
     } else {
-      // Se il calciatore attuale è appena stato acquistato (e quindi rimosso da filteredList),
-      // troviamo il primo calciatore che viene subito dopo di lui in ordine alfabetico
-      const nextAlphabetical = filteredList.find(
-        p => p.name.localeCompare(activePlayer.name, 'it', { sensitivity: 'base' }) > 0
-      );
-      handleSelectPlayer(nextAlphabetical || filteredList[0]);
+      const nextAlpha = filteredList.find(p => p.name.localeCompare(activePlayer.name, 'it', { sensitivity: 'base' }) > 0);
+      handleSelectPlayer(nextAlpha || filteredList[0]);
     }
   }, [filteredList, activePlayer.id, activePlayer.name, handleSelectPlayer]);
 
@@ -391,7 +552,7 @@ export default function App() {
 
   const handleRaise = useCallback(async (step: number, customBidder?: string) => {
     if (purchasedPlayerIds.has(activePlayer.id)) { if (userRole === 'PRESIDENT') handleNextPlayer(); return; }
-    const bidder = customBidder || (userRole === 'PRESIDENT' ? (presidentSelectedBidder || coaches[0]?.name) : playerName);
+    const bidder = customBidder || (userRole === 'PRESIDENT' ? (selectedWinnerManual || coaches[0]?.name) : playerName);
     if (!bidder) return;
     if (userRole === 'PLAYER' && highestBidder === bidder) { setCustomAlertMessage('La tua squadra è già in testa!'); return; }
     const nextBid = highestBidder ? currentBid + step : (startFromOne ? step : Math.max(activePlayer.basePrice, step));
@@ -404,13 +565,13 @@ export default function App() {
 
     registerBidLocally(bidder, nextBid);
     if (activeChannel) await activeChannel.send({ type: 'broadcast', event: 'quick_bid', payload: { bidder, amount: nextBid } });
-  }, [purchasedPlayerIds, activePlayer, userRole, handleNextPlayer, presidentSelectedBidder, coaches, playerName, highestBidder, currentBid, startFromOne, getCoachMaxBid, getCoachRoleCount, voiceEnabled, registerBidLocally, activeChannel]);
+  }, [purchasedPlayerIds, activePlayer, userRole, handleNextPlayer, selectedWinnerManual, coaches, playerName, highestBidder, currentBid, startFromOne, getCoachMaxBid, getCoachRoleCount, voiceEnabled, registerBidLocally, activeChannel]);
 
   const handleAward = useCallback(async () => {
     if (purchasedPlayerIds.has(activePlayer.id)) { handleNextPlayer(); return; }
     if (!isLicenseUnlocked && totalPurchasesCount >= FREE_TRIAL_LIMIT) { setShowPaywall(true); return; }
     let price = currentBid > 0 ? currentBid : startingPrice;
-    const winner = highestBidder || presidentSelectedBidder || coaches[0]?.name;
+    const winner = highestBidder || selectedWinnerManual || coaches[0]?.name;
     if (manualPriceInput && Number(manualPriceInput) > 0) price = Number(manualPriceInput);
     
     if (getCoachRoleCount(winner, activePlayer.role) >= ROLE_LIMITS[activePlayer.role]) { setCustomAlertMessage(`Ruolo ${activePlayer.role} già completato per ${winner}!`); return; }
@@ -418,7 +579,7 @@ export default function App() {
 
     applyAwardState(activePlayer, winner, price, userRole === 'PRESIDENT');
     if (activeChannel) await activeChannel.send({ type: 'broadcast', event: 'player_awarded', payload: { player: activePlayer, winner, price } });
-  }, [purchasedPlayerIds, activePlayer, handleNextPlayer, isLicenseUnlocked, totalPurchasesCount, currentBid, startingPrice, highestBidder, presidentSelectedBidder, coaches, manualPriceInput, getCoachRoleCount, getCoachMaxBid, applyAwardState, userRole, activeChannel]);
+  }, [purchasedPlayerIds, activePlayer, handleNextPlayer, isLicenseUnlocked, totalPurchasesCount, currentBid, startingPrice, highestBidder, selectedWinnerManual, coaches, manualPriceInput, getCoachRoleCount, getCoachMaxBid, applyAwardState, userRole, activeChannel]);
 
   const handleUndoLastAward = async () => {
     if (!lastAwardHistory) return;
@@ -447,7 +608,7 @@ export default function App() {
     } else { setCountdown(null); if (userRole === 'PRESIDENT') handleAward(); }
   }, [countdown, userRole, voiceEnabled, handleAward]);
 
-  // === 4. CONDIVISIONE WHATSAPP E SOCIAL CARD ===
+  // === 4. CONDIVISIONE WHATSAPP & SOCIAL CARD AVANZATA CON EFFETTO STADIO ===
   const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
   const handleShareWhatsAppInvite = () => window.open(`https://wa.me/?text=${encodeURIComponent(`⚽ Entra nello studio TV dell'asta *${leagueName}*!\n📲 Clicca qui per aprire il tuo Buzzer: ${inviteUrl}\n🔑 Codice Stanza: *${roomCode}*`)}`, '_blank');
   const handleCopyRoomCode = () => { navigator.clipboard?.writeText(roomCode); setCodeCopied(true); setTimeout(() => setCodeCopied(false), 2000); };
@@ -456,31 +617,117 @@ export default function App() {
     if (!awardModal) return;
     const winnerObj = coaches.find(x => x.name === awardModal.winner);
     const club = winnerObj?.teamName || awardModal.winner;
-    const viralText = `🔥 *COLPO DI MERCATO UFFICIALE!* 🔥\n✍️ *${awardModal.player.name}* (${awardModal.player.team}) firma con *${club.toUpperCase()}* (${awardModal.winner}) per *${awardModal.price} FM*!\n\n📺 Asta gestita con lo Show TV di *FantasyBuzz*!\n👉 Provalo gratis con la tua lega su ${window.location.origin} e seguici su IG/TikTok *@FantasyBuzzApp*!`;
+    const stamp = getViralStampInfo(awardModal.price, awardModal.player.basePrice, initialBudget);
+    const viralText = `🔥 *${stamp.label}* 🔥\n✍️ *${awardModal.player.name}* (${awardModal.player.team}) firma con *${club.toUpperCase()}* (${awardModal.winner}) per *${awardModal.price} FM*!\n\n📺 Asta trasformata in uno Show TV con *FantasyBuzz*!\n👉 Provalo gratis con la tua lega su ${window.location.origin} e seguici su Instagram/TikTok *@FantasyBuzzApp*!`;
     window.open(`https://wa.me/?text=${encodeURIComponent(viralText)}`, '_blank');
   };
 
-  const handleDownloadSocialCard = () => {
+  const handleDownloadSocialCard = async () => {
     if (!awardModal) return;
     const winnerObj = coaches.find(x => x.name === awardModal.winner);
     const club = winnerObj?.teamName || `FC ${awardModal.winner}`;
-    const c = document.createElement('canvas'); c.width = 1080; c.height = 1920;
-    const ctx = c.getContext('2d'); if (!ctx) return;
+    const stamp = getViralStampInfo(awardModal.price, awardModal.player.basePrice, initialBudget);
+    const roleColors: Record<string, string> = { P: '#f59e0b', D: '#10b981', C: '#38bdf8', A: '#f43f5e' };
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 1080; canvas.height = 1920;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Sfondo Stadio con Luci Radiali e Fasci diagonali
     const bg = ctx.createLinearGradient(0, 0, 1080, 1920);
-    bg.addColorStop(0, '#021B12'); bg.addColorStop(0.5, '#062E1E'); bg.addColorStop(1, '#021B12');
+    bg.addColorStop(0, '#021B12'); bg.addColorStop(0.55, '#062E1E'); bg.addColorStop(1, '#021B12');
     ctx.fillStyle = bg; ctx.fillRect(0, 0, 1080, 1920);
-    ctx.strokeStyle = '#F59E0B'; ctx.lineWidth = 8; ctx.strokeRect(40, 40, 1000, 1840);
+
+    const glow = ctx.createRadialGradient(540, 720, 30, 540, 720, 780);
+    glow.addColorStop(0, 'rgba(16,185,129,0.28)'); glow.addColorStop(1, 'rgba(16,185,129,0)');
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, 1080, 1920);
+
+    ctx.save();
+    ctx.globalAlpha = 0.14; ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 2;
+    for (let i = -700; i < 1500; i += 140) {
+      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + 700, 1920); ctx.stroke();
+    }
+    ctx.restore();
+
+    ctx.strokeStyle = '#F59E0B'; ctx.lineWidth = 6;
+    ctx.strokeRect(36, 36, 1008, 1848);
+
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#ffffff'; ctx.font = '900 56px sans-serif'; ctx.fillText('FANTASYBUZZ LIVE ARENA', 540, 170);
-    ctx.fillStyle = '#F59E0B'; ctx.font = '800 34px sans-serif'; ctx.fillText(leagueName.toUpperCase(), 540, 230);
-    ctx.fillStyle = '#10b981'; ctx.font = '900 42px sans-serif'; ctx.fillText('🔥 COLPO DI MERCATO UFFICIALE 🔥', 540, 340);
-    ctx.fillStyle = '#ffffff'; ctx.font = '900 82px sans-serif'; ctx.fillText(awardModal.player.name.toUpperCase(), 540, 740);
-    ctx.fillStyle = '#94A3B8'; ctx.font = '700 34px sans-serif'; ctx.fillText(`RUOLO ${awardModal.player.role} • ${awardModal.player.team.toUpperCase()}`, 540, 815);
-    ctx.fillStyle = '#F59E0B'; ctx.font = '900 155px sans-serif'; ctx.fillText(`${awardModal.price} FM`, 540, 1080);
-    ctx.fillStyle = '#10b981'; ctx.font = '900 58px sans-serif'; ctx.fillText(club.toUpperCase(), 540, 1360);
-    ctx.fillStyle = '#cbd5e1'; ctx.font = '700 34px sans-serif'; ctx.fillText(`Mister: ${awardModal.winner}`, 540, 1425);
-    ctx.fillStyle = '#F59E0B'; ctx.font = '900 32px sans-serif'; ctx.fillText('📲 Seguici su IG & TikTok: @FantasyBuzzApp', 540, 1750);
-    const a = document.createElement('a'); a.download = `Colpo_${awardModal.player.name}.png`; a.href = c.toDataURL(); a.click();
+    ctx.fillStyle = '#ffffff'; ctx.font = '900 58px system-ui, sans-serif';
+    ctx.fillText('FANTASYBUZZ LIVE ARENA', 540, 165);
+    ctx.fillStyle = '#F59E0B'; ctx.font = '800 32px system-ui, sans-serif';
+    ctx.fillText(leagueName.toUpperCase(), 540, 225);
+
+    // Timbro Dinamico del Prezzo
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+    ctx.fillRect(190, 280, 700, 80);
+    ctx.strokeStyle = stamp.color; ctx.lineWidth = 4;
+    ctx.strokeRect(190, 280, 700, 80);
+    ctx.fillStyle = stamp.color; ctx.font = '900 38px system-ui, sans-serif';
+    ctx.fillText(stamp.label, 540, 332);
+
+    // Card Centrale Calciatore con Badge Ruolo e Scudetto
+    ctx.fillStyle = '#0B132B';
+    ctx.fillRect(100, 420, 880, 580);
+    ctx.strokeStyle = '#F59E0B'; ctx.lineWidth = 3;
+    ctx.strokeRect(100, 420, 880, 580);
+
+    ctx.fillStyle = roleColors[awardModal.player.role] || '#10b981';
+    ctx.fillRect(150, 465, 110, 64);
+    ctx.fillStyle = '#0B132B'; ctx.font = '900 36px system-ui, sans-serif';
+    ctx.fillText(awardModal.player.role, 205, 510);
+
+    drawTeamBadgeOnCanvas(ctx, awardModal.player.team, 640, 460, 62);
+    ctx.fillStyle = '#e2e8f0'; ctx.font = '800 28px system-ui, sans-serif';
+    ctx.fillText(awardModal.player.team.toUpperCase(), 810, 505);
+
+    ctx.beginPath(); ctx.arc(540, 675, 105, 0, Math.PI * 2);
+    ctx.fillStyle = '#060D1E'; ctx.fill();
+    ctx.strokeStyle = '#F59E0B'; ctx.lineWidth = 4; ctx.stroke();
+    ctx.fillStyle = '#F59E0B'; ctx.font = '900 95px system-ui, sans-serif';
+    ctx.fillText(awardModal.player.name.charAt(0).toUpperCase(), 540, 708);
+
+    ctx.fillStyle = '#ffffff'; ctx.font = '900 66px system-ui, sans-serif';
+    ctx.fillText(awardModal.player.name.toUpperCase(), 540, 880);
+    ctx.fillStyle = '#94A3B8'; ctx.font = '700 28px system-ui, sans-serif';
+    ctx.fillText(`QUOTAZIONE BASE: ${awardModal.player.basePrice} FM  •  MV: ${awardModal.player.mv || '6.00'}`, 540, 945);
+
+    ctx.fillStyle = '#F59E0B'; ctx.font = '900 150px system-ui, sans-serif';
+    ctx.fillText(`${awardModal.price} FM`, 540, 1210);
+
+    // Box Società Acquirente
+    ctx.fillStyle = '#0B132B';
+    ctx.fillRect(120, 1330, 840, 220);
+    ctx.strokeStyle = '#10b981'; ctx.lineWidth = 3;
+    ctx.strokeRect(120, 1330, 840, 220);
+    ctx.fillStyle = '#94A3B8'; ctx.font = '800 26px system-ui, sans-serif';
+    ctx.fillText('NUOVO ACQUISTO DELLA SOCIETÀ', 540, 1390);
+    ctx.fillStyle = '#10b981'; ctx.font = '900 54px system-ui, sans-serif';
+    ctx.fillText(club.toUpperCase(), 540, 1460);
+    ctx.fillStyle = '#cbd5e1'; ctx.font = '700 30px system-ui, sans-serif';
+    ctx.fillText(`Mister: ${awardModal.winner}`, 540, 1515);
+
+    ctx.fillStyle = '#ffffff'; ctx.font = '900 30px system-ui, sans-serif';
+    ctx.fillText('TRASFORMA LA TUA ASTA IN UNO SHOW TV SU FANTASYBUZZ', 540, 1720);
+    ctx.fillStyle = '#F59E0B'; ctx.font = '800 28px system-ui, sans-serif';
+    ctx.fillText('📲 Seguici su Instagram & TikTok: @FantasyBuzzApp', 540, 1775);
+
+    const fileName = `FantasyBuzz_${awardModal.player.name.replace(/\s+/g, '_')}.png`;
+    const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/png'));
+    if (!blob) return;
+    const file = new File([blob], fileName, { type: 'image/png' });
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: `Colpo di Mercato: ${awardModal.player.name}`,
+          text: `🔥 ${awardModal.player.name} firma con ${club} per ${awardModal.price} FM! Seguici su @FantasyBuzzApp`
+        });
+        return;
+      } catch { /* fallback download */ }
+    }
+    const a = document.createElement('a'); a.download = fileName; a.href = URL.createObjectURL(blob); a.click();
   };
 
   const handleExportCSV = () => {
@@ -490,17 +737,16 @@ export default function App() {
   };
 
   const handleLaunchDemo = () => {
-    setIsDemoMode(true); setActivePackage('LIVE');
+    setIsDemoMode(true); setActivePackage('LIVE'); setDemoAuctionCount(0);
     setRoomCode(`DEMO_${Math.random().toString(36).substring(2, 6).toUpperCase()}`);
     setLeagueName('Lega Demo Show TV');
-    const dc = [
-      { name: 'Mario P.', teamName: 'Sempre Ultimi F.C.', budget: 500, playersCount: 0, isOnline: true },
-      { name: 'Pasquale R.', teamName: 'Real Madrink', budget: 500, playersCount: 0, isOnline: true },
-      { name: 'Gianni L.', teamName: 'Atletico Ma Non Troppo', budget: 500, playersCount: 0, isOnline: false },
+    const dc: Coach[] = [
+      { name: 'Mario P.', teamName: demoName1.trim() || 'Sempre Ultimi F.C.', budget: 500, playersCount: 0, isOnline: true },
+      { name: 'Pasquale R.', teamName: demoName2.trim() || 'Real Madrink', budget: 500, playersCount: 0, isOnline: true },
+      { name: 'Gianni L.', teamName: demoName3.trim() || 'Atletico Ma Non Troppo', budget: 500, playersCount: 0, isOnline: false },
     ];
-    setCoaches(dc); setPurchasedPlayers({}); setCurrentBid(0); setHighestBidder(null); setPresidentSelectedBidder(dc[0].name);
-    setSelectedRole('ALL');
-    setCurrentPlayer(listoneUfficiale[0]);
+    setCoaches(dc); setPurchasedPlayers({}); setCurrentBid(0); setHighestBidder(null); setSelectedWinnerManual(dc[0].name);
+    setSelectedRole('ALL'); setCurrentPlayer(listoneUfficiale[0]);
     if (demoRoleChoice === 'PRESIDENT') { setUserRole('PRESIDENT'); setShowWelcomeGuide(true); setShowRoomCodeArrow(true); }
     else { setPlayerName(dc[0].name); setSelectedRosterCoach(dc[0].name); setUserRole('PLAYER'); }
     setShowDemoModal(false);
@@ -515,6 +761,8 @@ export default function App() {
     return items;
   }, [allPurchasesFeed, leagueName, roomCode, richestCoach]);
 
+  const activeScene = TRAILER_SCENES[trailerIdx];
+
   return (
     <>
       <style>{`
@@ -524,7 +772,7 @@ export default function App() {
         @keyframes tickerMarquee { 0% { transform: translateX(0%); } 100% { transform: translateX(-50%); } }
       `}</style>
 
-      {/* === 5. LANDING PAGE CON 3 PERCORSI CHIARI E FAQ === */}
+      {/* === 5. LANDING PAGE COMPLETA CON VIDEO TRAILER FLASH, 3 PERCORSI, PREZZI E FAQ === */}
       {!userRole ? (
         <div className="min-h-screen w-full bg-[#030914] text-white flex flex-col items-center justify-between p-4 md:p-8 select-none overflow-y-auto">
           <div className="max-w-3xl w-full text-center space-y-3 pt-2">
@@ -536,29 +784,96 @@ export default function App() {
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-emerald-400 to-cyan-400">Trasforma l'Asta in uno Show TV.</span>
             </h1>
             <p className="text-xs md:text-sm text-slate-300 font-medium max-w-2xl mx-auto">
-              Regia da studio televisivo, animazione per la firma del contratto, calcolo automatico della puntata massima e Buzzer 3D con sfottò in tempo reale per tutti gli amici.
+              Regia da trasmissione sportiva, animazione per la firma del contratto del calciatore e Buzzer 3D con sfottò in tempo reale dal telefono di ogni partecipante.
             </p>
           </div>
 
-          {/* I 3 PERCORSI PRINCIPALI NELLA HERO */}
-          <div className="max-w-2xl w-full bg-[#060D1E] border border-cyan-500/30 rounded-3xl p-5 shadow-2xl flex flex-col gap-4 my-4">
-            <div className="space-y-1.5">
-              <button
-                onClick={() => setShowCustomLeagueModal(true)}
-                className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black rounded-2xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_25px_rgba(16,185,129,0.3)]"
-              >
-                <Zap size={18} className="fill-slate-950" /> CREA SALA GRATUITA 🚀
-              </button>
+          {/* VIDEO TRAILER FLASH INTERATTIVO (SIMULATORE SCHERMO TV 16:9 IN AZIONE) */}
+          <div className="max-w-2xl w-full my-5 bg-[#060D1E] border-2 border-cyan-500/40 rounded-3xl p-4 shadow-[0_0_45px_rgba(6,182,212,0.18)]">
+            <div className="flex items-center justify-between mb-2.5 px-1">
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase bg-rose-500/20 text-rose-300 border border-rose-400/40 px-3 py-0.5 rounded-full">
+                <span className="h-2 w-2 rounded-full bg-rose-500 animate-ping" /> VIDEO TRAILER FLASH • GUARDA L'APP IN AZIONE
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsTrailerPlaying(!isTrailerPlaying)}
+                  className="px-2.5 py-1 rounded-lg bg-[#0B132B] border border-slate-700 text-[10px] font-black text-amber-400 flex items-center gap-1 cursor-pointer"
+                >
+                  {isTrailerPlaying ? <Pause size={11} /> : <Play size={11} />} {isTrailerPlaying ? 'Pausa' : 'Play'}
+                </button>
+                {TRAILER_SCENES.map((s, idx) => (
+                  <button
+                    key={s.step}
+                    onClick={() => setTrailerIdx(idx)}
+                    className={`h-2 rounded-full transition-all cursor-pointer ${trailerIdx === idx ? 'w-7 bg-amber-400' : 'w-2 bg-slate-700'}`}
+                  />
+                ))}
+              </div>
             </div>
+
+            <div
+              className={`rounded-2xl p-5 border-2 bg-gradient-to-br ${activeScene.accent} relative overflow-hidden transition-all duration-500`}
+              style={{
+                background: `radial-gradient(circle at 50% 45%, rgba(16, 185, 129, 0.28) 0%, rgba(5, 38, 24, 0.95) 75%, rgba(2, 18, 11, 1) 100%)`
+              }}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <span className="text-[10px] font-black uppercase text-amber-300 tracking-wider">{activeScene.tag}</span>
+                <span className="bg-slate-950/90 border border-amber-400 text-amber-300 text-[10px] font-black px-2.5 py-0.5 rounded-lg uppercase">
+                  {activeScene.stamp}
+                </span>
+              </div>
+
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4 my-2">
+                <div className="text-center md:text-left">
+                  <div className="inline-flex items-center gap-1.5 mb-1">
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${getRoleBadge(activeScene.role)}`}>{activeScene.role}</span>
+                    <span className="text-xs font-bold text-slate-200 uppercase">{activeScene.team}</span>
+                  </div>
+                  <h3 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight">{activeScene.player}</h3>
+                  <p className="text-xs text-emerald-300 font-bold mt-0.5">Società in testa: <strong>{activeScene.club}</strong></p>
+                </div>
+
+                <div className="bg-[#060D1E]/95 border border-amber-400/60 px-5 py-2.5 rounded-2xl text-center shrink-0 shadow-xl">
+                  <span className="text-[9px] font-black uppercase text-slate-400 block">Offerta Live</span>
+                  <span className="text-3xl font-black text-amber-400">{activeScene.bid}</span>
+                </div>
+              </div>
+
+              <div className="mt-3 bg-slate-950/85 border border-slate-700/80 rounded-xl p-2.5 text-center text-xs font-bold text-white">
+                {activeScene.eventText}
+              </div>
+            </div>
+          </div>
+
+          {/* I 3 PERCORSI CHIARI NELLA HERO (NON SOVRAPPOSTI) */}
+          <div className="max-w-2xl w-full bg-[#060D1E] border border-cyan-500/30 rounded-3xl p-5 shadow-2xl flex flex-col gap-4 my-2">
+            {/* 1. CREA SALA GRATUITA */}
+            <button
+              onClick={() => setShowCustomLeagueModal(true)}
+              className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black rounded-2xl text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_25px_rgba(16,185,129,0.35)]"
+            >
+              <Zap size={18} className="fill-slate-950" /> 🚀 CREA SALA GRATUITA
+            </button>
+
+            {/* 2. PROVA DEMO INTERATTIVA */}
+            <button
+              onClick={() => setShowDemoModal(true)}
+              className="w-full py-3 bg-amber-500/15 hover:bg-amber-500/25 border-2 border-amber-400 text-amber-300 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Play size={16} className="fill-amber-300" /> 🎮 PROVA DEMO INTERATTIVA
+            </button>
 
             <div className="w-full h-px bg-slate-800" />
 
-            <div className="bg-[#0B132B] p-3 rounded-2xl space-y-2 border border-cyan-500/20 text-center">
-              <span className="text-[10px] font-black uppercase text-cyan-400 block">🔑 Ho già un Codice Stanza (Partecipante)</span>
+            {/* 3. HO GIÀ UN CODICE STANZA */}
+            <div className="bg-[#0B132B] p-3.5 rounded-2xl space-y-2 border border-cyan-500/20 text-center">
+              <span className="text-[10px] font-black uppercase text-cyan-400 block tracking-wider">🔑 HO GIÀ UN CODICE STANZA</span>
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Scrivi Codice Stanza..."
+                  placeholder="Inserisci Codice Stanza..."
                   value={inputLeagueName}
                   onChange={e => { setInputLeagueName(e.target.value); setIsRoomCodeConfirmed(false); }}
                   className="flex-1 bg-[#060D1E] border border-slate-700 rounded-xl p-2.5 text-xs text-amber-400 font-black tracking-widest text-center uppercase"
@@ -574,20 +889,27 @@ export default function App() {
                       setCustomAlertMessage('Inserisci il Codice Stanza fornito dal tuo Presidente!');
                     }
                   }}
-                  className="px-4 bg-cyan-500 text-slate-950 rounded-xl font-black text-xs uppercase cursor-pointer"
+                  className="px-5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl font-black text-xs uppercase cursor-pointer"
                 >
-                  Entra ⚡
+                  ENTRA
                 </button>
               </div>
 
               {isRoomCodeConfirmed && (
                 <div className="space-y-1.5 pt-2 border-t border-slate-800 text-left">
-                  <label className="text-[10px] font-bold text-emerald-400 block uppercase text-center">✅ Stanza trovata! Seleziona la tua squadra:</label>
+                  <label className="text-[10px] font-bold text-emerald-400 block uppercase text-center">✅ Stanza trovata! Seleziona il tuo club:</label>
                   <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto">
                     {coaches.map(c => (
                       <button
                         key={c.name}
-                        onClick={() => { setIsDemoMode(false); setPlayerName(c.name); setSelectedRosterCoach(c.name); setUserRole('PLAYER'); }}
+                        onClick={() => {
+                          setIsDemoMode(false);
+                          setPlayerName(c.name);
+                          setSelectedRosterCoach(c.name);
+                          setCoaches(prev => prev.map(x => x.name === c.name ? { ...x, isOnline: true } : x));
+                          if (activeChannel) activeChannel.send({ type: 'broadcast', event: 'player_online', payload: { name: c.name } });
+                          setUserRole('PLAYER');
+                        }}
                         className="p-2 bg-[#060D1E] border border-slate-800 rounded-lg text-left cursor-pointer hover:bg-cyan-500/10"
                       >
                         <span className="font-extrabold text-amber-400 text-xs block truncate">{c.teamName}</span>
@@ -599,52 +921,51 @@ export default function App() {
               )}
             </div>
 
-            <div className="w-full h-px bg-slate-800" />
-
-            <div>
-              <button
-                onClick={() => setShowDemoModal(true)}
-                className="w-full py-3 bg-[#0B132B] hover:bg-slate-800 border border-slate-700 text-slate-300 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Play size={16} className="fill-slate-300" /> PROVA DEMO INTERATTIVA 🎮
-              </button>
-            </div>
-
-            <p className="text-[10px] text-slate-400 text-center font-semibold">
-              Zero carta di credito richiesta. I primi 6 acquisti della tua lega sono 100% gratuiti. Decidi tu se sbloccare l'asta completa.
+            <p className="text-[11px] text-slate-300 text-center font-semibold bg-[#0B132B]/60 py-2 px-3 rounded-xl border border-slate-800">
+              "Zero carta di credito richiesta. I primi 6 acquisti della tua lega sono 100% gratuiti. Decidi tu se sbloccare l'asta completa."
             </p>
           </div>
 
-          {/* SCHEDE PREZZO */}
-          <div className="max-w-3xl w-full grid grid-cols-1 md:grid-cols-2 gap-4 my-2">
-            <div className="bg-[#060D1E] border border-amber-500/30 rounded-3xl p-5 flex flex-col justify-between gap-3 shadow-lg">
+          {/* RESTYLING TRASPARENTE DELLE SCHEDE PREZZO (€4,90 e €9,90 UNA TANTUM PER LEGA) */}
+          <div className="max-w-3xl w-full grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
+            <div className="bg-[#060D1E] border-2 border-amber-500/30 rounded-3xl p-5 flex flex-col justify-between gap-3 shadow-lg">
               <div>
-                <span className="bg-amber-500/20 text-amber-300 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full">Soluzione per Asta a Voce</span>
+                <span className="bg-amber-500/20 text-amber-300 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full">Ideale per Asta a Voce</span>
                 <h3 className="text-lg font-black uppercase text-white mt-2 flex items-center gap-2"><Tv size={20} className="text-amber-400" /> SOLO TABELLONE TV</h3>
-                <div className="text-3xl font-black text-amber-400 my-1">€4,90 <span className="text-xs font-normal text-slate-400">una tantum per tutta la lega</span></div>
-                <p className="text-xs text-slate-300 leading-relaxed">Meno di 50 centesimi a partecipante. Sostituisce il foglio Excel con la regia televisiva e la firma dei contratti sulla TV di casa.</p>
+                <div className="text-3xl font-black text-amber-400 my-1">
+                  €4,90 <span className="text-xs font-normal text-slate-400">una tantum per tutta la lega</span>
+                </div>
+                <p className="text-[11px] text-amber-300 font-bold mb-1">• Meno di 50 cent ad amico (Nessun abbonamento mensile)</p>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Regia da trasmissione sportiva sulla TV del salotto, animazione firma del contratto, telecronista vocale e gestione rose con 1 click.
+                </p>
               </div>
-              <button onClick={() => { setActivePackage('TV'); setShowCustomLeagueModal(true); }} className="w-full py-2.5 bg-amber-500 text-slate-950 font-black rounded-xl text-xs uppercase cursor-pointer shadow-md">
-                Crea Stanza Solo TV 🖥️
+              <button onClick={() => { setActivePackage('TV'); setSelectedPackage('TV'); setShowCustomLeagueModal(true); }} className="w-full py-3 bg-amber-500 text-slate-950 font-black rounded-xl text-xs uppercase cursor-pointer shadow-md">
+                Inizia Gratis in Modalità Solo TV 🖥️
               </button>
             </div>
 
-            <div className="bg-[#060D1E] border border-emerald-500/40 rounded-3xl p-5 flex flex-col justify-between gap-3 shadow-lg relative overflow-hidden">
-              <div className="absolute top-0 right-0 bg-emerald-500 text-slate-950 font-black text-[9px] uppercase px-2.5 py-1 rounded-bl-xl">Consigliato</div>
+            <div className="bg-[#060D1E] border-2 border-emerald-500/50 rounded-3xl p-5 flex flex-col justify-between gap-3 shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 bg-emerald-500 text-slate-950 font-black text-[9px] uppercase px-2.5 py-1 rounded-bl-xl">Più Scelto</div>
               <div>
-                <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full">Show Completo con Telefoni</span>
+                <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full">Show Completo con Smartphone</span>
                 <h3 className="text-lg font-black uppercase text-white mt-2 flex items-center gap-2"><Smartphone size={20} className="text-emerald-400" /> TV + TELEFONI BUZZER</h3>
-                <div className="text-3xl font-black text-emerald-400 my-1">€9,90 <span className="text-xs font-normal text-slate-400">una tantum per tutta la lega</span></div>
-                <p className="text-xs text-slate-300 leading-relaxed">Meno di 1€ a testa per una lega da 10 partecipanti. Ogni amico usa il proprio smartphone come Buzzer 3D per rilanciare sul gong e mandare sfottò.</p>
+                <div className="text-3xl font-black text-emerald-400 my-1">
+                  €9,90 <span className="text-xs font-normal text-slate-400">una tantum per tutta la lega</span>
+                </div>
+                <p className="text-[11px] text-emerald-300 font-bold mb-1">• Meno di 1€ a testa per una lega da 10 partecipanti</p>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Tutto lo studio TV + ogni partecipante usa il proprio smartphone come Buzzer 3D con sfottò in tempo reale e rilanci sul gong.
+                </p>
               </div>
-              <button onClick={() => { setActivePackage('LIVE'); setShowCustomLeagueModal(true); }} className="w-full py-2.5 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase cursor-pointer shadow-md">
-                Crea Stanza con Buzzer 🚀
+              <button onClick={() => { setActivePackage('LIVE'); setSelectedPackage('LIVE'); setShowCustomLeagueModal(true); }} className="w-full py-3 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase cursor-pointer shadow-md">
+                Inizia Gratis con Telefoni Buzzer 🚀
               </button>
             </div>
           </div>
 
           {/* SEZIONE FAQ ESPANDIBILE */}
-          <div className="max-w-2xl w-full my-6 bg-[#060D1E] border border-slate-800 rounded-3xl p-5 space-y-3 shadow-xl">
+          <div className="max-w-2xl w-full my-5 bg-[#060D1E] border border-slate-800 rounded-3xl p-5 space-y-3 shadow-xl">
             <h3 className="text-sm font-black uppercase text-amber-400 flex items-center gap-2">
               <HelpCircle size={18} /> Domande Frequenti (FAQ)
             </h3>
@@ -661,30 +982,30 @@ export default function App() {
             })}
           </div>
 
-          {/* FOOTER PROFESSIONALE */}
+          {/* FOOTER PROFESSIONALE CON LINK LEGALI CLICCABILI */}
           <footer className="max-w-3xl w-full text-center space-y-2 py-4 border-t border-slate-800 text-[11px] text-slate-400">
             <div className="flex flex-wrap justify-center gap-4 font-semibold text-slate-300">
-              <span className="hover:text-amber-400 cursor-pointer">Termini & Condizioni</span>
+              <button onClick={() => setLegalModalTitle('Termini & Condizioni')} className="hover:text-amber-400 cursor-pointer">Termini & Condizioni</button>
               <span>•</span>
-              <span className="hover:text-amber-400 cursor-pointer">Informativa Privacy</span>
+              <button onClick={() => setLegalModalTitle('Informativa Privacy')} className="hover:text-amber-400 cursor-pointer">Informativa Privacy</button>
               <span>•</span>
-              <span className="hover:text-amber-400 cursor-pointer">Garanzia e Rimborsi (24h)</span>
+              <button onClick={() => setLegalModalTitle('Garanzia e Rimborsi (24h)')} className="hover:text-amber-400 cursor-pointer">Garanzia e Rimborsi</button>
               <span>•</span>
-              <span className="hover:text-amber-400 cursor-pointer">Assistenza</span>
+              <button onClick={() => setLegalModalTitle('Assistenza Clienti')} className="hover:text-amber-400 cursor-pointer">Assistenza</button>
             </div>
-            <p>FantasyBuzz Live Arena © 2026/2027 • Tutti i diritti riservati.</p>
+            <p>FantasyBuzz Live Arena © 2026/2027 • Pagamento unico per lega, zero abbonamenti • Tutti i diritti riservati.</p>
           </footer>
         </div>
       ) : (
         <div className="h-screen w-screen font-sans flex flex-col justify-between p-2 select-none overflow-hidden relative z-10 bg-[#030914] text-slate-200">
           
-          {/* BARRA SUPERIORE PROVA GRATUITA */}
-          {!isLicenseUnlocked && (
+          {/* BARRA SUPERIORE PROVA GRATUITA (VISIBILE AL PRESIDENTE) */}
+          {userRole === 'PRESIDENT' && !isLicenseUnlocked && (
             <div className="bg-[#0B132B] border border-amber-500/40 rounded-xl px-3 py-1 mb-1 flex items-center justify-between text-[11px] shrink-0">
-              <span>🎁 <strong className="text-amber-400">{isDemoMode ? 'Demo:' : 'Prova Gratis:'}</strong> {totalPurchasesCount}/{FREE_TRIAL_LIMIT} acquisti fatti</span>
+              <span>🎁 <strong className="text-amber-400">{isDemoMode ? `Demo (${demoAuctionCount} acquisti):` : 'Prova Gratuita:'}</strong> {totalPurchasesCount}/{FREE_TRIAL_LIMIT} acquisti gratuiti effettuati</span>
               <div className="flex gap-2">
-                <button onClick={() => setShowWelcomeGuide(true)} className="bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 font-black px-2 py-0.5 rounded-lg text-[10px] uppercase cursor-pointer flex items-center gap-1"><Info size={11} /> Come Invito</button>
-                <button onClick={() => setShowPaywall(true)} className="bg-emerald-500 text-slate-950 font-black px-2.5 py-0.5 rounded-lg text-[10px] uppercase cursor-pointer">Sblocca Asta (€{currentPackagePrice.toFixed(2)})</button>
+                <button onClick={() => setShowWelcomeGuide(true)} className="bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 font-black px-2 py-0.5 rounded-lg text-[10px] uppercase cursor-pointer flex items-center gap-1"><Info size={11} /> Invita Amici</button>
+                <button onClick={() => setShowPaywall(true)} className="bg-emerald-500 text-slate-950 font-black px-2.5 py-0.5 rounded-lg text-[10px] uppercase cursor-pointer">Sblocca Asta Completa (€{currentPackagePrice.toFixed(2)})</button>
               </div>
             </div>
           )}
@@ -700,401 +1021,437 @@ export default function App() {
             </div>
           )}
 
-          {/* HEADER DELLA REGIA / BUZZER */}
+          {/* HEADER CON SEPARAZIONE NETTA TRA REGIA TV E SMARTPHONE PARTECIPANTE */}
           <header className="flex flex-wrap justify-between items-center p-2 px-3 rounded-2xl bg-[#060D1E] border border-cyan-500/30 shrink-0 gap-2 relative">
             <div className="flex items-center gap-3">
               <BuzzMark size={26} />
-              
+              <div>
+                <h1 className="text-xs font-black text-white uppercase flex items-center gap-1.5">
+                  FantasyBuzz
+                  <span className="bg-amber-500 text-slate-950 px-2 py-0.5 rounded text-[9px] font-black">
+                    {userRole === 'PRESIDENT' ? 'REGIA TV' : getCoachDisplay(playerName)}
+                  </span>
+                </h1>
+              </div>
+
               {userRole === 'PRESIDENT' && activePackage === 'LIVE' && (
                 <div className="relative">
                   <button onClick={() => setShowQrModal(true)} className="bg-amber-500/20 border-2 border-amber-400 px-3 py-1 rounded-xl flex items-center gap-2 cursor-pointer hover:bg-amber-500/30 transition-all shadow-md">
                     <QrCode size={15} className="text-amber-400" />
-                    <span className="text-xs font-black text-white">CODICE: <strong className="text-amber-300 tracking-widest">{roomCode}</strong></span>
+                    <span className="text-xs font-black text-white">MOSTRA QR CODE ({roomCode})</span>
                   </button>
                   {showRoomCodeArrow && (
-                    <div onClick={() => setShowRoomCodeArrow(false)} className="absolute top-11 left-0 z-40 bg-amber-400 text-slate-950 px-3 py-1.5 rounded-xl shadow-2xl border-2 border-white w-56 animate-bounce cursor-pointer">
-                      <div className="flex items-center gap-1 font-black text-[10px] uppercase"><ArrowUp size={13} /> <span>Dai questo codice agli amici!</span></div>
+                    <div onClick={() => setShowRoomCodeArrow(false)} className="absolute top-11 left-0 z-40 bg-amber-400 text-slate-950 px-3 py-1.5 rounded-xl shadow-2xl border-2 border-white w-60 animate-bounce cursor-pointer">
+                      <div className="flex items-center gap-1 font-black text-[10px] uppercase"><ArrowUp size={13} /> <span>Clicca per il QR a tutto schermo!</span></div>
                     </div>
                   )}
                 </div>
               )}
 
-              <div className="flex gap-1 bg-[#0B132B] p-1 rounded-xl border border-slate-800">
-                <button onClick={() => setActiveTab('AUCTION')} className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer ${activeTab === 'AUCTION' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}><Zap size={12} /> Campo Asta</button>
-                <button onClick={() => setActiveTab('ROSTERS')} className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer ${activeTab === 'ROSTERS' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}><Shirt size={12} /> Rose Squadre ({totalPurchasesCount})</button>
-                <button onClick={() => setActiveTab('HIGHLIGHTS')} className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer ${activeTab === 'HIGHLIGHTS' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400'}`}><Award size={12} /> Classifiche</button>
-              </div>
+              {/* LE SCHEDE DI GESTIONE SONO ESCLUSIVE DELLA REGIA TV */}
+              {userRole === 'PRESIDENT' && (
+                <div className="flex gap-1 bg-[#0B132B] p-1 rounded-xl border border-slate-800">
+                  <button onClick={() => setActiveTab('AUCTION')} className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer ${activeTab === 'AUCTION' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}><Zap size={12} /> Campo Asta</button>
+                  <button onClick={() => setActiveTab('ROSTERS')} className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer ${activeTab === 'ROSTERS' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}><Shirt size={12} /> Rose ({totalPurchasesCount})</button>
+                  <button onClick={() => setActiveTab('HIGHLIGHTS')} className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer ${activeTab === 'HIGHLIGHTS' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400'}`}><Award size={12} /> Classifiche</button>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="hidden md:flex items-center gap-2 bg-[#0B132B] px-2.5 py-1 rounded-xl border border-slate-800 text-[10px] font-bold">
-                <span className="flex items-center gap-1 text-slate-300">
-                  <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-                  Server: {isConnected ? 'Online' : 'Offline'}
+              {/* DOPPIO INDICATORE DISTINTO: CONNESSIONE SERVER + PARTECIPANTI IN SALA */}
+              <div className="flex items-center gap-2 bg-[#0B132B] px-2.5 py-1 rounded-xl border border-slate-800 text-[10px] font-bold">
+                <span className="flex items-center gap-1 text-slate-200">
+                  <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400' : 'bg-rose-500'}`} />
+                  Connessione Server: <strong className={isConnected ? 'text-emerald-400' : 'text-rose-400'}>{isConnected ? 'Online' : 'Offline'}</strong>
                 </span>
-                <span className="text-slate-600">|</span>
-                <span className="text-amber-300">Sala: {coaches.filter(c => c.isOnline !== false).length} / {coaches.length} Connessi</span>
+                {userRole === 'PRESIDENT' && (
+                  <>
+                    <span className="text-slate-600">|</span>
+                    <span className="text-amber-300">Partecipanti in Sala: <strong>{coaches.filter(c => c.isOnline !== false).length} / {coaches.length} Connessi</strong></span>
+                  </>
+                )}
               </div>
 
               {userRole === 'PRESIDENT' && (
                 <>
-                  <button onClick={() => setVoiceEnabled(!voiceEnabled)} className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border cursor-pointer flex items-center gap-1 ${voiceEnabled ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
-                    {voiceEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />} {voiceEnabled ? 'Audio ON' : 'Mute'}
+                  <button
+                    onClick={() => setVoiceEnabled(!voiceEnabled)}
+                    className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border cursor-pointer flex items-center gap-1 ${voiceEnabled ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-rose-500/20 text-rose-300 border-rose-500/40'}`}
+                    title="Attiva o silenzia tutti i suoni di gara e il telecronista"
+                  >
+                    {voiceEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
+                    {voiceEnabled ? '🔊 Audio ON' : '🔇 Muto'}
                   </button>
                   <button onClick={handleShareWhatsAppInvite} className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500 text-slate-950 flex items-center gap-1 cursor-pointer"><Share2 size={12} /> WhatsApp</button>
                   {lastAwardHistory && <button onClick={handleUndoLastAward} className="px-2 py-1.5 rounded-xl text-xs font-bold bg-rose-500/20 text-rose-300 flex items-center gap-1 cursor-pointer"><RotateCcw size={12} /> Annulla</button>}
                   <button onClick={() => setIsPureTvDisplay(!isPureTvDisplay)} className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-200 cursor-pointer"><Monitor size={12} /></button>
                 </>
               )}
-              <button onClick={() => { setUserRole(null); setPlayerName(''); }} className="text-xs bg-slate-800 text-slate-400 font-bold px-2.5 py-1.5 rounded-xl cursor-pointer"><LogOut size={12} /></button>
+              <button onClick={() => { setUserRole(null); setPlayerName(''); setActiveTab('AUCTION'); }} className="text-xs bg-slate-800 text-slate-400 font-bold px-2.5 py-1.5 rounded-xl cursor-pointer"><LogOut size={12} /></button>
             </div>
           </header>
 
-          {activeTab === 'AUCTION' && (
-            userRole === 'PRESIDENT' ? (
-              <main className="flex-1 flex flex-col lg:flex-row gap-2.5 items-stretch my-1 overflow-y-auto lg:overflow-hidden w-full relative min-h-0">
-                {latestBidAlert && (
-                  <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 bg-amber-500 text-slate-950 font-black px-5 py-1.5 rounded-2xl shadow-2xl border-2 border-white animate-bounce flex items-center gap-2">
-                    <Zap size={16} /> <span className="text-xs uppercase">{getCoachDisplay(latestBidAlert.bidder)}: {latestBidAlert.amount} FM!</span>
-                  </div>
-                )}
+          {/* CORPO PRINCIPALE: SE SEI PARTECIPANTE VEDI SOLO ED ESCLUSIVAMENTE IL BUZZER */}
+          {userRole === 'PLAYER' ? (
+            <main
+              className="flex-1 flex flex-col gap-2 max-w-sm mx-auto w-full my-auto overflow-y-auto items-center justify-between py-2.5 px-3 rounded-3xl border-2 border-emerald-400/50"
+              style={{ background: `radial-gradient(circle at 50% 35%, rgba(16, 185, 129, 0.34) 0%, rgba(5, 42, 26, 0.96) 75%, rgba(2, 18, 11, 1) 100%), repeating-linear-gradient(90deg, rgba(16, 120, 68, 0.35) 0px, rgba(16, 120, 68, 0.35) 45px, rgba(8, 82, 45, 0.35) 45px, rgba(8, 82, 45, 0.35) 90px)` }}
+            >
+              {/* 1. CALCIATORE E QUOTAZIONE BASE */}
+              <div className="text-center w-full bg-[#060D1E]/95 p-3 rounded-2xl border border-slate-700">
+                <div className="flex justify-between text-[10px] font-black mb-1">
+                  <span className={`px-2 py-0.5 rounded-full ${getRoleBadge(activePlayer.role)}`}>{activePlayer.role} • {activePlayer.team}</span>
+                  <span className="text-amber-400">Budget: {coaches.find(c => c.name === playerName)?.budget || 0} FM (Max: {getCoachMaxBid(playerName)})</span>
+                </div>
+                <h2 className="text-2xl font-black text-white uppercase truncate">{activePlayer.name}</h2>
+                <p className="text-xs text-slate-300 mt-0.5">Quotazione Base: <strong className="text-amber-400">{activePlayer.basePrice} FM</strong></p>
+              </div>
 
-                {/* COLONNA SINISTRA ALLENATORI */}
-                <aside className="w-full lg:w-[275px] shrink-0 bg-[#060D1E] rounded-2xl p-3 flex flex-col gap-2 overflow-hidden border border-cyan-500/30">
-                  <div className="flex justify-between pb-1.5 border-b border-cyan-500/20 text-xs font-black text-cyan-400">
-                    <span className="flex items-center gap-1"><Trophy size={13} className="text-amber-400" /> Club in Sala</span>
-                    <span className="text-[9px] text-amber-300">👆 Clicca = +1 FM</span>
-                  </div>
-                  <div className="space-y-1.5 overflow-y-auto flex-1">
-                    {coaches.map(c => {
-                      const isOnline = c.isOnline !== false;
-                      const isHighest = highestBidder === c.name;
-                      return (
-                        <div
-                          key={c.name}
-                          onClick={() => { setPresidentSelectedBidder(c.name); handleRaise(1, c.name); }}
-                          className={`p-2.5 rounded-xl transition-all cursor-pointer ${isHighest ? 'bg-emerald-500/20 border-2 border-emerald-400' : presidentSelectedBidder === c.name ? 'bg-amber-500/15 border border-amber-400/60' : 'bg-[#0B132B] border border-slate-800'}`}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="truncate pr-1">
-                              <div className="flex items-center gap-1.5">
-                                <span className={`w-2 h-2 rounded-full shrink-0 ${isOnline ? 'bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'bg-slate-500'}`} title={isOnline ? 'Connesso' : 'Disconnesso'} />
-                                <span className="font-black text-xs text-white uppercase truncate">{c.teamName}</span>
-                              </div>
-                              <span className="text-[10px] text-slate-400 font-semibold block truncate ml-3.5">Mister: {c.name}</span>
-                            </div>
-                            <div className="text-right shrink-0">
-                              <span className="font-black text-amber-400 text-xs block">{c.budget} FM</span>
-                              <span className="text-[9px] text-emerald-400 font-bold">Max {getCoachMaxBid(c.name)}</span>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-4 gap-1 mt-1.5 pt-1 border-t border-slate-800 text-[9px] font-bold text-center text-slate-300 ml-3.5">
-                            <span>P:{getCoachRoleCount(c.name, 'P')}/3</span>
-                            <span>D:{getCoachRoleCount(c.name, 'D')}/8</span>
-                            <span>C:{getCoachRoleCount(c.name, 'C')}/8</span>
-                            <span>A:{getCoachRoleCount(c.name, 'A')}/6</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </aside>
+              {/* 2. STATO DELL'OFFERTA CORRENTE E MIGLIOR OFFERENTE */}
+              <div className="w-full bg-[#060D1E]/90 border border-amber-500/40 p-2.5 rounded-2xl text-center">
+                <span className="text-[10px] font-bold uppercase text-amber-400 block">Stato Offerta Corrente</span>
+                <span className="text-sm font-black text-white uppercase">
+                  {highestBidder ? `${getCoachDisplay(highestBidder)} → ${currentBid} FM` : `Nessuna offerta (Si parte da ${startingPrice} FM)`}
+                </span>
+              </div>
 
-                {/* CAMPO DA CALCIO CENTRALE */}
-                <section
-                  className={`w-full lg:flex-1 shrink-0 min-h-[430px] lg:min-h-0 rounded-2xl p-3 flex flex-col items-center justify-between relative overflow-hidden border-2 ${isBlinking ? 'border-amber-400' : 'border-emerald-400/60'}`}
-                  style={{ background: `radial-gradient(circle at 50% 45%, rgba(16, 185, 129, 0.34) 0%, rgba(5, 46, 28, 0.94) 72%, rgba(2, 22, 13, 1) 100%), repeating-linear-gradient(90deg, rgba(16, 120, 68, 0.42) 0px, rgba(16, 120, 68, 0.42) 55px, rgba(8, 82, 45, 0.42) 55px, rgba(8, 82, 45, 0.42) 110px)` }}
-                >
-                  <div className="absolute inset-0 pointer-events-none opacity-25">
-                    <div className="absolute inset-2.5 border-2 border-emerald-100 rounded-xl" />
-                    <div className="absolute top-1/2 left-2.5 right-2.5 h-0.5 bg-emerald-100 -translate-y-1/2" />
-                    <div className="absolute top-1/2 left-1/2 w-40 h-40 border-2 border-emerald-100 rounded-full -translate-x-1/2 -translate-y-1/2" />
-                    <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-56 h-12 border-b-2 border-x-2 border-emerald-100" />
-                    <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 w-56 h-12 border-t-2 border-x-2 border-emerald-100" />
-                  </div>
+              {/* 3. PULSANTE BUZZER 3D + RILANCI RAPIDI E TASTIERINO CIFRA ESATTA */}
+              <div className="w-full bg-[#060D1E]/95 border border-slate-700 rounded-3xl p-3 flex flex-col items-center gap-2">
+                <button disabled={highestBidder === playerName} onClick={() => handleRaise(selectedStep)} className={`w-32 h-32 rounded-full flex flex-col items-center justify-center gap-1 select-none ${highestBidder === playerName ? 'bg-emerald-900/60 border-4 border-emerald-400 text-emerald-300' : 'bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 text-slate-950 font-black border-4 border-amber-200 shadow-xl active:translate-y-2 cursor-pointer'}`}>
+                  <Zap size={24} /> <span className="text-sm font-black uppercase">{highestBidder === playerName ? 'SEI IN TESTA' : `BUZZ +${selectedStep}`}</span>
+                </button>
 
-                  {countdown !== null && (
-                    <div className="absolute inset-0 bg-slate-950/85 z-30 flex flex-col items-center justify-center">
-                      <span className="font-black text-sm uppercase text-red-400 animate-bounce">🚨 ULTIMA CHIAMATA! 🚨</span>
-                      <div className="text-8xl font-black text-red-500 animate-ping">{countdown}</div>
+                <div className="w-full grid grid-cols-4 gap-1">
+                  {[1, 5, 10, 20].map(s => (
+                    <button key={s} onClick={() => setSelectedStep(s)} className={`py-1.5 text-xs font-black rounded-lg border cursor-pointer ${selectedStep === s ? 'bg-amber-500 border-amber-400 text-slate-950' : 'bg-[#0B132B] border-slate-700 text-white'}`}>+{s}</button>
+                  ))}
+                </div>
+
+                <div className="w-full flex gap-1.5 pt-1 border-t border-slate-800">
+                  <input
+                    type="number"
+                    placeholder="Digita offerta esatta (es. 45)..."
+                    value={customBidInput}
+                    onChange={e => setCustomBidInput(e.target.value)}
+                    className="flex-1 bg-[#0B132B] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-emerald-400 font-black text-center"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const val = Number(customBidInput);
+                      const base = highestBidder ? currentBid : 0;
+                      if (!isNaN(val) && val > base) {
+                        handleRaise(val - base);
+                        setCustomBidInput('');
+                      } else {
+                        setCustomAlertMessage(`Inserisci una cifra superiore a ${base} FM!`);
+                      }
+                    }}
+                    className="px-3.5 bg-emerald-500 text-slate-950 font-black rounded-lg text-xs uppercase cursor-pointer"
+                  >
+                    Rilancia
+                  </button>
+                </div>
+
+                {/* 4. BARRA REAZIONI TRASH TALK */}
+                <div className="w-full pt-1 border-t border-slate-800 space-y-1">
+                  <span className="text-[9px] font-black uppercase text-amber-400 block text-center">📣 Reazioni Trash Talk in tempo reale:</span>
+                  <div className="grid grid-cols-3 gap-1">
+                    {EMOJI_CHOICES.map(item => (
+                      <button key={item.name} onClick={() => sendLiveReaction(item.emoji, item.msg)} className="py-1.5 rounded-lg border bg-[#0B132B] hover:bg-slate-800 border-slate-700 flex items-center justify-center gap-1 cursor-pointer active:scale-95">
+                        <span className="text-sm leading-none">{item.emoji}</span>
+                        <span className="text-[9px] font-bold text-slate-200">{item.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </main>
+          ) : (
+            /* VISTA REGIA PRESIDENTE TV */
+            <>
+              {activeTab === 'AUCTION' && (
+                <main className="flex-1 flex flex-col lg:flex-row gap-2.5 items-stretch my-1 overflow-y-auto lg:overflow-hidden w-full relative min-h-0">
+                  {latestBidAlert && (
+                    <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 bg-amber-500 text-slate-950 font-black px-5 py-1.5 rounded-2xl shadow-2xl border-2 border-white animate-bounce flex items-center gap-2">
+                      <Zap size={16} /> <span className="text-xs uppercase">{getCoachDisplay(latestBidAlert.bidder)}: {latestBidAlert.amount} FM!</span>
                     </div>
                   )}
 
-                  <div className="w-full bg-[#060D1E]/95 rounded-xl p-2 flex flex-col gap-2 z-10 border border-slate-700">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <div className="relative flex-1 min-w-[130px]">
-                        <Search size={13} className="absolute left-2.5 top-2 text-slate-400" />
-                        <input type="text" placeholder="Cerca calciatore..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-[#0B132B] rounded-lg py-1 pl-7 pr-2 text-xs text-white" />
+                  {/* COLONNA SINISTRA ALLENATORI CON PALLINO VERDE / GRIGIO */}
+                  <aside className="w-full lg:w-[275px] shrink-0 bg-[#060D1E] rounded-2xl p-3 flex flex-col gap-2 overflow-hidden border border-cyan-500/30">
+                    <div className="flex justify-between pb-1.5 border-b border-cyan-500/20 text-xs font-black text-cyan-400">
+                      <span className="flex items-center gap-1"><Trophy size={13} className="text-amber-400" /> Club in Sala</span>
+                      <span className="text-[9px] text-amber-300">👆 Clicca = +1 FM</span>
+                    </div>
+                    <div className="space-y-1.5 overflow-y-auto flex-1">
+                      {coaches.map(c => {
+                        const isOnline = c.isOnline !== false;
+                        const isHighest = highestBidder === c.name;
+                        return (
+                          <div
+                            key={c.name}
+                            onClick={() => { setSelectedWinnerManual(c.name); handleRaise(1, c.name); }}
+                            className={`p-2.5 rounded-xl transition-all cursor-pointer ${isHighest ? 'bg-emerald-500/20 border-2 border-emerald-400' : selectedWinnerManual === c.name ? 'bg-amber-500/15 border border-amber-400/60' : 'bg-[#0B132B] border border-slate-800'}`}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="truncate pr-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${isOnline ? 'bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.9)]' : 'bg-slate-600 opacity-60'}`} title={isOnline ? 'Smartphone Connesso' : 'Offline / In Standby'} />
+                                  <span className="font-black text-xs text-white uppercase truncate">{c.teamName}</span>
+                                </div>
+                                <span className="text-[10px] text-slate-400 font-semibold block truncate ml-4">Mister: {c.name}</span>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <span className="font-black text-amber-400 text-xs block">{c.budget} FM</span>
+                                <span className="text-[9px] text-emerald-400 font-bold">Max {getCoachMaxBid(c.name)}</span>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-4 gap-1 mt-1.5 pt-1 border-t border-slate-800 text-[9px] font-bold text-center text-slate-300 ml-4">
+                              <span>P:{getCoachRoleCount(c.name, 'P')}/3</span>
+                              <span>D:{getCoachRoleCount(c.name, 'D')}/8</span>
+                              <span>C:{getCoachRoleCount(c.name, 'C')}/8</span>
+                              <span>A:{getCoachRoleCount(c.name, 'A')}/6</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </aside>
+
+                  {/* CAMPO DA CALCIO CENTRALE */}
+                  <section
+                    className={`w-full lg:flex-1 shrink-0 min-h-[430px] lg:min-h-0 rounded-2xl p-3 flex flex-col items-center justify-between relative overflow-hidden border-2 ${isBlinking ? 'border-amber-400' : 'border-emerald-400/60'}`}
+                    style={{ background: `radial-gradient(circle at 50% 45%, rgba(16, 185, 129, 0.34) 0%, rgba(5, 46, 28, 0.94) 72%, rgba(2, 22, 13, 1) 100%), repeating-linear-gradient(90deg, rgba(16, 120, 68, 0.42) 0px, rgba(16, 120, 68, 0.42) 55px, rgba(8, 82, 45, 0.42) 55px, rgba(8, 82, 45, 0.42) 110px)` }}
+                  >
+                    <div className="absolute inset-0 pointer-events-none opacity-25">
+                      <div className="absolute inset-2.5 border-2 border-emerald-100 rounded-xl" />
+                      <div className="absolute top-1/2 left-2.5 right-2.5 h-0.5 bg-emerald-100 -translate-y-1/2" />
+                      <div className="absolute top-1/2 left-1/2 w-40 h-40 border-2 border-emerald-100 rounded-full -translate-x-1/2 -translate-y-1/2" />
+                      <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-56 h-12 border-b-2 border-x-2 border-emerald-100" />
+                      <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 w-56 h-12 border-t-2 border-x-2 border-emerald-100" />
+                    </div>
+
+                    {countdown !== null && (
+                      <div className="absolute inset-0 bg-slate-950/85 z-30 flex flex-col items-center justify-center">
+                        <span className="font-black text-sm uppercase text-red-400 animate-bounce">🚨 ULTIMA CHIAMATA! 🚨</span>
+                        <div className="text-8xl font-black text-red-500 animate-ping">{countdown}</div>
                       </div>
-                      {[
-                        { code: 'ALL', label: 'Tutti' },
-                        { code: 'P', label: 'Por' },
-                        { code: 'D', label: 'Dif' },
-                        { code: 'C', label: 'Cen' },
-                        { code: 'A', label: 'Att' },
-                      ].map(r => (
-                        <button
-                          key={r.code}
-                          onClick={() => handleRoleFilterChange(r.code as 'ALL' | Role)}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-black cursor-pointer ${selectedRole === r.code ? 'bg-amber-500 text-slate-950' : 'bg-[#0B132B] text-slate-400'}`}
-                        >
-                          {r.label}
+                    )}
+
+                    <div className="w-full bg-[#060D1E]/95 rounded-xl p-2 flex flex-col gap-2 z-10 border border-slate-700">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <div className="relative flex-1 min-w-[130px]">
+                          <Search size={13} className="absolute left-2.5 top-2 text-slate-400" />
+                          <input type="text" placeholder="Cerca calciatore..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-[#0B132B] rounded-lg py-1 pl-7 pr-2 text-xs text-white" />
+                        </div>
+                        {[
+                          { code: 'ALL', label: 'Tutti' },
+                          { code: 'P', label: 'Por' },
+                          { code: 'D', label: 'Dif' },
+                          { code: 'C', label: 'Cen' },
+                          { code: 'A', label: 'Att' },
+                        ].map(r => (
+                          <button
+                            key={r.code}
+                            onClick={() => handleRoleFilterChange(r.code as 'ALL' | Role)}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-black cursor-pointer ${selectedRole === r.code ? 'bg-amber-500 text-slate-950' : 'bg-[#0B132B] text-slate-400'}`}
+                          >
+                            {r.label}
+                          </button>
+                        ))}
+                        <button onClick={handleRandomPlayer} className="px-2.5 py-1 bg-purple-600 text-white rounded-lg text-xs font-black flex items-center gap-1 cursor-pointer"><Shuffle size={12} /> 🎲 Pesca a Sorte</button>
+                        <button onClick={() => setStartFromOne(!startFromOne)} className="px-2 py-1 bg-[#0B132B] border border-slate-700 rounded-lg text-[10px] font-bold text-amber-400 cursor-pointer">Partenza: {startFromOne ? 'Da 1 FM' : 'Quotazione'}</button>
+                        <label className="flex items-center gap-1 text-[10px] text-slate-300 cursor-pointer"><input type="checkbox" checked={hidePurchased} onChange={e => setHidePurchased(e.target.checked)} /> Solo Liberi</label>
+                      </div>
+                      <div className="flex gap-1.5 overflow-x-auto py-1 max-h-12 border-t border-slate-800">
+                        {filteredList.slice(0, 80).map(p => (
+                          <button key={p.id} onClick={() => handleSelectPlayer(p)} className={`px-2 py-1 rounded-lg text-xs font-bold shrink-0 cursor-pointer ${activePlayer.id === p.id ? 'bg-amber-500 text-slate-950' : 'bg-[#0B132B] text-slate-300'}`}>[{p.role}] {p.name} ({p.basePrice})</button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-center justify-center my-auto z-10 text-center space-y-1.5">
+                      {activeDuel && <div className="bg-rose-600/40 border border-rose-400 px-3 py-0.5 rounded-full text-[10px] font-black uppercase text-rose-100 animate-pulse">🔥 SFIDA: {activeDuel} 🔥</div>}
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-black px-2.5 py-0.5 rounded-full ${getRoleBadge(activePlayer.role)}`}>{activePlayer.role}</span>
+                        <div className="flex items-center gap-1 text-xs font-bold text-slate-100 bg-[#060D1E]/90 px-2.5 py-0.5 rounded-full border border-slate-700"><TeamBadge team={activePlayer.team} size={16} /> <span>{activePlayer.team}</span></div>
+                        {activePlayer.basePrice >= 15 && <span className="text-[10px] font-black text-amber-300 bg-amber-500/25 px-2 py-0.5 rounded-full border border-amber-400/50"><Flame size={11} className="inline" /> TOP</span>}
+                      </div>
+                      <h2 className="text-4xl md:text-6xl font-black text-white uppercase drop-shadow-[0_5px_18px_rgba(0,0,0,0.95)]">{activePlayer.name}</h2>
+                      <div className="flex gap-3 text-xs font-bold text-slate-100 bg-slate-950/85 px-4 py-1 rounded-full border border-slate-700">
+                        <span>Quotazione: <strong className="text-amber-400">{activePlayer.basePrice} FM</strong></span>
+                        <span>•</span>
+                        <span>MV: <strong className="text-emerald-400">{activePlayer.mv || '6.00'}</strong></span>
+                        <span>•</span>
+                        <span>FM: <strong className="text-cyan-400">{activePlayer.fm || '6.00'}</strong></span>
+                      </div>
+                    </div>
+
+                    <div className="w-full max-w-3xl bg-[#060D1E]/95 p-3 rounded-2xl flex flex-col gap-2 z-10 border border-slate-700">
+                      <div className="flex flex-wrap justify-between items-center gap-2">
+                        <div>
+                          <span className="text-[10px] font-black text-slate-400 uppercase block">Società in Testa</span>
+                          <p className="text-base text-emerald-400 font-black uppercase">{highestBidder ? getCoachDisplay(highestBidder) : `Si parte da ${startingPrice} FM`}</p>
+                        </div>
+                        <div className="text-4xl md:text-5xl font-black text-amber-400">{currentBid || startingPrice} <span className="text-lg">FM</span></div>
+                        <div className="flex gap-1.5">
+                          <button onClick={() => { setCountdown(3); if (activeChannel) activeChannel.send({ type: 'broadcast', event: 'start_countdown', payload: { seconds: 3 } }); }} className="px-3 py-2 bg-amber-500 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center gap-1 cursor-pointer"><Timer size={14} /> 3s Gong</button>
+                          <button onClick={handleNextPlayer} className="px-3 py-2 bg-[#0B132B] hover:bg-slate-800 text-slate-200 font-bold rounded-xl text-xs uppercase flex items-center gap-1 cursor-pointer border border-slate-700"><SkipForward size={13} /> Salta (A→Z)</button>
+                          <button onClick={handleAward} className="px-4 py-2 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center gap-1 cursor-pointer"><Gavel size={15} /> Aggiudica</button>
+                        </div>
+                      </div>
+                      {!isPureTvDisplay && (
+                        <div className="pt-2 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                          <select value={selectedWinnerManual} onChange={e => setSelectedWinnerManual(e.target.value)} className="bg-[#0B132B] border border-slate-700 rounded-lg px-2 py-1 text-xs font-bold text-amber-400">
+                            {coaches.map(c => <option key={c.name} value={c.name}>{c.teamName} - {c.name} ({c.budget} FM)</option>)}
+                          </select>
+                          <div className="flex gap-1.5 flex-1 justify-end">
+                            {[1, 5, 10, 20].map(s => (
+                              <button key={s} onClick={() => { setSelectedStep(s); handleRaise(s); }} className="px-3 py-1.5 rounded-xl text-xs font-black bg-[#0B132B] text-white border border-slate-700 hover:border-amber-400 cursor-pointer">+{s} FM</button>
+                            ))}
+                            <input type="number" placeholder="Prezzo" value={manualPriceInput} onChange={e => setManualPriceInput(e.target.value)} className="w-16 bg-[#0B132B] border border-slate-700 rounded-lg px-2 py-1 text-xs font-bold text-emerald-400 text-center" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+
+                  <aside className="hidden lg:flex w-[205px] shrink-0 bg-[#060D1E] rounded-2xl p-3 flex-col gap-2 overflow-hidden border border-cyan-500/30">
+                    <h3 className="text-xs font-bold text-cyan-400 uppercase flex items-center gap-1 pb-1.5 border-b border-cyan-500/20"><History size={13} /> Offerte</h3>
+                    <div className="space-y-1.5 overflow-y-auto flex-1">
+                      {bidHistory.map((item, idx) => (
+                        <div key={idx} className="bg-[#0B132B] p-2 rounded-xl flex justify-between text-xs border border-slate-800">
+                          <span className="font-bold truncate max-w-[105px]">{getCoachDisplay(item.bidder)}</span>
+                          <span className="font-black text-emerald-400">{item.amount} FM</span>
+                        </div>
+                      ))}
+                    </div>
+                  </aside>
+                </main>
+              )}
+
+              {activeTab === 'ROSTERS' && (
+                <main className="flex-1 flex flex-col lg:flex-row gap-3 my-1 overflow-y-auto w-full min-h-0">
+                  <aside className="w-full lg:w-[250px] bg-[#060D1E] border border-cyan-500/30 rounded-2xl p-3 flex flex-col gap-2">
+                    <div className="flex justify-between items-center pb-2 border-b border-slate-800">
+                      <span className="text-xs font-bold text-cyan-400 uppercase">Squadre di Lega</span>
+                      <button onClick={handleExportCSV} className="text-[10px] bg-emerald-500 text-slate-950 font-black px-2 py-1 rounded-lg flex items-center gap-1 cursor-pointer"><Download size={11} /> Excel</button>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-1 bg-[#0B132B] p-1 rounded-xl border border-slate-800 text-center text-xs font-bold">
+                      <button onClick={() => setRosterViewMode('GRID')} className={`py-1 rounded-lg cursor-pointer ${rosterViewMode === 'GRID' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}>Tabellone</button>
+                      <button onClick={() => setRosterViewMode('FIELD')} className={`py-1 rounded-lg cursor-pointer ${rosterViewMode === 'FIELD' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400'}`}>⚽ Campo 11</button>
+                    </div>
+
+                    <div className="space-y-1.5 overflow-y-auto flex-1">
+                      {coaches.map(c => (
+                        <button key={c.name} onClick={() => setSelectedRosterCoach(c.name)} className={`w-full flex justify-between items-center p-2 rounded-xl border text-left cursor-pointer ${selectedRosterCoach === c.name ? 'bg-amber-500/10 border-amber-500 text-amber-300' : 'bg-[#0B132B] border-slate-800 text-white'}`}>
+                          <div className="truncate pr-1">
+                            <span className="font-black text-xs block truncate uppercase">{c.teamName}</span>
+                            <span className="text-[9px] text-slate-400 block truncate">{c.name}</span>
+                          </div>
+                          <span className="font-black text-amber-400 text-xs shrink-0">{c.budget} FM</span>
                         </button>
                       ))}
-                      <button onClick={handleRandomPlayer} className="px-2.5 py-1 bg-purple-600 text-white rounded-lg text-xs font-black flex items-center gap-1 cursor-pointer"><Shuffle size={12} /> 🎲 Pesca a Sorte</button>
-                      <button onClick={() => setStartFromOne(!startFromOne)} className="px-2 py-1 bg-[#0B132B] border border-slate-700 rounded-lg text-[10px] font-bold text-amber-400 cursor-pointer">Partenza: {startFromOne ? 'Da 1 FM' : 'Quotazione'}</button>
-                      <label className="flex items-center gap-1 text-[10px] text-slate-300 cursor-pointer"><input type="checkbox" checked={hidePurchased} onChange={e => setHidePurchased(e.target.checked)} /> Solo Liberi</label>
                     </div>
-                    <div className="flex gap-1.5 overflow-x-auto py-1 max-h-12 border-t border-slate-800">
-                      {filteredList.slice(0, 80).map(p => (
-                        <button key={p.id} onClick={() => handleSelectPlayer(p)} className={`px-2 py-1 rounded-lg text-xs font-bold shrink-0 cursor-pointer ${activePlayer.id === p.id ? 'bg-amber-500 text-slate-950' : 'bg-[#0B132B] text-slate-300'}`}>[{p.role}] {p.name} ({p.basePrice})</button>
-                      ))}
-                    </div>
-                  </div>
+                  </aside>
 
-                  <div className="flex flex-col items-center justify-center my-auto z-10 text-center space-y-1.5">
-                    {activeDuel && <div className="bg-rose-600/40 border border-rose-400 px-3 py-0.5 rounded-full text-[10px] font-black uppercase text-rose-100 animate-pulse">🔥 SFIDA: {activeDuel} 🔥</div>}
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs font-black px-2.5 py-0.5 rounded-full ${getRoleBadge(activePlayer.role)}`}>{activePlayer.role}</span>
-                      <div className="flex items-center gap-1 text-xs font-bold text-slate-100 bg-[#060D1E]/90 px-2.5 py-0.5 rounded-full border border-slate-700"><TeamBadge team={activePlayer.team} size={16} /> <span>{activePlayer.team}</span></div>
-                      {activePlayer.basePrice >= 15 && <span className="text-[10px] font-black text-amber-300 bg-amber-500/25 px-2 py-0.5 rounded-full border border-amber-400/50"><Flame size={11} className="inline" /> TOP</span>}
-                    </div>
-                    <h2 className="text-4xl md:text-6xl font-black text-white uppercase drop-shadow-[0_5px_18px_rgba(0,0,0,0.95)]">{activePlayer.name}</h2>
-                    <div className="flex gap-3 text-xs font-bold text-slate-100 bg-slate-950/85 px-4 py-1 rounded-full border border-slate-700">
-                      <span>Quotazione: <strong className="text-amber-400">{activePlayer.basePrice} FM</strong></span>
-                      <span>•</span>
-                      <span>MV: <strong className="text-emerald-400">{activePlayer.mv || '6.00'}</strong></span>
-                      <span>•</span>
-                      <span>FM: <strong className="text-cyan-400">{activePlayer.fm || '6.00'}</strong></span>
-                    </div>
-                  </div>
+                  <section className="flex-1 bg-[#060D1E] border border-cyan-500/30 rounded-2xl p-4 overflow-y-auto">
+                    {rosterViewMode === 'GRID' ? (
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center bg-[#0B132B] p-3 rounded-xl border border-slate-800">
+                          <div>
+                            <h2 className="text-lg font-black text-white uppercase">{coaches.find(x => x.name === selectedRosterCoach)?.teamName}</h2>
+                            <p className="text-xs text-slate-400">Mister: {selectedRosterCoach} • Offerta Max: <strong className="text-emerald-400">{getCoachMaxBid(selectedRosterCoach)} FM</strong></p>
+                          </div>
+                          <span className="text-sm font-black text-amber-400">{(purchasedPlayers[selectedRosterCoach] || []).length} / {TOTAL_SLOTS} Acquistati</span>
+                        </div>
 
-                  <div className="w-full max-w-3xl bg-[#060D1E]/95 p-3 rounded-2xl flex flex-col gap-2 z-10 border border-slate-700">
-                    <div className="flex flex-wrap justify-between items-center gap-2">
-                      <div>
-                        <span className="text-[10px] font-black text-slate-400 uppercase block">In Testa</span>
-                        <p className="text-base text-emerald-400 font-black uppercase">{highestBidder ? getCoachDisplay(highestBidder) : `Si parte da ${startingPrice} FM`}</p>
+                        {(['P', 'D', 'C', 'A'] as const).map(role => {
+                          const items = (purchasedPlayers[selectedRosterCoach] || []).filter(i => i.player.role === role);
+                          const max = ROLE_LIMITS[role];
+                          return (
+                            <div key={role} className="space-y-1">
+                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${getRoleBadge(role)}`}>{role} ({items.length}/{max})</span>
+                              <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2">
+                                {Array.from({ length: max }).map((_, idx) => items[idx] ? (
+                                  <div key={idx} className="bg-[#0B132B] border border-slate-800 p-2 rounded-lg text-xs flex flex-col justify-between">
+                                    <span className="font-bold block truncate">{items[idx].player.name}</span>
+                                    <span className="text-amber-400 font-black text-[10px] mt-1">{items[idx].price} FM</span>
+                                  </div>
+                                ) : <div key={idx} className="bg-[#0B132B]/40 border border-dashed border-slate-800 p-2 rounded-lg text-[9px] text-slate-600 text-center">Libero</div>)}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                      <div className="text-4xl md:text-5xl font-black text-amber-400">{currentBid || startingPrice} <span className="text-lg">FM</span></div>
-                      <div className="flex gap-1.5">
-                        <button onClick={() => { setCountdown(3); if (activeChannel) activeChannel.send({ type: 'broadcast', event: 'start_countdown', payload: { seconds: 3 } }); }} className="px-3 py-2 bg-amber-500 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center gap-1 cursor-pointer"><Timer size={14} /> 3s Gong</button>
-                        <button onClick={handleNextPlayer} className="px-3 py-2 bg-[#0B132B] hover:bg-slate-800 text-slate-200 font-bold rounded-xl text-xs uppercase flex items-center gap-1 cursor-pointer border border-slate-700"><SkipForward size={13} /> Salta (A→Z)</button>
-                        <button onClick={handleAward} className="px-4 py-2 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center gap-1 cursor-pointer"><Gavel size={15} /> Aggiudica</button>
-                      </div>
-                    </div>
-                    {!isPureTvDisplay && (
-                      <div className="pt-2 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2">
-                        <select value={presidentSelectedBidder} onChange={e => setPresidentSelectedBidder(e.target.value)} className="bg-[#0B132B] border border-slate-700 rounded-lg px-2 py-1 text-xs font-bold text-amber-400">
-                          {coaches.map(c => <option key={c.name} value={c.name}>{c.teamName} - {c.name} ({c.budget} FM)</option>)}
-                        </select>
-                        <div className="flex gap-1.5 flex-1 justify-end">
-                          {[1, 5, 10, 20].map(s => (
-                            <button key={s} onClick={() => { setSelectedStep(s); handleRaise(s); }} className="px-3 py-1.5 rounded-xl text-xs font-black bg-[#0B132B] text-white border border-slate-700 hover:border-amber-400 cursor-pointer">+{s} FM</button>
+                    ) : (
+                      /* ANTEPRIMA FORMAZIONE SUL CAMPO DA GIOCO (11 TITOLARI PITCH VIEW) */
+                      <div
+                        className="w-full h-full min-h-[480px] rounded-2xl p-4 flex flex-col items-center justify-around relative overflow-hidden border-2 border-emerald-400/50 shadow-inner"
+                        style={{ background: `radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.35) 0%, rgba(4, 38, 22, 0.96) 80%, rgba(2, 18, 11, 1) 100%), repeating-linear-gradient(0deg, rgba(16, 120, 68, 0.3) 0px, rgba(16, 120, 68, 0.3) 40px, rgba(8, 80, 42, 0.3) 40px, rgba(8, 80, 42, 0.3) 80px)` }}
+                      >
+                        <div className="absolute inset-0 pointer-events-none opacity-20">
+                          <div className="absolute inset-4 border-2 border-emerald-100 rounded-xl" />
+                          <div className="absolute top-1/2 left-4 right-4 h-0.5 bg-emerald-100 -translate-y-1/2" />
+                          <div className="absolute top-1/2 left-1/2 w-48 h-48 border-2 border-emerald-100 rounded-full -translate-x-1/2 -translate-y-1/2" />
+                        </div>
+
+                        <div className="text-center z-10 bg-slate-950/80 px-4 py-1 rounded-full border border-emerald-500/40">
+                          <h3 className="text-sm font-black text-white uppercase">{coaches.find(x => x.name === selectedRosterCoach)?.teamName} • Top 11 in Campo (4-3-3)</h3>
+                        </div>
+
+                        <div className="z-10 flex gap-2">
+                          {((purchasedPlayers[selectedRosterCoach] || []).filter(i => i.player.role === 'P').slice(0, 1)).map((item, i) => (
+                            <div key={i} className="bg-amber-500 text-slate-950 px-3 py-1.5 rounded-xl font-black text-xs shadow-lg border border-white text-center">
+                              🧤 {item.player.name} <span className="opacity-75">({item.price} FM)</span>
+                            </div>
                           ))}
-                          <input type="number" placeholder="Prezzo" value={manualPriceInput} onChange={e => setManualPriceInput(e.target.value)} className="w-16 bg-[#0B132B] border border-slate-700 rounded-lg px-2 py-1 text-xs font-bold text-emerald-400 text-center" />
+                        </div>
+
+                        <div className="z-10 flex flex-wrap justify-center gap-2">
+                          {((purchasedPlayers[selectedRosterCoach] || []).filter(i => i.player.role === 'D').slice(0, 4)).map((item, i) => (
+                            <div key={i} className="bg-emerald-500 text-slate-950 px-3 py-1.5 rounded-xl font-black text-xs shadow-lg border border-white text-center">
+                              🛡️ {item.player.name} <span className="opacity-75">({item.price} FM)</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="z-10 flex flex-wrap justify-center gap-2">
+                          {((purchasedPlayers[selectedRosterCoach] || []).filter(i => i.player.role === 'C').slice(0, 3)).map((item, i) => (
+                            <div key={i} className="bg-sky-500 text-slate-950 px-3 py-1.5 rounded-xl font-black text-xs shadow-lg border border-white text-center">
+                              ⚡ {item.player.name} <span className="opacity-75">({item.price} FM)</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="z-10 flex flex-wrap justify-center gap-2">
+                          {((purchasedPlayers[selectedRosterCoach] || []).filter(i => i.player.role === 'A').slice(0, 3)).map((item, i) => (
+                            <div key={i} className="bg-rose-600 text-white px-3 py-1.5 rounded-xl font-black text-xs shadow-lg border border-white text-center">
+                              ⚽ {item.player.name} <span className="opacity-75">({item.price} FM)</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
+                  </section>
+                </main>
+              )}
+
+              {activeTab === 'HIGHLIGHTS' && (
+                <main className="flex-1 flex flex-col gap-3 items-center justify-center p-4 bg-[#060D1E] border border-cyan-500/30 rounded-3xl my-1">
+                  <h2 className="text-xl font-black text-white uppercase">🏆 CLASSIFICHE & STATISTICHE 🏆</h2>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full max-w-4xl text-center">
+                    <div className="bg-[#0B132B] p-3 rounded-xl border border-slate-800"><Award size={20} className="text-amber-400 mx-auto" /><span className="text-[9px] text-slate-400 block">Più Crediti</span><strong className="text-xs">{richestCoach?.teamName} ({richestCoach?.budget} FM)</strong></div>
+                    <div className="bg-[#0B132B] p-3 rounded-xl border border-slate-800"><Flame size={20} className="text-emerald-400 mx-auto" /><span className="text-[9px] text-slate-400 block">Più Acquisti</span><strong className="text-xs">{fullestCoach?.teamName} ({fullestCoach?.playersCount})</strong></div>
+                    <div className="bg-[#0B132B] p-3 rounded-xl border border-slate-800"><PieChart size={20} className="text-sky-400 mx-auto" /><span className="text-[9px] text-slate-400 block">Totale Speso</span><strong className="text-xs">{coaches.reduce((a, c) => a + (initialBudget - c.budget), 0)} FM</strong></div>
+                    <div className="bg-[#0B132B] p-3 rounded-xl border border-slate-800"><TrendingUp size={20} className="text-purple-400 mx-auto" /><span className="text-[9px] text-slate-400 block">Media Prezzo</span><strong className="text-xs">{Math.round(coaches.reduce((a, c) => a + (initialBudget - c.budget), 0) / Math.max(1, totalPurchasesCount))} FM</strong></div>
                   </div>
-                </section>
-
-                <aside className="hidden lg:flex w-[205px] shrink-0 bg-[#060D1E] rounded-2xl p-3 flex-col gap-2 overflow-hidden border border-cyan-500/30">
-                  <h3 className="text-xs font-bold text-cyan-400 uppercase flex items-center gap-1 pb-1.5 border-b border-cyan-500/20"><History size={13} /> Offerte</h3>
-                  <div className="space-y-1.5 overflow-y-auto flex-1">
-                    {bidHistory.map((item, idx) => (
-                      <div key={idx} className="bg-[#0B132B] p-2 rounded-xl flex justify-between text-xs border border-slate-800">
-                        <span className="font-bold truncate max-w-[105px]">{getCoachDisplay(item.bidder)}</span>
-                        <span className="font-black text-emerald-400">{item.amount} FM</span>
-                      </div>
-                    ))}
-                  </div>
-                </aside>
-              </main>
-            ) : (
-              /* SMARTPHONE BUZZER CON TASTIERINO NUMERICO LIBERO + SFOTTÒ */
-              <main
-                className="flex-1 flex flex-col gap-2 max-w-sm mx-auto w-full my-auto overflow-y-auto items-center justify-between py-2 px-3 rounded-3xl border-2 border-emerald-400/50"
-                style={{ background: `radial-gradient(circle at 50% 35%, rgba(16, 185, 129, 0.34) 0%, rgba(5, 42, 26, 0.96) 75%, rgba(2, 18, 11, 1) 100%), repeating-linear-gradient(90deg, rgba(16, 120, 68, 0.35) 0px, rgba(16, 120, 68, 0.35) 45px, rgba(8, 82, 45, 0.35) 45px, rgba(8, 82, 45, 0.35) 90px)` }}
-              >
-                <div className="text-center w-full bg-[#060D1E]/95 p-2 rounded-2xl border border-slate-700">
-                  <div className="flex justify-between text-[10px] font-black mb-0.5">
-                    <span className={`px-2 py-0.5 rounded-full ${getRoleBadge(activePlayer.role)}`}>{activePlayer.role} • {activePlayer.team}</span>
-                    <span className="text-amber-400">Crediti: {coaches.find(c => c.name === playerName)?.budget || 0} FM (Max: {getCoachMaxBid(playerName)})</span>
-                  </div>
-                  <h2 className="text-lg font-black text-white uppercase truncate">{activePlayer.name}</h2>
-                  <p className="text-[10px] text-slate-400">In testa: <strong className="text-amber-400">{highestBidder ? `${getCoachDisplay(highestBidder)} (${currentBid} FM)` : `Da ${startingPrice} FM`}</strong></p>
-                </div>
-
-                <div className="w-full bg-[#060D1E]/95 border border-slate-700 rounded-3xl p-3 flex flex-col items-center gap-2">
-                  <button disabled={highestBidder === playerName} onClick={() => handleRaise(selectedStep)} className={`w-28 h-28 rounded-full flex flex-col items-center justify-center gap-1 select-none ${highestBidder === playerName ? 'bg-emerald-900/60 border-4 border-emerald-400 text-emerald-300' : 'bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 text-slate-950 font-black border-4 border-amber-200 shadow-xl active:translate-y-2 cursor-pointer'}`}>
-                    <Zap size={22} /> <span className="text-sm font-black uppercase">{highestBidder === playerName ? 'IN TESTA' : `BUZZ +${selectedStep}`}</span>
-                  </button>
-
-                  <div className="w-full grid grid-cols-4 gap-1">
-                    {[1, 5, 10, 20].map(s => (
-                      <button key={s} onClick={() => setSelectedStep(s)} className={`py-1 text-xs font-black rounded-lg border cursor-pointer ${selectedStep === s ? 'bg-amber-500 border-amber-400 text-slate-950' : 'bg-[#0B132B] border-slate-700 text-white'}`}>+{s}</button>
-                    ))}
-                  </div>
-
-                  <div className="w-full flex gap-1 pt-1 border-t border-slate-800">
-                    <input
-                      type="number"
-                      placeholder="Offerta esatta (es. 45)..."
-                      value={customBidInput}
-                      onChange={e => setCustomBidInput(e.target.value)}
-                      className="flex-1 bg-[#0B132B] border border-slate-700 rounded-lg px-2 py-1 text-xs text-emerald-400 font-black text-center"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const val = Number(customBidInput);
-                        if (!isNaN(val) && val > (currentBid || startingPrice)) {
-                          const diff = val - (currentBid || startingPrice);
-                          handleRaise(diff);
-                          setCustomBidInput('');
-                        } else {
-                          setCustomAlertMessage('Inserisci una cifra superiore all\'offerta corrente!');
-                        }
-                      }}
-                      className="px-3 bg-emerald-500 text-slate-950 font-black rounded-lg text-xs uppercase cursor-pointer"
-                    >
-                      Offri
-                    </button>
-                  </div>
-
-                  <div className="w-full pt-1 border-t border-slate-800 space-y-1">
-                    <span className="text-[8px] font-black uppercase text-amber-400 block text-center">📣 Sfottò rapidi sulla TV:</span>
-                    <div className="grid grid-cols-3 gap-1">
-                      {EMOJI_CHOICES.map(item => (
-                        <button key={item.name} onClick={() => sendLiveReaction(item.emoji, item.msg)} className="py-1 rounded-lg border bg-[#0B132B] hover:bg-slate-800 border-slate-700 flex items-center justify-center gap-1 cursor-pointer active:scale-95">
-                          <span className="text-sm leading-none">{item.emoji}</span>
-                          <span className="text-[9px] font-bold text-slate-200">{item.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </main>
-            )
-          )}
-
-          {activeTab === 'ROSTERS' && (
-            <main className="flex-1 flex flex-col lg:flex-row gap-3 my-1 overflow-y-auto w-full min-h-0">
-              <aside className="w-full lg:w-[250px] bg-[#060D1E] border border-cyan-500/30 rounded-2xl p-3 flex flex-col gap-2">
-                <div className="flex justify-between items-center pb-2 border-b border-slate-800">
-                  <span className="text-xs font-bold text-cyan-400 uppercase">Squadre di Lega</span>
-                  <button onClick={handleExportCSV} className="text-[10px] bg-emerald-500 text-slate-950 font-black px-2 py-1 rounded-lg flex items-center gap-1 cursor-pointer"><Download size={11} /> Excel</button>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-1 bg-[#0B132B] p-1 rounded-xl border border-slate-800 text-center text-xs font-bold">
-                  <button onClick={() => setRosterViewMode('GRID')} className={`py-1 rounded-lg cursor-pointer ${rosterViewMode === 'GRID' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}>Tabellone</button>
-                  <button onClick={() => setRosterViewMode('FIELD')} className={`py-1 rounded-lg cursor-pointer ${rosterViewMode === 'FIELD' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400'}`}>⚽ Campo 11</button>
-                </div>
-
-                <div className="space-y-1.5 overflow-y-auto flex-1">
-                  {coaches.map(c => (
-                    <button key={c.name} onClick={() => setSelectedRosterCoach(c.name)} className={`w-full flex justify-between items-center p-2 rounded-xl border text-left cursor-pointer ${selectedRosterCoach === c.name ? 'bg-amber-500/10 border-amber-500 text-amber-300' : 'bg-[#0B132B] border-slate-800 text-white'}`}>
-                      <div className="truncate pr-1">
-                        <span className="font-black text-xs block truncate uppercase">{c.teamName}</span>
-                        <span className="text-[9px] text-slate-400 block truncate">{c.name}</span>
-                      </div>
-                      <span className="font-black text-amber-400 text-xs shrink-0">{c.budget} FM</span>
-                    </button>
-                  ))}
-                </div>
-              </aside>
-
-              <section className="flex-1 bg-[#060D1E] border border-cyan-500/30 rounded-2xl p-4 overflow-y-auto">
-                {rosterViewMode === 'GRID' ? (
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center bg-[#0B132B] p-3 rounded-xl border border-slate-800">
-                      <div>
-                        <h2 className="text-lg font-black text-white uppercase">{coaches.find(x => x.name === selectedRosterCoach)?.teamName}</h2>
-                        <p className="text-xs text-slate-400">Mister: {selectedRosterCoach} • Offerta Max: <strong className="text-emerald-400">{getCoachMaxBid(selectedRosterCoach)} FM</strong></p>
-                      </div>
-                      <span className="text-sm font-black text-amber-400">{(purchasedPlayers[selectedRosterCoach] || []).length} / {TOTAL_SLOTS} Acquistati</span>
-                    </div>
-
-                    {(['P', 'D', 'C', 'A'] as const).map(role => {
-                      const items = (purchasedPlayers[selectedRosterCoach] || []).filter(i => i.player.role === role);
-                      const max = ROLE_LIMITS[role];
-                      return (
-                        <div key={role} className="space-y-1">
-                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${getRoleBadge(role)}`}>{role} ({items.length}/{max})</span>
-                          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2">
-                            {Array.from({ length: max }).map((_, idx) => items[idx] ? (
-                              <div key={idx} className="bg-[#0B132B] border border-slate-800 p-2 rounded-lg text-xs flex flex-col justify-between">
-                                <span className="font-bold block truncate">{items[idx].player.name}</span>
-                                <span className="text-amber-400 font-black text-[10px] mt-1">{items[idx].price} FM</span>
-                              </div>
-                            ) : <div key={idx} className="bg-[#0B132B]/40 border border-dashed border-slate-800 p-2 rounded-lg text-[9px] text-slate-600 text-center">Libero</div>)}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div
-                    className="w-full h-full min-h-[480px] rounded-2xl p-4 flex flex-col items-center justify-around relative overflow-hidden border-2 border-emerald-400/50 shadow-inner"
-                    style={{ background: `radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.35) 0%, rgba(4, 38, 22, 0.96) 80%, rgba(2, 18, 11, 1) 100%), repeating-linear-gradient(0deg, rgba(16, 120, 68, 0.3) 0px, rgba(16, 120, 68, 0.3) 40px, rgba(8, 80, 42, 0.3) 40px, rgba(8, 80, 42, 0.3) 80px)` }}
-                  >
-                    <div className="absolute inset-0 pointer-events-none opacity-20">
-                      <div className="absolute inset-4 border-2 border-emerald-100 rounded-xl" />
-                      <div className="absolute top-1/2 left-4 right-4 h-0.5 bg-emerald-100 -translate-y-1/2" />
-                      <div className="absolute top-1/2 left-1/2 w-48 h-48 border-2 border-emerald-100 rounded-full -translate-x-1/2 -translate-y-1/2" />
-                    </div>
-
-                    <div className="text-center z-10 bg-slate-950/80 px-4 py-1 rounded-full border border-emerald-500/40">
-                      <h3 className="text-sm font-black text-white uppercase">{coaches.find(x => x.name === selectedRosterCoach)?.teamName} • Top 11 Titolari</h3>
-                    </div>
-
-                    <div className="z-10 flex gap-2">
-                      {((purchasedPlayers[selectedRosterCoach] || []).filter(i => i.player.role === 'P').slice(0, 1)).map((item, i) => (
-                        <div key={i} className="bg-amber-500 text-slate-950 px-3 py-1.5 rounded-xl font-black text-xs shadow-lg border border-white text-center">
-                          🛡️ {item.player.name} <span className="opacity-75">({item.price} FM)</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="z-10 flex flex-wrap justify-center gap-2">
-                      {((purchasedPlayers[selectedRosterCoach] || []).filter(i => i.player.role === 'D').slice(0, 4)).map((item, i) => (
-                        <div key={i} className="bg-emerald-500 text-slate-950 px-3 py-1.5 rounded-xl font-black text-xs shadow-lg border border-white text-center">
-                          🛡️ {item.player.name} <span className="opacity-75">({item.price} FM)</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="z-10 flex flex-wrap justify-center gap-2">
-                      {((purchasedPlayers[selectedRosterCoach] || []).filter(i => i.player.role === 'C').slice(0, 4)).map((item, i) => (
-                        <div key={i} className="bg-sky-500 text-slate-950 px-3 py-1.5 rounded-xl font-black text-xs shadow-lg border border-white text-center">
-                          ⚡ {item.player.name} <span className="opacity-75">({item.price} FM)</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="z-10 flex flex-wrap justify-center gap-2">
-                      {((purchasedPlayers[selectedRosterCoach] || []).filter(i => i.player.role === 'A').slice(0, 2)).map((item, i) => (
-                        <div key={i} className="bg-rose-600 text-white px-3 py-1.5 rounded-xl font-black text-xs shadow-lg border border-white text-center">
-                          ⚽ {item.player.name} <span className="opacity-75">({item.price} FM)</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </section>
-            </main>
-          )}
-
-          {activeTab === 'HIGHLIGHTS' && (
-            <main className="flex-1 flex flex-col gap-3 items-center justify-center p-4 bg-[#060D1E] border border-cyan-500/30 rounded-3xl my-1">
-              <h2 className="text-xl font-black text-white uppercase">🏆 CLASSIFICHE & STATISTICHE 🏆</h2>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full max-w-4xl text-center">
-                <div className="bg-[#0B132B] p-3 rounded-xl border border-slate-800"><Award size={20} className="text-amber-400 mx-auto" /><span className="text-[9px] text-slate-400 block">Più Crediti</span><strong className="text-xs">{richestCoach?.teamName} ({richestCoach?.budget} FM)</strong></div>
-                <div className="bg-[#0B132B] p-3 rounded-xl border border-slate-800"><Flame size={20} className="text-emerald-400 mx-auto" /><span className="text-[9px] text-slate-400 block">Più Acquisti</span><strong className="text-xs">{fullestCoach?.teamName} ({fullestCoach?.playersCount})</strong></div>
-                <div className="bg-[#0B132B] p-3 rounded-xl border border-slate-800"><PieChart size={20} className="text-sky-400 mx-auto" /><span className="text-[9px] text-slate-400 block">Totale Speso</span><strong className="text-xs">{coaches.reduce((a, c) => a + (initialBudget - c.budget), 0)} FM</strong></div>
-                <div className="bg-[#0B132B] p-3 rounded-xl border border-slate-800"><TrendingUp size={20} className="text-purple-400 mx-auto" /><span className="text-[9px] text-slate-400 block">Media Prezzo</span><strong className="text-xs">{Math.round(coaches.reduce((a, c) => a + (initialBudget - c.budget), 0) / Math.max(1, totalPurchasesCount))} FM</strong></div>
-              </div>
-            </main>
+                </main>
+              )}
+            </>
           )}
 
           {/* STRISCIA SCORREVOLE IN BASSO */}
@@ -1128,7 +1485,7 @@ export default function App() {
         </div>
       )}
 
-      {/* MODALE CONTRATTO CON TIMBRO UNIVERSALE "COLPO DI MERCATO" */}
+      {/* MODALE CONTRATTO CON FIRMA AUTOGRAFA E TIMBRO DINAMICO */}
       {awardModal && awardModal.show && (
         <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="fixed inset-0 bg-white pointer-events-none z-50" style={{ animation: 'paparazziFlash 0.65s ease-out forwards' }} />
@@ -1144,16 +1501,21 @@ export default function App() {
                 <span className="text-[9px] uppercase text-slate-500 font-bold block">Firma del Calciatore</span>
                 <div className="text-2xl text-amber-300 italic font-serif py-1" style={{ animation: 'signContractReveal 0.85s ease-out forwards' }}>{awardModal.player.name}</div>
               </div>
-              <div className="inline-block border-2 border-amber-400 text-amber-400 px-3 py-1 rounded-lg font-black text-xs uppercase" style={{ animation: 'stampSlamEffect 0.35s ease-out 0.55s backwards' }}>
-                🔥 COLPO DI MERCATO • UFFICIALE 🔥
-              </div>
+              {(() => {
+                const s = getViralStampInfo(awardModal.price, awardModal.player.basePrice, initialBudget);
+                return (
+                  <div className={`inline-block border-2 ${s.border} px-3 py-1 rounded-lg font-black text-xs uppercase`} style={{ animation: 'stampSlamEffect 0.35s ease-out 0.55s backwards' }}>
+                    {s.label}
+                  </div>
+                );
+              })()}
             </div>
             <div className="grid grid-cols-2 gap-2">
               <button onClick={handleShareViralDealWhatsApp} className="py-3 bg-emerald-500 text-slate-950 font-black rounded-xl text-[11px] uppercase flex items-center justify-center gap-1.5 cursor-pointer">
                 <Share2 size={14} /> WhatsApp
               </button>
               <button onClick={handleDownloadSocialCard} className="py-3 bg-amber-500 text-slate-950 font-black rounded-xl text-[11px] uppercase flex items-center justify-center gap-1.5 cursor-pointer">
-                <Sparkles size={14} /> Card IG
+                <Sparkles size={14} /> Card IG / Social
               </button>
             </div>
             <button onClick={handleCloseAwardAndNext} className="w-full py-2.5 bg-[#060D1E] border border-slate-700 text-slate-200 font-black rounded-2xl text-xs uppercase cursor-pointer">Prossimo Calciatore ⏭️</button>
@@ -1161,20 +1523,22 @@ export default function App() {
         </div>
       )}
 
-      {/* MODALE QR CODE A SCHERMO INTERO */}
+      {/* MODALE QR CODE A SCHERMO INTERO PER LA TV */}
       {showQrModal && (
         <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-lg flex items-center justify-center p-6 z-50">
-          <div className="bg-[#060D1E] border-2 border-cyan-400 rounded-3xl p-8 max-w-md w-full flex flex-col items-center gap-5 text-center relative shadow-2xl">
-            <button onClick={() => setShowQrModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer"><X size={22} /></button>
-            <h3 className="text-2xl font-black text-white uppercase">Inquadra per il Buzzer 📱</h3>
-            <p className="text-xs text-slate-300">
-              Gli amici inquadrano questo QR Code con la fotocamera del telefono oppure inseriscono il codice <strong className="text-amber-400 text-base">{roomCode}</strong> nella home dell'app!
-            </p>
-            <div className="bg-white p-4 rounded-3xl shadow-2xl">
-              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(inviteUrl)}`} alt="QR Code" className="w-56 h-56" />
+          <div className="bg-[#060D1E] border-2 border-cyan-400 rounded-3xl p-8 max-w-lg w-full flex flex-col items-center gap-5 text-center relative shadow-2xl">
+            <button onClick={() => setShowQrModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer"><X size={24} /></button>
+            <span className="bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 px-3 py-1 rounded-full text-xs font-black uppercase">Collegamento Rapido Smartphone</span>
+            <h3 className="text-3xl font-black text-white uppercase">Inquadra la TV col Telefono 📱</h3>
+            <div className="bg-white p-5 rounded-3xl shadow-2xl">
+              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(inviteUrl)}`} alt="QR Code" className="w-64 h-64" />
             </div>
-            <button onClick={handleShareWhatsAppInvite} className="w-full py-3 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-2 cursor-pointer shadow-lg">
-              <Share2 size={16} /> Condividi Link su WhatsApp
+            <div className="bg-[#0B132B] border border-amber-400/50 px-6 py-3 rounded-2xl w-full">
+              <span className="text-[10px] font-bold text-slate-400 uppercase block">Oppure inserisci il Codice Stanza:</span>
+              <strong className="text-3xl font-black text-amber-400 tracking-widest">{roomCode}</strong>
+            </div>
+            <button onClick={handleShareWhatsAppInvite} className="w-full py-3.5 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-2 cursor-pointer shadow-lg">
+              <Share2 size={16} /> Invia Link nel Gruppo WhatsApp
             </button>
           </div>
         </div>
@@ -1185,7 +1549,7 @@ export default function App() {
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#0B132B] border border-amber-500/40 rounded-3xl p-5 max-w-md w-full flex flex-col gap-3 text-center relative max-h-[90vh] overflow-y-auto">
             <button onClick={() => setShowCustomLeagueModal(false)} className="absolute top-4 right-4 text-slate-400 cursor-pointer"><X size={16} /></button>
-            <h3 className="text-base font-black text-white uppercase">Crea la tua Sala Aste</h3>
+            <h3 className="text-base font-black text-white uppercase">Crea la tua Sala Aste Gratuita</h3>
             <input type="text" placeholder="Nome della Lega (es. FantaLega 2026)..." value={customLeagueInput} onChange={e => setCustomLeagueInput(e.target.value)} className="w-full bg-[#060D1E] border border-slate-700 rounded-xl p-2.5 text-xs text-amber-400 font-bold text-center" />
             <div className="flex justify-between bg-[#060D1E] p-2.5 rounded-xl text-xs">
               <span className="font-bold">Crediti Iniziali:</span>
@@ -1233,34 +1597,59 @@ export default function App() {
         </div>
       )}
 
+      {/* MODALE DEMO CON PERSONALIZZAZIONE SQUADRE */}
       {showDemoModal && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <div className="bg-[#060D1E] border border-cyan-500/40 rounded-3xl p-5 max-w-sm w-full flex flex-col gap-3.5 text-center relative">
+          <div className="bg-[#060D1E] border border-cyan-500/40 rounded-3xl p-5 max-w-sm w-full flex flex-col gap-3 text-center relative">
             <button onClick={() => setShowDemoModal(false)} className="absolute top-4 right-4 text-slate-400 cursor-pointer"><X size={16} /></button>
             <h3 className="text-lg font-black text-white uppercase">Prova Demo Interattiva</h3>
-            <p className="text-xs text-slate-300">Scegli <strong>Presidente (TV)</strong>: ti daremo subito il Codice Stanza per testare il Buzzer anche da smartphone.</p>
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => setDemoRoleChoice('PRESIDENT')} className={`p-3 rounded-xl border flex flex-col items-center gap-1 cursor-pointer ${demoRoleChoice === 'PRESIDENT' ? 'bg-amber-500/20 border-amber-400 text-white' : 'bg-[#0B132B] border-slate-800 text-slate-400'}`}><Tv size={18} /><span className="text-xs font-black">Presidente (TV)</span></button>
-              <button onClick={() => setDemoRoleChoice('PLAYER')} className={`p-3 rounded-xl border flex flex-col items-center gap-1 cursor-pointer ${demoRoleChoice === 'PLAYER' ? 'bg-cyan-500/20 border-cyan-400 text-white' : 'bg-[#0B132B] border-slate-800 text-slate-400'}`}><Smartphone size={18} /><span className="text-xs font-black">Buzzer Telefono</span></button>
+              <button onClick={() => setDemoRoleChoice('PRESIDENT')} className={`p-2.5 rounded-xl border flex flex-col items-center gap-1 cursor-pointer ${demoRoleChoice === 'PRESIDENT' ? 'bg-amber-500/20 border-amber-400 text-white' : 'bg-[#0B132B] border-slate-800 text-slate-400'}`}><Tv size={18} /><span className="text-xs font-black">Regia TV</span></button>
+              <button onClick={() => setDemoRoleChoice('PLAYER')} className={`p-2.5 rounded-xl border flex flex-col items-center gap-1 cursor-pointer ${demoRoleChoice === 'PLAYER' ? 'bg-cyan-500/20 border-cyan-400 text-white' : 'bg-[#0B132B] border-slate-800 text-slate-400'}`}><Smartphone size={18} /><span className="text-xs font-black">Buzzer Telefono</span></button>
             </div>
-            <button onClick={handleLaunchDemo} className="w-full py-3 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase cursor-pointer shadow-lg">Avvia Demo 🚀</button>
+            <div className="space-y-1.5 text-left">
+              <span className="text-[10px] font-bold text-slate-400 uppercase block">Squadre in Demo:</span>
+              <input type="text" value={demoName1} onChange={e => setDemoName1(e.target.value)} className="w-full bg-[#0B132B] border border-slate-700 rounded-lg p-1.5 text-xs text-amber-300 font-bold" />
+              <input type="text" value={demoName2} onChange={e => setDemoName2(e.target.value)} className="w-full bg-[#0B132B] border border-slate-700 rounded-lg p-1.5 text-xs text-white" />
+              <input type="text" value={demoName3} onChange={e => setDemoName3(e.target.value)} className="w-full bg-[#0B132B] border border-slate-700 rounded-lg p-1.5 text-xs text-white" />
+            </div>
+            <button onClick={handleLaunchDemo} className="w-full py-3 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase cursor-pointer shadow-lg">Avvia Demo Ora 🚀</button>
           </div>
         </div>
       )}
 
+      {/* MODALE PAYWALL CON PREZZI CHIARI (€4,90 e €9,90) E SCELTA PAGAMENTO */}
       {showPaywall && (
         <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#0B132B] border-2 border-amber-400 rounded-3xl p-5 max-w-lg w-full flex flex-col gap-3.5 relative text-center">
             <button onClick={() => setShowPaywall(false)} className="absolute top-4 right-4 text-slate-400 cursor-pointer"><X size={16} /></button>
             <h2 className="text-xl font-black text-white uppercase">Sblocca l'Asta Completa fino al 25° Giocatore 🏆</h2>
             <div className="grid grid-cols-2 gap-2.5 text-left">
-              <button onClick={() => setActivePackage('TV')} className={`p-3 rounded-2xl border-2 cursor-pointer ${activePackage === 'TV' ? 'bg-amber-500/15 border-amber-400' : 'bg-[#060D1E] border-slate-800'}`}><span className="text-xs font-black block">🖥️ Solo Studio TV</span><span className="text-2xl font-black text-amber-400">€4,90</span></button>
-              <button onClick={() => setActivePackage('LIVE')} className={`p-3 rounded-2xl border-2 cursor-pointer ${activePackage === 'LIVE' ? 'bg-emerald-500/15 border-emerald-400' : 'bg-[#060D1E] border-slate-800'}`}><span className="text-xs font-black block">📱 TV + Telefoni Buzzer</span><span className="text-2xl font-black text-emerald-400">€9,90</span></button>
+              <button onClick={() => { setSelectedPackage('TV'); setActivePackage('TV'); }} className={`p-3 rounded-2xl border-2 cursor-pointer ${selectedPackage === 'TV' ? 'bg-amber-500/15 border-amber-400' : 'bg-[#060D1E] border-slate-800'}`}>
+                <span className="text-xs font-black block">🖥️ Solo Tabellone TV</span>
+                <span className="text-2xl font-black text-amber-400">€4,90</span>
+                <span className="text-[10px] text-slate-400 block">Una tantum per tutta la lega</span>
+              </button>
+              <button onClick={() => { setSelectedPackage('LIVE'); setActivePackage('LIVE'); }} className={`p-3 rounded-2xl border-2 cursor-pointer ${selectedPackage === 'LIVE' ? 'bg-emerald-500/15 border-emerald-400' : 'bg-[#060D1E] border-slate-800'}`}>
+                <span className="text-xs font-black block">📱 TV + Telefoni Buzzer</span>
+                <span className="text-2xl font-black text-emerald-400">€9,90</span>
+                <span className="text-[10px] text-slate-400 block">Una tantum per tutta la lega</span>
+              </button>
             </div>
-            {activePackage === 'LIVE' && (
+
+            <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+              <button onClick={() => setPaymentType('SINGLE')} className={`py-2 rounded-xl border flex items-center justify-center gap-1 cursor-pointer ${paymentType === 'SINGLE' ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-[#060D1E] text-slate-400 border-slate-800'}`}>
+                <CreditCard size={13} /> Paga il Presidente
+              </button>
+              <button onClick={() => setPaymentType('SPLIT')} className={`py-2 rounded-xl border flex items-center justify-center gap-1 cursor-pointer ${paymentType === 'SPLIT' ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-[#060D1E] text-slate-400 border-slate-800'}`}>
+                <Users2 size={13} /> Dividi con Colletta
+              </button>
+            </div>
+
+            {paymentType === 'SPLIT' && (
               <div className="bg-[#060D1E] border border-slate-800 rounded-2xl p-3 text-left space-y-2">
-                <span className="text-[10px] font-black uppercase text-amber-400 flex items-center gap-1"><Coins size={13} /> Tabella Colletta ({collettaPaidCoaches.length}/{coaches.length})</span>
-                <div className="grid grid-cols-3 gap-1.5">
+                <span className="text-[10px] font-black uppercase text-amber-400 flex items-center gap-1"><Coins size={13} /> Tabella Colletta ({collettaPaidCoaches.length}/{coaches.length} quote raccolte)</span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                   {coaches.map(c => (
                     <button key={c.name} onClick={() => setCollettaPaidCoaches(prev => prev.includes(c.name) ? prev.filter(n => n !== c.name) : [...prev, c.name])} className={`p-1.5 rounded-lg border text-[11px] font-bold flex justify-between cursor-pointer ${collettaPaidCoaches.includes(c.name) ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300' : 'bg-[#0B132B] border-slate-800 text-slate-400'}`}>
                       <span className="truncate">{c.teamName}</span> <span>{collettaPaidCoaches.includes(c.name) ? '✅' : '⏳'}</span>
@@ -1269,7 +1658,24 @@ export default function App() {
                 </div>
               </div>
             )}
-            <button onClick={() => { setIsLicenseUnlocked(true); setShowPaywall(false); }} className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase cursor-pointer flex items-center justify-center gap-2"><CreditCard size={15} /> Sblocca Ora (€{currentPackagePrice.toFixed(2)})</button>
+
+            <button onClick={() => { setIsLicenseUnlocked(true); setShowPaywall(false); }} className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase cursor-pointer flex items-center justify-center gap-2 shadow-lg">
+              <CreditCard size={15} /> Sblocca Ora (€{currentPackagePrice.toFixed(2)} totale lega)
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODALE INFORMATIVA LEGALE E SUPPORTO */}
+      {legalModalTitle && (
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
+          <div className="bg-[#0B132B] border border-slate-700 rounded-3xl p-6 max-w-md w-full flex flex-col gap-3 text-left relative">
+            <button onClick={() => setLegalModalTitle(null)} className="absolute top-4 right-4 text-slate-400 cursor-pointer"><X size={18} /></button>
+            <h3 className="text-base font-black text-amber-400 uppercase">{legalModalTitle}</h3>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              FantasyBuzz garantisce un servizio trasparente una tantum senza alcun rinnovo automatico. I dati della lega restano salvati localmente e sincronizzati durante la sessione live. Per assistenza immediata o richieste di rimborso entro 24h, contatta il supporto ufficiale indicando il Codice Stanza: <strong>{roomCode}</strong>.
+            </p>
+            <button onClick={() => setLegalModalTitle(null)} className="w-full py-2.5 bg-amber-500 text-slate-950 font-black rounded-xl text-xs uppercase cursor-pointer">Chiudi</button>
           </div>
         </div>
       )}
