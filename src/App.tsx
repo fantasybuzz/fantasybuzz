@@ -4,7 +4,7 @@ import {
   Share2, Search, Download, Shirt, Play, Pause, CreditCard, Tv, Smartphone,
   Monitor, Timer, Flame, Award, PieChart, AlertCircle, TrendingUp, Gavel,
   RotateCcw, Shuffle, UserPlus, Trash2, Sparkles, QrCode, Volume2, VolumeX,
-  FileSignature, HelpCircle, ChevronDown, Coins, ArrowUp, Info, Copy, Users2, Bell, RefreshCw, BookOpen
+  FileSignature, HelpCircle, ChevronDown, Coins, ArrowUp, Info, Copy, Users2, Bell, BookOpen
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import rawListone from './data/listone.json';
@@ -168,7 +168,7 @@ const getViralStampInfo = (price: number, basePrice: number, initialBudget: numb
   return { label: 'CONTRATTO DEPOSITATO ✅', color: '#10b981', border: 'border-emerald-400 text-emerald-400' };
 };
 
-// === 2. MOTORE AUDIO, CAMPANELLA CALCIOMERCATO E TELECRONISTA ===
+// === 2. MOTORE AUDIO, CAMPANELLA E TELECRONISTA ===
 let sharedAudioCtx: AudioContext | null = null;
 let isGlobalSoundMuted = false;
 
@@ -214,7 +214,6 @@ const playBuzzSound = () => playTone(880, 1760, 0.22, 'sawtooth');
 const playGongSound = () => playTone(220, 110, 1.0, 'sine');
 const playTickSound = (u = false) => playTone(u ? 1200 : 600, u ? 1200 : 600, 0.09, u ? 'sawtooth' : 'sine');
 
-// Suono della Campanella Storica del Calciomercato (Hotel Gallia style)
 const playMarketBellSound = () => {
   const ctx = getAudioCtx();
   if (!ctx) return;
@@ -288,16 +287,15 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<'ALL' | Role>('ALL');
   const [hidePurchased, setHidePurchased] = useState(true);
-  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v6_startFromOne') !== 'false');
-  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v6_voiceEnabled') !== 'false');
+  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v7_startFromOne') !== 'false');
+  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v7_voiceEnabled') !== 'false');
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [legalModalTitle, setLegalModalTitle] = useState<string | null>(null);
 
-  // Stato Video Trailer Flash in Home Page
   const [trailerIdx, setTrailerIdx] = useState(0);
   const [isTrailerPlaying, setIsTrailerPlaying] = useState(true);
-  const [activeLeagueTab, setActiveLeagueTab] = useState<'REGULAR' | 'REPAIR'>('REGULAR'); // Asta normale vs Riparazione
-  const [showQuickHelp, setShowQuickHelp] = useState(false); // Guida Rapida in 30 secondi
+  const [activeLeagueTab, setActiveLeagueTab] = useState<'REGULAR' | 'REPAIR'>('REGULAR');
+  const [showQuickHelp, setShowQuickHelp] = useState(false);
 
   const [showWelcomeGuide, setShowWelcomeGuide] = useState(false);
   const [showRoomCodeArrow, setShowRoomCodeArrow] = useState(true);
@@ -315,10 +313,10 @@ export default function App() {
   const [manualPriceInput, setManualPriceInput] = useState<string>('');
   const [customBidInput, setCustomBidInput] = useState<string>('');
 
-  const [activePackage, setActivePackage] = useState<'TV' | 'LIVE'>(() => (localStorage.getItem('fb_v6_activePackage') as 'TV' | 'LIVE') || 'LIVE');
+  const [activePackage, setActivePackage] = useState<'TV' | 'LIVE'>(() => (localStorage.getItem('fb_v7_activePackage') as 'TV' | 'LIVE') || 'LIVE');
   const [selectedPackage, setSelectedPackage] = useState<'TV' | 'LIVE'>('LIVE');
   const [paymentType, setPaymentType] = useState<'SINGLE' | 'SPLIT'>('SPLIT');
-  const [isLicenseUnlocked, setIsLicenseUnlocked] = useState<boolean>(() => localStorage.getItem('fb_v6_unlocked') === 'true');
+  const [isLicenseUnlocked, setIsLicenseUnlocked] = useState<boolean>(() => localStorage.getItem('fb_v7_unlocked') === 'true');
   const [collettaPaidCoaches, setCollettaPaidCoaches] = useState<string[]>([]);
 
   const [showCustomLeagueModal, setShowCustomLeagueModal] = useState(false);
@@ -342,13 +340,13 @@ export default function App() {
   const [userRole, setUserRole] = useState<'PRESIDENT' | 'PLAYER' | null>(null);
   const [playerName, setPlayerName] = useState<string>('');
   const [inputLeagueName, setInputLeagueName] = useState('');
-  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v6_roomCode') || 'BUZZ2026');
+  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v7_roomCode') || 'BUZZ2026');
   const [isRoomCodeConfirmed, setIsRoomCodeConfirmed] = useState(false);
-  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v6_initialBudget')) || 500);
-  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v6_leagueName') || 'FantaLega Serie A');
+  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v7_initialBudget')) || 500);
+  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v7_leagueName') || 'FantaLega Serie A');
 
   const [coaches, setCoaches] = useState<Coach[]>(() => {
-    const saved = localStorage.getItem('fb_v6_coaches');
+    const saved = localStorage.getItem('fb_v7_coaches');
     if (saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
     return [
       { name: 'Mario P.', teamName: 'Sempre Ultimi F.C.', budget: 500, playersCount: 0, isOnline: true },
@@ -359,7 +357,7 @@ export default function App() {
   });
 
   const [purchasedPlayers, setPurchasedPlayers] = useState<Record<string, PurchasedItem[]>>(() => {
-    const saved = localStorage.getItem('fb_v6_purchasedPlayers');
+    const saved = localStorage.getItem('fb_v7_purchasedPlayers');
     if (saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
     return {};
   });
@@ -393,15 +391,15 @@ export default function App() {
 
   useEffect(() => {
     if (!isDemoMode) {
-      localStorage.setItem('fb_v6_coaches', JSON.stringify(coaches));
-      localStorage.setItem('fb_v6_purchasedPlayers', JSON.stringify(purchasedPlayers));
-      localStorage.setItem('fb_v6_leagueName', leagueName);
-      localStorage.setItem('fb_v6_roomCode', roomCode);
-      localStorage.setItem('fb_v6_initialBudget', String(initialBudget));
-      localStorage.setItem('fb_v6_startFromOne', String(startFromOne));
-      localStorage.setItem('fb_v6_voiceEnabled', String(voiceEnabled));
-      localStorage.setItem('fb_v6_activePackage', activePackage);
-      localStorage.setItem('fb_v6_unlocked', String(isLicenseUnlocked));
+      localStorage.setItem('fb_v7_coaches', JSON.stringify(coaches));
+      localStorage.setItem('fb_v7_purchasedPlayers', JSON.stringify(purchasedPlayers));
+      localStorage.setItem('fb_v7_leagueName', leagueName);
+      localStorage.setItem('fb_v7_roomCode', roomCode);
+      localStorage.setItem('fb_v7_initialBudget', String(initialBudget));
+      localStorage.setItem('fb_v7_startFromOne', String(startFromOne));
+      localStorage.setItem('fb_v7_voiceEnabled', String(voiceEnabled));
+      localStorage.setItem('fb_v7_activePackage', activePackage);
+      localStorage.setItem('fb_v7_unlocked', String(isLicenseUnlocked));
     }
   }, [coaches, purchasedPlayers, leagueName, roomCode, initialBudget, startFromOne, voiceEnabled, activePackage, isLicenseUnlocked, isDemoMode]);
 
@@ -440,10 +438,8 @@ export default function App() {
 
   const getCoachRoleCount = useCallback((name: string, role: Role) => (purchasedPlayers[name] || []).filter(i => i.player.role === role).length, [purchasedPlayers]);
 
-  // Lista rigorosamente ordinata in ordine alfabetico A -> Z (Gestisce anche Asta Normale vs Riparazione Svincolati)
   const filteredList = useMemo(() => listoneUfficiale.filter(p => {
     if (activeLeagueTab === 'REPAIR') {
-      // In modalità Riparazione, mostra solo i giocatori non ancora acquistati da nessuno
       if (purchasedPlayerIds.has(p.id)) return false;
     } else {
       if (hidePurchased && purchasedPlayerIds.has(p.id)) return false;
@@ -485,23 +481,35 @@ export default function App() {
     setCurrentBid(0); setHighestBidder(null); setCountdown(null);
   }, [coaches, voiceEnabled, isDemoMode]);
 
-  const stateRef = useRef({ coaches, purchasedPlayers, activePlayer, currentBid, highestBidder, userRole, leagueName, startFromOne, isLicenseUnlocked });
-  useEffect(() => { stateRef.current = { coaches, purchasedPlayers, activePlayer, currentBid, highestBidder, userRole, leagueName, startFromOne, isLicenseUnlocked }; }, [coaches, purchasedPlayers, activePlayer, currentBid, highestBidder, userRole, leagueName, startFromOne, isLicenseUnlocked]);
+  // Sincronizzazione Supabase stabile con useRef
+  const registerBidRef = useRef(registerBidLocally);
+  const applyAwardRef = useRef(applyAwardState);
+
+  useEffect(() => {
+    registerBidRef.current = registerBidLocally;
+    applyAwardRef.current = applyAwardState;
+  }, [registerBidLocally, applyAwardState]);
 
   useEffect(() => {
     if (!roomCode) return;
+    let isMounted = true;
     const ch = supabase.channel(`room_${roomCode}`)
-      .on('broadcast', { event: 'quick_bid' }, ({ payload }: any) => payload?.bidder && registerBidLocally(payload.bidder, payload.amount))
+      .on('broadcast', { event: 'quick_bid' }, ({ payload }: any) => {
+        payload?.bidder && registerBidRef.current(payload.bidder, payload.amount);
+      })
       .on('broadcast', { event: 'player_online' }, ({ payload }: any) => {
-        if (payload?.name) setCoaches(prev => prev.map(c => c.name === payload.name ? { ...c, isOnline: true } : c));
+        if (payload?.name && isMounted) setCoaches(prev => prev.map(c => c.name === payload.name ? { ...c, isOnline: true } : c));
       })
-      .on('broadcast', { event: 'start_countdown' }, ({ payload }: any) => setCountdown(payload?.seconds || 3))
+      .on('broadcast', { event: 'start_countdown' }, ({ payload }: any) => isMounted && setCountdown(payload?.seconds || 3))
       .on('broadcast', { event: 'change_player' }, ({ payload }: any) => {
-        if (payload?.player) { setCurrentPlayer(payload.player); setCurrentBid(0); setHighestBidder(null); setBidHistory([]); setCountdown(null); setAwardModal(null); }
+        if (payload?.player && isMounted) { setCurrentPlayer(payload.player); setCurrentBid(0); setHighestBidder(null); setBidHistory([]); setCountdown(null); setAwardModal(null); }
       })
-      .on('broadcast', { event: 'close_award_modal' }, () => { setAwardModal(null); setCurrentBid(0); setHighestBidder(null); })
-      .on('broadcast', { event: 'player_awarded' }, ({ payload }: any) => payload?.player && applyAwardState(payload.player, payload.winner, payload.price, false))
+      .on('broadcast', { event: 'close_award_modal' }, () => { if (isMounted) { setAwardModal(null); setCurrentBid(0); setHighestBidder(null); } })
+      .on('broadcast', { event: 'player_awarded' }, ({ payload }: any) => {
+        payload?.player && applyAwardRef.current(payload.player, payload.winner, payload.price, false);
+      })
       .on('broadcast', { event: 'sync_league_state' }, ({ payload }: any) => {
+        if (!isMounted) return;
         if (payload?.coaches) setCoaches(payload.coaches);
         if (payload?.purchasedPlayers) setPurchasedPlayers(payload.purchasedPlayers);
         if (payload?.leagueName) setLeagueName(payload.leagueName);
@@ -511,20 +519,24 @@ export default function App() {
         if (typeof payload?.isLicenseUnlocked === 'boolean') setIsLicenseUnlocked(payload.isLicenseUnlocked);
       })
       .on('broadcast', { event: 'live_reaction' }, ({ payload }: any) => {
-        if (payload?.sender) { playTickSound(true); setLiveReaction(payload); setTimeout(() => setLiveReaction(null), 3800); }
+        if (payload?.sender && isMounted) { playTickSound(true); setLiveReaction(payload); setTimeout(() => setLiveReaction(null), 3800); }
       })
       .on('broadcast', { event: 'request_sync' }, () => {
         if (stateRef.current.userRole === 'PRESIDENT') ch.send({ type: 'broadcast', event: 'sync_league_state', payload: stateRef.current });
       })
       .subscribe(s => {
+        if (!isMounted) return;
         setIsConnected(s === 'SUBSCRIBED');
         if (s === 'SUBSCRIBED') {
           setActiveChannel(ch);
           ch.send({ type: 'broadcast', event: 'request_sync', payload: {} });
+          if (userRole === 'PLAYER' && playerName) {
+            ch.send({ type: 'broadcast', event: 'player_online', payload: { name: playerName } });
+          }
         }
       });
-    return () => { supabase.removeChannel(ch); setActiveChannel(null); setIsConnected(false); };
-  }, [roomCode, registerBidLocally, applyAwardState]);
+    return () => { isMounted = false; supabase.removeChannel(ch); setActiveChannel(null); setIsConnected(false); };
+  }, [roomCode, userRole, playerName]);
 
   const handleSelectPlayer = useCallback(async (player: Player) => {
     setCurrentPlayer(player); setCurrentBid(0); setHighestBidder(null); setBidHistory([]); setManualPriceInput(''); setCountdown(null); setAwardModal(null);
@@ -536,14 +548,18 @@ export default function App() {
     setSelectedRole(newRole);
     const matching = listoneUfficiale
       .filter(p => {
-        if (hidePurchased && purchasedPlayerIds.has(p.id)) return false;
+        if (activeLeagueTab === 'REPAIR') {
+          if (purchasedPlayerIds.has(p.id)) return false;
+        } else {
+          if (hidePurchased && purchasedPlayerIds.has(p.id)) return false;
+        }
         if (newRole !== 'ALL' && p.role !== newRole) return false;
         return p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.team.toLowerCase().includes(searchTerm.toLowerCase());
       })
       .sort((a, b) => a.name.localeCompare(b.name, 'it', { sensitivity: 'base' }));
 
     if (matching.length > 0) handleSelectPlayer(matching[0]);
-  }, [hidePurchased, purchasedPlayerIds, searchTerm, handleSelectPlayer]);
+  }, [hidePurchased, purchasedPlayerIds, searchTerm, handleSelectPlayer, activeLeagueTab]);
 
   const handleRandomPlayer = useCallback(() => {
     if (filteredList.length > 0) handleSelectPlayer(filteredList[Math.floor(Math.random() * filteredList.length)]);
@@ -758,7 +774,7 @@ export default function App() {
       { name: 'Gianni L.', teamName: 'Atletico Ma Non Troppo', budget: 500, playersCount: 0, isOnline: false },
     ];
     setCoaches(dc); setPurchasedPlayers({}); setCurrentBid(0); setHighestBidder(null); setSelectedWinnerManual(dc[0].name);
-    setSelectedRole('ALL'); setCurrentPlayer(listoneUfficiale[0]);
+    setSelectedRole('ALL'); setActiveLeagueTab('REGULAR'); setCurrentPlayer(listoneUfficiale[0]);
     if (demoRoleChoice === 'PRESIDENT') { setUserRole('PRESIDENT'); setShowWelcomeGuide(true); setShowRoomCodeArrow(true); }
     else { setPlayerName(dc[0].name); setSelectedRosterCoach(dc[0].name); setUserRole('PLAYER'); }
     setShowDemoModal(false);
@@ -792,7 +808,7 @@ export default function App() {
         }
       `}</style>
 
-      {/* === 5. INTERFACCIA UTENTE COMPLETA CON 4 NUOVE FUNZIONI === */}
+      {/* === 5. INTERFACCIA UTENTE COMPLETA CON LE 4 FUNZIONI RICHIESTE === */}
       {!userRole ? (
         <div
           className="min-h-screen w-full text-white flex flex-col items-center justify-between p-4 md:p-8 select-none overflow-y-auto relative z-10"
@@ -812,7 +828,7 @@ export default function App() {
           </div>
 
           <div className="max-w-3xl w-full text-center space-y-3 pt-2 relative z-10">
-            {/* CONTATORE LEGHE ATTIVE IN TEMPO REALE */}
+            {/* 1. CONTATORE DI LEGHE ATTIVE IN TEMPO REALE */}
             <div className="inline-flex items-center gap-2 bg-[#060D1E]/95 border border-amber-400/60 px-4 py-1.5 rounded-full shadow-[0_0_25px_rgba(245,158,11,0.3)]">
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
               <span className="text-xs font-black uppercase tracking-widest text-amber-400">
@@ -868,7 +884,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* I 3 PERCORSI NELLA HERO + PULSANTE GUIDA RAPIDA IN 30 SECONDI */}
+          {/* I 3 PERCORSI NELLA HERO + 2. PULSANTE GUIDA RAPIDA IN 30 SECONDI */}
           <div className="max-w-2xl w-full bg-[#060D1E]/95 border border-cyan-500/40 rounded-3xl p-5 shadow-2xl flex flex-col gap-4 my-2 relative z-10">
             <button onClick={() => setShowCustomLeagueModal(true)} className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black rounded-2xl text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_25px_rgba(16,185,129,0.35)]">
               <Zap size={18} className="fill-slate-950" /> 🚀 CREA SALA GRATUITA (ASTA FANTACALCIO)
@@ -1019,7 +1035,7 @@ export default function App() {
               <span>🎁 <strong className="text-amber-400">{isDemoMode ? `Demo (${demoAuctionCount} acquisti):` : 'Prova Gratuita:'}</strong> {totalPurchasesCount}/{FREE_TRIAL_LIMIT} acquisti gratuiti effettuati</span>
               <div className="flex gap-2">
                 <button onClick={() => setShowWelcomeGuide(true)} className="bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 font-black px-2 py-0.5 rounded-lg text-[10px] uppercase cursor-pointer flex items-center gap-1"><Info size={11} /> Invita Amici</button>
-                <button onClick={() => setShowPaywall(true)} className="bg-emerald-500 text-slate-950 font-black px-2 py-0.5 rounded-lg text-[10px] uppercase cursor-pointer">Sblocca Asta Completa (€{currentPackagePrice.toFixed(2)})</button>
+                <button onClick={() => setShowPaywall(true)} className="bg-emerald-500 text-slate-950 font-black px-2.5 py-0.5 rounded-lg text-[10px] uppercase cursor-pointer">Sblocca Asta Completa (€{currentPackagePrice.toFixed(2)})</button>
               </div>
             </div>
           )}
@@ -1089,7 +1105,7 @@ export default function App() {
                     onClick={() => {
                       const nextState = !voiceEnabled;
                       setVoiceEnabled(nextState);
-                      if (nextState) playMarketBellSound(); // Suona la campanella quando accendi l'audio!
+                      if (nextState) playMarketBellSound(); // 3. SUONO DELLA CAMPANELLA DI CALCIOMERCATO
                     }}
                     className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border cursor-pointer flex items-center gap-1 ${voiceEnabled ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-rose-500/20 text-rose-300 border-rose-500/40'}`}
                     title="Campanella di mercato e Telecronista vocale"
@@ -1187,14 +1203,14 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* COLONNA SINISTRA ALLENATORI */}
+                  {/* COLONNA SINISTRA ALLENATORI + 4. GESTIONE SVINCOLATI E ASTE DI RIPARAZIONE */}
                   <aside className="w-full lg:w-[275px] shrink-0 bg-[#060D1E] rounded-2xl p-3 flex flex-col gap-2 overflow-hidden border border-cyan-500/30">
                     <div className="flex justify-between pb-1.5 border-b border-cyan-500/20 text-xs font-black text-cyan-400">
                       <span className="flex items-center gap-1"><Trophy size={13} className="text-amber-400" /> Club in Sala</span>
                       <span className="text-[9px] text-amber-300">👆 Clicca = +1 FM</span>
                     </div>
                     
-                    {/* BOTTONE ASTA DI RIPARAZIONE / SVINCOLATI */}
+                    {/* SELETTORE ASTA NORMALE VS RIPARAZIONE SVINCOLATI */}
                     <div className="grid grid-cols-2 gap-1 bg-[#0B132B] p-1 rounded-xl border border-slate-800 text-[11px] font-bold text-center">
                       <button onClick={() => setActiveLeagueTab('REGULAR')} className={`py-1 rounded-lg cursor-pointer ${activeLeagueTab === 'REGULAR' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}>Asta Principale</button>
                       <button onClick={() => setActiveLeagueTab('REPAIR')} className={`py-1 rounded-lg cursor-pointer ${activeLeagueTab === 'REPAIR' ? 'bg-purple-600 text-white' : 'text-slate-400'}`} title="Mostra solo i calciatori ancora svincolati">🔄 Riparazione</button>
