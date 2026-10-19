@@ -96,7 +96,7 @@ const FAQ_ITEMS = [
   },
   {
     q: '2. Chi paga nella lega? È un abbonamento?',
-    a: 'È un pagamento singolo (una tantum) valido per tutta la stagione, senza alcun rinnovo automatico. Il Presidente sblocca la stanza una sola volta per tutta la lega: €4,99 per la modalità Solo Tabellone TV oppure con prezzo graduale per la modalità TV + Buzzer (€7,99 fino a 8 amici, €9,99 a 10 amici). In sala trovi la "Tabella Colletta" per segnare chi ha versato la propria quota di 1€.'
+    a: 'È un pagamento singolo (una tantum) valido per tutta la stagione, senza rinnovo automatico. Il Presidente sblocca la stanza una volta per tutta la lega: €4,99 per Solo Tabellone TV; per TV + Buzzer il totale è €7,99 fino a 8 partecipanti, €8,99 a 9, €9,99 a 10 e poi aumenta di €1 per ogni partecipante aggiuntivo, fino a 20. La Tabella Colletta aiuta a segnare i contributi; la quota individuale dipende dal numero effettivo di partecipanti.'
   },
   {
     q: '3. Cosa succede se si disconnette il telefono di un fantallenatore?',
@@ -289,7 +289,6 @@ export default function App() {
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [activeLegalSection, setActiveLegalSection] = useState<LegalSection>(null);
 
-  const [activeLeaguesCount, setActiveLeaguesCount] = useState<number>(42);
   const [trailerIdx, setTrailerIdx] = useState(0);
   const [isTrailerPlaying, setIsTrailerPlaying] = useState(true);
   const [activeLeagueTab, setActiveLeagueTab] = useState<'REGULAR' | 'REPAIR'>('REGULAR');
@@ -316,7 +315,7 @@ export default function App() {
   const [paymentType, setPaymentType] = useState<'SINGLE' | 'SPLIT'>('SPLIT');
   const [isLicenseUnlocked, setIsLicenseUnlocked] = useState<boolean>(() => localStorage.getItem('fb_v9_unlocked') === 'true');
   const [collettaPaidCoaches, setCollettaPaidCoaches] = useState<string[]>([]);
-  const [customCoachesCount, setCustomCoachesCount] = useState<number>(10);
+  const [customCoachesCount, setCustomCoachesCount] = useState<number>(6);
 
   const [showCustomLeagueModal, setShowCustomLeagueModal] = useState(false);
   const [customLeagueInput, setCustomLeagueInput] = useState('');
@@ -381,23 +380,17 @@ export default function App() {
   const [isConnected, setIsConnected] = useState<boolean>(false);
 
   const calculateLivePrice = (count: number) => {
-    if (count <= 8) return 7.99;
-    if (count <= 10) return 9.99;
-    return 9.99 + (count - 10) * 1.0;
+    const safeCount = Math.max(6, Math.min(20, Math.floor(Number(count) || 6)));
+    if (safeCount <= 8) return 7.99;
+    return 7.99 + (safeCount - 8);
   };
 
-  const effectiveCoachesCount = coaches.length > 3 ? coaches.length : customCoachesCount;
+  // Prima di creare la stanza il prezzo segue il numero selezionato nello slider.
+  // Dopo l'avvio usa il numero effettivo delle squadre configurate.
+  const effectiveCoachesCount = userRole === 'PRESIDENT' ? coaches.length : customCoachesCount;
   const currentLivePrice = calculateLivePrice(effectiveCoachesCount);
   const currentPackagePrice = selectedPackage === 'TV' ? 4.99 : currentLivePrice;
-  const perPersonPrice = (currentLivePrice / effectiveCoachesCount).toFixed(2);
-
-  useEffect(() => {
-    if (userRole) return;
-    const interval = setInterval(() => {
-      setActiveLeaguesCount(prev => Math.min(54, Math.max(32, prev + (Math.random() > 0.5 ? 1 : -1))));
-    }, 6000);
-    return () => clearInterval(interval);
-  }, [userRole]);
+  const perPersonPrice = (currentLivePrice / Math.max(1, effectiveCoachesCount)).toFixed(2);
 
   useEffect(() => {
     isGlobalSoundMuted = !voiceEnabled;
@@ -865,7 +858,7 @@ export default function App() {
               <div className="inline-flex items-center gap-2 bg-emerald-950/90 border border-emerald-400/60 px-3.5 py-1.5 rounded-full shadow-lg">
                 <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-ping" />
                 <span className="text-xs font-black text-emerald-300 uppercase tracking-wide">
-                  🔥 {activeLeaguesCount} Leghe in asta adesso
+                  🎮 Demo interattiva disponibile
                 </span>
               </div>
             </div>
@@ -922,7 +915,7 @@ export default function App() {
               onClick={() => setShowCustomLeagueModal(true)}
               className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black rounded-2xl text-sm md:text-base uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_25px_rgba(16,185,129,0.4)]"
             >
-              <Zap size={20} className="fill-slate-950" /> 🚀 CREA SALA GRATUITA (ASTA FANTACALCIO)
+              <Zap size={20} className="fill-slate-950" /> 🚀 CREA LA TUA ASTA • 6 ACQUISTI GRATIS
             </button>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -930,13 +923,13 @@ export default function App() {
                 onClick={() => setShowDemoModal(true)}
                 className="py-3.5 px-4 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(245,158,11,0.35)]"
               >
-                <Play size={16} className="fill-slate-950" /> 🎮 PROVA DEMO INTERATTIVA
+                <Play size={16} className="fill-slate-950" /> 🎮 ESPLORA LA DEMO SENZA CREARE UNA LEGA
               </button>
               <button
                 onClick={() => setShowQuickHelp(true)}
                 className="py-3.5 px-4 bg-cyan-400 hover:bg-cyan-300 text-slate-950 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(34,211,238,0.3)]"
               >
-                <BookOpen size={16} /> 📖 GUIDA RAPIDA IN 30s
+                <BookOpen size={16} /> 📖 COME FUNZIONA IN 30 SECONDI
               </button>
             </div>
 
@@ -1026,8 +1019,8 @@ export default function App() {
                 
                 <div className="my-2.5 bg-[#0B132B] p-2.5 rounded-xl border border-slate-800 space-y-1.5">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-300 font-bold flex items-center gap-1"><Users2 size={13} className="text-amber-400" /> Partecipanti Lega:</span>
-                    <strong className="text-amber-400 text-sm">{customCoachesCount} Allenatori</strong>
+                    <span className="text-slate-300 font-bold flex items-center gap-1"><Users2 size={13} className="text-amber-400" /> Partecipanti previsti nella lega:</span>
+                    <strong className="text-amber-400 text-sm">{customCoachesCount} partecipanti</strong>
                   </div>
                   <input
                     type="range"
@@ -1038,8 +1031,8 @@ export default function App() {
                     className="w-full accent-amber-400 cursor-pointer"
                   />
                   <div className="flex justify-between items-center pt-1 border-t border-slate-800 text-[11px]">
-                    <span className="text-slate-400">Totale: <strong className="text-white">€{calculateLivePrice(customCoachesCount).toFixed(2)}</strong></span>
-                    <span className="text-emerald-300 font-black">~ €{(calculateLivePrice(customCoachesCount) / customCoachesCount).toFixed(2)} / persona</span>
+                    <span className="text-slate-400">Totale lega: <strong className="text-white">€{calculateLivePrice(customCoachesCount).toFixed(2)}</strong></span>
+                    <span className="text-emerald-300 font-black">€{(calculateLivePrice(customCoachesCount) / Math.max(1, customCoachesCount)).toFixed(2)} medi a testa</span>
                   </div>
                 </div>
 
@@ -1724,6 +1717,12 @@ export default function App() {
               <span className="font-bold">Fantamilioni Iniziali:</span>
               <div className="flex gap-1">{[300, 500, 1000].map(b => <button key={b} onClick={() => setInitialBudget(b)} className={`px-2 py-0.5 rounded font-black ${initialBudget === b ? 'bg-amber-500 text-slate-950' : 'bg-slate-800'}`}>{b}</button>)}</div>
             </div>
+            <div className="bg-[#060D1E] p-2.5 rounded-xl border border-emerald-500/30 space-y-1">
+              <div className="flex justify-between text-xs"><span className="font-bold text-slate-200">Partecipanti previsti</span><strong className="text-amber-400">{customCoachesCount}</strong></div>
+              <input type="range" min="6" max="20" value={customCoachesCount} onChange={e => setCustomCoachesCount(Number(e.target.value))} className="w-full accent-emerald-400 cursor-pointer" aria-label="Numero previsto di partecipanti" />
+              <div className="flex justify-between text-[10px] text-slate-400"><span>€{calculateLivePrice(customCoachesCount).toFixed(2)} totali per TV + Buzzer</span><span>{coaches.length}/{customCoachesCount} squadre configurate</span></div>
+              <p className="text-[10px] text-slate-400 text-left">Il prezzo segue i partecipanti effettivi: completa la configurazione delle squadre prima di avviare.</p>
+            </div>
 
             <div className="space-y-1.5 bg-[#060D1E] p-3 rounded-xl border border-slate-800">
               <span className="text-[10px] font-black uppercase text-cyan-400 block text-left">Aggiungi Fanta-Squadre ({coaches.length}):</span>
@@ -1732,14 +1731,18 @@ export default function App() {
                 <input type="text" placeholder="Mister (es. Pasquale R.)" value={newCoachInput} onChange={e => setNewCoachInput(e.target.value)} className="bg-[#0B132B] border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white" />
               </div>
               <button
+                type="button"
                 onClick={() => {
-                  if (!newCoachInput.trim()) return;
                   const cName = newCoachInput.trim();
-                  const tName = newTeamNameInput.trim() || `FC ${cName}`;
+                  const tName = newTeamNameInput.trim() || (cName ? `FC ${cName}` : '');
+                  if (!cName || !tName) { setCustomAlertMessage('Inserisci il nome del partecipante e della squadra.'); return; }
+                  if (coaches.length >= customCoachesCount) { setCustomAlertMessage('Hai già raggiunto il numero di partecipanti selezionato. Aumenta il numero previsto per aggiungerne altri.'); return; }
+                  if (coaches.some(c => c.name.trim().toLowerCase() === cName.toLowerCase() || c.teamName.trim().toLowerCase() === tName.toLowerCase())) { setCustomAlertMessage('Nome mister o nome squadra già presente nella lega.'); return; }
                   setCoaches(prev => [...prev, { name: cName, teamName: tName, budget: initialBudget, playersCount: 0, isOnline: true }]);
                   setNewCoachInput(''); setNewTeamNameInput('');
                 }}
-                className="w-full py-1.5 bg-emerald-500 text-slate-950 font-black rounded-lg text-xs flex items-center justify-center gap-1 cursor-pointer"
+                disabled={coaches.length >= customCoachesCount}
+                className="w-full py-1.5 bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-400 text-slate-950 font-black rounded-lg text-xs flex items-center justify-center gap-1 cursor-pointer disabled:cursor-not-allowed"
               >
                 <UserPlus size={13} /> Aggiungi alla Lega
               </button>
@@ -1749,16 +1752,15 @@ export default function App() {
               {coaches.map((c, i) => {
                 const isPresident = i === 0;
                 return (
-                  <div key={c.name} className={`flex justify-between items-center px-2.5 py-1.5 rounded text-xs border ${isPresident ? 'bg-amber-500/15 border-amber-400/50' : 'bg-[#060D1E] border-slate-800'}`}>
-                    <span className="truncate">
-                      <strong>{i + 1}. {c.teamName}</strong> <span className="text-slate-400">({c.name})</span>
-                      {isPresident && <span className="ml-1.5 text-[9px] bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded font-black uppercase">👑 Presidente</span>}
-                    </span>
-                    {!isPresident && (
-                      <button onClick={() => setCoaches(prev => prev.filter(x => x.name !== c.name))} className="text-rose-400 hover:text-rose-300 cursor-pointer">
-                        <Trash2 size={13} />
-                      </button>
-                    )}
+                  <div key={`${i}-${c.name}`} className={`rounded-xl px-2.5 py-2 text-xs border ${isPresident ? 'bg-amber-500/10 border-amber-400/50' : 'bg-[#060D1E] border-slate-800'}`}>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="font-black text-slate-100">{isPresident ? '👑 Presidente • Regia TV' : `Partecipante ${i + 1}`}</span>
+                      {!isPresident && <button type="button" aria-label={`Rimuovi ${c.name}`} onClick={() => setCoaches(prev => prev.filter((_, idx) => idx !== i))} className="text-rose-400 hover:text-rose-300 cursor-pointer"><Trash2 size={13} /></button>}
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <input aria-label={isPresident ? 'Nome Presidente' : `Nome partecipante ${i + 1}`} value={c.name} onChange={e => setCoaches(prev => prev.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x))} className="min-w-0 bg-[#0B132B] border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white" placeholder="Nome mister" />
+                      <input aria-label={isPresident ? 'Nome squadra del Presidente' : `Nome squadra partecipante ${i + 1}`} value={c.teamName} onChange={e => setCoaches(prev => prev.map((x, idx) => idx === i ? { ...x, teamName: e.target.value } : x))} className="min-w-0 bg-[#0B132B] border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-amber-300" placeholder="Nome squadra" />
+                    </div>
                   </div>
                 );
               })}
@@ -1766,7 +1768,14 @@ export default function App() {
 
             <button
               onClick={() => {
-                const n = customLeagueInput.trim() || leagueName;
+                const n = customLeagueInput.trim();
+                const president = coaches[0];
+                const names = coaches.map(c => c.name.trim().toLowerCase());
+                const teams = coaches.map(c => c.teamName.trim().toLowerCase());
+                if (!n) { setCustomAlertMessage('Dai un nome alla tua lega prima di avviare.'); return; }
+                if (!president || !president.name.trim() || !president.teamName.trim()) { setCustomAlertMessage('La lega deve avere un Presidente con nome e squadra: il primo slot è riservato alla Regia TV.'); return; }
+                if (coaches.length !== customCoachesCount) { setCustomAlertMessage(`Hai configurato ${coaches.length} squadre ma ne hai selezionate ${customCoachesCount}. Aggiungi o rimuovi partecipanti per far coincidere i numeri.`); return; }
+                if (names.some((v, i) => !v || names.indexOf(v) !== i) || teams.some((v, i) => !v || teams.indexOf(v) !== i)) { setCustomAlertMessage('Completa tutti i nomi e usa nomi mister/squadra unici.'); return; }
                 setLeagueName(n); setRoomCode(n.toUpperCase().replace(/[^A-Z0-9]/g, '') || 'LEGA2026');
                 setIsDemoMode(false); setShowCustomLeagueModal(false); setUserRole('PRESIDENT'); setShowWelcomeGuide(true); setShowRoomCodeArrow(true);
                 setSelectedRole('ALL'); setCurrentPlayer(listoneUfficiale[0]);
@@ -1860,9 +1869,10 @@ export default function App() {
               </div>
             )}
 
-            <button onClick={() => { setIsLicenseUnlocked(true); setShowPaywall(false); }} className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase cursor-pointer flex items-center justify-center gap-2 shadow-lg">
-              <CreditCard size={15} /> Sblocca Ora (€{currentPackagePrice.toFixed(2)} totale lega)
+            <button onClick={() => setCustomAlertMessage('Il checkout non è ancora collegato. Nessun pagamento è stato effettuato e la licenza non è stata attivata.')} className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase cursor-pointer flex items-center justify-center gap-2 shadow-lg">
+              <CreditCard size={15} /> Continua al pagamento (€{currentPackagePrice.toFixed(2)} totale lega)
             </button>
+            <p className="text-[10px] text-slate-400">Checkout non ancora attivo: il pulsante non addebita e non sblocca la stanza.</p>
           </div>
         </div>
       )}
