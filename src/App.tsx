@@ -162,6 +162,7 @@ const getViralStampInfo = (price: number, basePrice: number, initialBudget: numb
   return { label: 'CONTRATTO DEPOSITATO ✅', color: '#10b981', border: 'border-emerald-400 text-emerald-400' };
 };
 
+// === 2. GESTIONE AUDIO E TELECRONISTA ===
 let sharedAudioCtx: AudioContext | null = null;
 let isGlobalSoundMuted = false;
 
@@ -180,12 +181,12 @@ const speakTelecronista = (text: string, enabled: boolean) => {
     window.speechSynthesis.cancel();
     setTimeout(() => {
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'it-IT'; u.rate = 1.06;
+      u.lang = 'it-IT'; u.rate = 1.08;
       const voices = window.speechSynthesis.getVoices();
       const itVoice = voices.find(v => v.lang.toLowerCase().includes('it') && (v.name.includes('Google') || v.name.includes('Microsoft') || v.name.includes('Elsa'))) || voices.find(v => v.lang.toLowerCase().includes('it'));
       if (itVoice) u.voice = itVoice;
       window.speechSynthesis.speak(u);
-    }, 60);
+    }, 40);
   } catch { /* ignore */ }
 };
 
@@ -204,26 +205,35 @@ const playTone = (freqStart: number, freqEnd: number, dur: number, type: Oscilla
 };
 
 const playBuzzSound = () => playTone(880, 1760, 0.22, 'sawtooth');
-const playTickSound = (u = false) => playTone(u ? 1200 : 600, u ? 1200 : 600, 0.09, u ? 'sawtooth' : 'sine');
+
+// Rintocco secco della campanella (usato a ogni secondo del countdown)
+const playCountdownBell = (pitchHigh = false) => {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const baseFreq = pitchHigh ? 2349 : 1760;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(baseFreq, ctx.currentTime);
+  gain.gain.setValueAtTime(0.4, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.65);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(); osc.stop(ctx.currentTime + 0.65);
+};
 
 const playMarketBellSound = () => {
   const ctx = getAudioCtx();
   if (!ctx) return;
-  [1760, 2637, 3520, 2637, 3520].forEach((freq, idx) => {
+  [1760, 2200, 2637].forEach((freq, idx) => {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.11);
-    gain.gain.setValueAtTime(0.38, ctx.currentTime + idx * 0.11);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.11 + 0.55);
+    osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.1);
+    gain.gain.setValueAtTime(0.35, ctx.currentTime + idx * 0.1);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.1 + 0.5);
     osc.connect(gain); gain.connect(ctx.destination);
-    osc.start(ctx.currentTime + idx * 0.11); osc.stop(ctx.currentTime + idx * 0.11 + 0.55);
+    osc.start(ctx.currentTime + idx * 0.1); osc.stop(ctx.currentTime + idx * 0.1 + 0.5);
   });
-};
-
-const playGongSound = () => {
-  playMarketBellSound();
-  playTone(220, 110, 1.0, 'sine', 0.2);
 };
 
 const playContractShowSound = () => {
@@ -284,8 +294,8 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<'ALL' | Role>('ALL');
   const [hidePurchased, setHidePurchased] = useState(true);
-  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v9_startFromOne') !== 'false');
-  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v9_voiceEnabled') !== 'false');
+  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v10_startFromOne') !== 'false');
+  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v10_voiceEnabled') !== 'false');
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [activeLegalSection, setActiveLegalSection] = useState<LegalSection>(null);
 
@@ -311,10 +321,10 @@ export default function App() {
   const [manualPriceInput, setManualPriceInput] = useState<string>('');
   const [customBidInput, setCustomBidInput] = useState<string>('');
 
-  const [activePackage, setActivePackage] = useState<'TV' | 'LIVE'>(() => (localStorage.getItem('fb_v9_activePackage') as 'TV' | 'LIVE') || 'LIVE');
+  const [activePackage, setActivePackage] = useState<'TV' | 'LIVE'>(() => (localStorage.getItem('fb_v10_activePackage') as 'TV' | 'LIVE') || 'LIVE');
   const [selectedPackage, setSelectedPackage] = useState<'TV' | 'LIVE'>('LIVE');
   const [paymentType, setPaymentType] = useState<'SINGLE' | 'SPLIT'>('SPLIT');
-  const [isLicenseUnlocked, setIsLicenseUnlocked] = useState<boolean>(() => localStorage.getItem('fb_v9_unlocked') === 'true');
+  const [isLicenseUnlocked, setIsLicenseUnlocked] = useState<boolean>(() => localStorage.getItem('fb_v10_unlocked') === 'true');
   const [collettaPaidCoaches, setCollettaPaidCoaches] = useState<string[]>([]);
   const [customCoachesCount, setCustomCoachesCount] = useState<number>(10);
 
@@ -340,13 +350,13 @@ export default function App() {
   const [userRole, setUserRole] = useState<'PRESIDENT' | 'PLAYER' | null>(null);
   const [playerName, setPlayerName] = useState<string>('');
   const [inputLeagueName, setInputLeagueName] = useState('');
-  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v9_roomCode') || 'LEGA2026');
+  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v10_roomCode') || 'LEGA2026');
   const [isRoomCodeConfirmed, setIsRoomCodeConfirmed] = useState(false);
-  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v9_initialBudget')) || 500);
-  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v9_leagueName') || 'FantaLega Serie A');
+  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v10_initialBudget')) || 500);
+  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v10_leagueName') || 'FantaLega Serie A');
 
   const [coaches, setCoaches] = useState<Coach[]>(() => {
-    const saved = localStorage.getItem('fb_v9_coaches');
+    const saved = localStorage.getItem('fb_v10_coaches');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -363,7 +373,7 @@ export default function App() {
   });
 
   const [purchasedPlayers, setPurchasedPlayers] = useState<Record<string, PurchasedItem[]>>(() => {
-    const saved = localStorage.getItem('fb_v9_purchasedPlayers');
+    const saved = localStorage.getItem('fb_v10_purchasedPlayers');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -418,15 +428,15 @@ export default function App() {
 
   useEffect(() => {
     if (!isDemoMode) {
-      localStorage.setItem('fb_v9_coaches', JSON.stringify(coaches));
-      localStorage.setItem('fb_v9_purchasedPlayers', JSON.stringify(purchasedPlayers));
-      localStorage.setItem('fb_v9_leagueName', leagueName);
-      localStorage.setItem('fb_v9_roomCode', roomCode);
-      localStorage.setItem('fb_v9_initialBudget', String(initialBudget));
-      localStorage.setItem('fb_v9_startFromOne', String(startFromOne));
-      localStorage.setItem('fb_v9_voiceEnabled', String(voiceEnabled));
-      localStorage.setItem('fb_v9_activePackage', activePackage);
-      localStorage.setItem('fb_v9_unlocked', String(isLicenseUnlocked));
+      localStorage.setItem('fb_v10_coaches', JSON.stringify(coaches));
+      localStorage.setItem('fb_v10_purchasedPlayers', JSON.stringify(purchasedPlayers));
+      localStorage.setItem('fb_v10_leagueName', leagueName);
+      localStorage.setItem('fb_v10_roomCode', roomCode);
+      localStorage.setItem('fb_v10_initialBudget', String(initialBudget));
+      localStorage.setItem('fb_v10_startFromOne', String(startFromOne));
+      localStorage.setItem('fb_v10_voiceEnabled', String(voiceEnabled));
+      localStorage.setItem('fb_v10_activePackage', activePackage);
+      localStorage.setItem('fb_v10_unlocked', String(isLicenseUnlocked));
     }
   }, [coaches, purchasedPlayers, leagueName, roomCode, initialBudget, startFromOne, voiceEnabled, activePackage, isLicenseUnlocked, isDemoMode]);
 
@@ -498,7 +508,7 @@ export default function App() {
     const winnerObj = coaches.find(x => x.name === winner);
     const clubLabel = winnerObj?.teamName || winner;
     if (speak) {
-      speakTelecronista(`Colpo di mercato! ${player.name} firma ufficialmente con ${clubLabel} per ${price} fantamilioni!`, voiceEnabled);
+      speakTelecronista(`Colpo di mercato! ${player.name} firma con ${clubLabel} per ${price} fantamilioni!`, voiceEnabled);
     }
     if (isDemoMode) setDemoAuctionCount(prev => prev + 1);
     setCoaches(prev => prev.map(c => c.name === winner ? { ...c, budget: c.budget - price, playersCount: c.playersCount + 1 } : c));
@@ -547,7 +557,7 @@ export default function App() {
         if (typeof payload?.isLicenseUnlocked === 'boolean') setIsLicenseUnlocked(payload.isLicenseUnlocked);
       })
       .on('broadcast', { event: 'live_reaction' }, ({ payload }: any) => {
-        if (payload?.sender && isMounted) { playTickSound(true); setLiveReaction(payload); setTimeout(() => setLiveReaction(null), 3800); }
+        if (payload?.sender && isMounted) { playCountdownBell(false); setLiveReaction(payload); setTimeout(() => setLiveReaction(null), 3800); }
       })
       .on('broadcast', { event: 'request_sync' }, () => {
         if (stateRef.current.userRole === 'PRESIDENT') ch.send({ type: 'broadcast', event: 'sync_league_state', payload: stateRef.current });
@@ -623,7 +633,7 @@ export default function App() {
     if (getCoachRoleCount(bidder, activePlayer.role) >= ROLE_LIMITS[activePlayer.role]) { setCustomAlertMessage(`Ruolo ${activePlayer.role} pieno per ${bidder}!`); return; }
 
     if (navigator.vibrate) navigator.vibrate([30, 20, 30]);
-    if (userRole === 'PRESIDENT' && step >= 10) speakTelecronista(`Botta sul tavolo di ${bidder}! Si sale a ${nextBid}!`, voiceEnabled);
+    if (userRole === 'PRESIDENT' && step >= 10) speakTelecronista(`Rilancio di ${bidder}: ${nextBid}!`, voiceEnabled);
 
     registerBidLocally(bidder, nextBid);
     if (activeChannel) await activeChannel.send({ type: 'broadcast', event: 'quick_bid', payload: { bidder, amount: nextBid } });
@@ -656,19 +666,25 @@ export default function App() {
     const senderObj = coaches.find(x => x.name === playerName);
     const senderLabel = userRole === 'PRESIDENT' ? 'Il Presidente' : (senderObj ? `${senderObj.teamName} (${senderObj.name})` : playerName);
     const payload = { sender: senderLabel, emoji, label };
-    playTickSound(true); setLiveReaction(payload); setTimeout(() => setLiveReaction(null), 3800);
+    playCountdownBell(true); setLiveReaction(payload); setTimeout(() => setLiveReaction(null), 3800);
     if (activeChannel) await activeChannel.send({ type: 'broadcast', event: 'live_reaction', payload });
   };
 
+  // SINCRONIZZAZIONE PERFETTA COUNTDOWN: nessun accavallamento vocale, solo rintocchi precisi
   useEffect(() => {
     if (countdown === null) return;
     if (countdown > 0) {
-      if (countdown === 3) { playGongSound(); if (userRole === 'PRESIDENT') speakTelecronista('Ultima chiamata! Tre, due, uno...', voiceEnabled); }
-      else playTickSound(countdown <= 2);
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      playCountdownBell(countdown === 1);
       const t = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(t);
-    } else { setCountdown(null); if (userRole === 'PRESIDENT') handleAward(); }
-  }, [countdown, userRole, voiceEnabled, handleAward]);
+    } else {
+      setCountdown(null);
+      if (userRole === 'PRESIDENT') handleAward();
+    }
+  }, [countdown, userRole, handleAward]);
 
   const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
   const handleShareWhatsAppInvite = () => window.open(`https://wa.me/?text=${encodeURIComponent(`⚽ Entra nello studio TV dell'asta di Fantacalcio *${leagueName}*!\n📲 Clicca qui per aprire il tuo Buzzer: ${inviteUrl}\n🔑 Codice Stanza: *${roomCode}*`)}`, '_blank');
@@ -679,7 +695,7 @@ export default function App() {
     const winnerObj = coaches.find(x => x.name === awardModal.winner);
     const club = winnerObj?.teamName || awardModal.winner;
     const stamp = getViralStampInfo(awardModal.price, awardModal.player.basePrice, initialBudget);
-    const viralText = `🔥 *${stamp.label}* 🔥\n✍️ *${awardModal.player.name}* (${awardModal.player.team}) firma con *${club.toUpperCase()}* (${awardModal.winner}) per *${awardModal.price} FM*!\n\n📺 Asta del Fantacalcio trasformata in uno Show TV con *FantasyBuzz*!\n👉 Provalo gratis con la tua lega su ${window.location.origin} e seguici su Instagram/TikTok *@FantasyBuzzApp*!`;
+    const viralText = `🔥 *${stamp.label}* 🔥\n✍️ *${awardModal.player.name}* (${awardModal.player.team}) firma con *${club.toUpperCase()}* (${awardModal.winner}) per *${awardModal.price} FM*!\n\n📺 Asta del Fantacalcio trasformata in uno Show TV con *FantasyBuzz*!\n👉 Provalo gratis con la tua lega su ${window.location.origin}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(viralText)}`, '_blank');
   };
 
@@ -765,10 +781,8 @@ export default function App() {
     ctx.fillStyle = '#cbd5e1'; ctx.font = '700 30px system-ui, sans-serif';
     ctx.fillText(`Fantallenatore: ${awardModal.winner}`, 540, 1515);
 
-    ctx.fillStyle = '#ffffff'; ctx.font = '900 28px system-ui, sans-serif';
+    ctx.fillStyle = '#ffffff'; ctx.font = '28px system-ui, sans-serif';
     ctx.fillText('L’ASTA DEL FANTACALCIO DIVENTA UNO SHOW LIVE • FANTASYBUZZ', 540, 1720);
-    ctx.fillStyle = '#F59E0B'; ctx.font = '800 28px system-ui, sans-serif';
-    ctx.fillText('📲 Seguici su Instagram & TikTok: @FantasyBuzzApp', 540, 1775);
 
     const fileName = `FantasyBuzz_${awardModal.player.name.replace(/\s+/g, '_')}.png`;
     const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/png'));
@@ -779,7 +793,7 @@ export default function App() {
         await navigator.share({
           files: [file],
           title: `${stamp.label}: ${awardModal.player.name}`,
-          text: `🔥 ${awardModal.player.name} firma con ${club} per ${awardModal.price} FM! (${stamp.label}) Seguici su @FantasyBuzzApp`
+          text: `🔥 ${awardModal.player.name} firma con ${club} per ${awardModal.price} FM!`
         });
         return;
       } catch { /* fallback download */ }
@@ -1366,6 +1380,16 @@ export default function App() {
                     className={`w-full lg:flex-1 shrink-0 min-h-[430px] lg:min-h-0 rounded-2xl p-3 flex flex-col items-center justify-between relative overflow-hidden border-2 ${isBlinking ? 'border-amber-400' : 'border-emerald-400/60'}`}
                     style={{ background: `radial-gradient(circle at 50% 45%, rgba(16, 185, 129, 0.34) 0%, rgba(5, 46, 28, 0.94) 72%, rgba(2, 22, 13, 1) 100%), repeating-linear-gradient(90deg, rgba(16, 120, 68, 0.42) 0px, rgba(16, 120, 68, 0.42) 55px, rgba(8, 82, 45, 0.42) 55px, rgba(8, 82, 45, 0.42) 110px)` }}
                   >
+                    {/* OVERLAY COUNTDOWN CON NUMERO INGRANDITO E RINTOCCO PRECISO */}
+                    {countdown !== null && (
+                      <div className="absolute inset-0 bg-slate-950/90 z-30 flex flex-col items-center justify-center animate-pulse">
+                        <span className="font-black text-lg md:text-2xl uppercase text-red-400 tracking-widest mb-2">🚨 ULTIMA CHIAMATA 🚨</span>
+                        <div className="text-9xl md:text-[180px] font-black text-red-500 drop-shadow-[0_0_35px_rgba(239,68,68,0.8)] scale-110">
+                          {countdown}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="absolute inset-0 pointer-events-none opacity-25">
                       <div className="absolute inset-2.5 border-2 border-emerald-100 rounded-xl" />
                       <div className="absolute top-1/2 left-2.5 right-2.5 h-0.5 bg-emerald-100 -translate-y-1/2" />
@@ -1373,13 +1397,6 @@ export default function App() {
                       <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-56 h-12 border-b-2 border-x-2 border-emerald-100" />
                       <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 w-56 h-12 border-t-2 border-x-2 border-emerald-100" />
                     </div>
-
-                    {countdown !== null && (
-                      <div className="absolute inset-0 bg-slate-950/85 z-30 flex flex-col items-center justify-center">
-                        <span className="font-black text-sm uppercase text-red-400 animate-bounce">🚨 ULTIMA CHIAMATA! 🚨</span>
-                        <div className="text-8xl font-black text-red-500 animate-ping">{countdown}</div>
-                      </div>
-                    )}
 
                     <div className="w-full bg-[#060D1E]/95 rounded-xl p-2 flex flex-col gap-2 z-10 border border-slate-700">
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -1480,9 +1497,10 @@ export default function App() {
                 </main>
               )}
 
+              {/* SCHERMATA ROSE: CASELLE RIPROGETTATE AD ALTISSIMA VISIBILITÀ */}
               {activeTab === 'ROSTERS' && (
                 <main className="flex-1 flex flex-col lg:flex-row gap-3 my-1 overflow-y-auto w-full min-h-0">
-                  <aside className="w-full lg:w-[250px] bg-[#060D1E] border border-cyan-500/30 rounded-2xl p-3 flex flex-col gap-2">
+                  <aside className="w-full lg:w-[260px] bg-[#060D1E] border border-cyan-500/30 rounded-2xl p-3 flex flex-col gap-2">
                     <div className="flex justify-between items-center pb-2 border-b border-slate-800">
                       <span className="text-xs font-bold text-cyan-400 uppercase">Squadre di Lega</span>
                       <button onClick={handleExportCSV} className="text-[10px] bg-emerald-500 text-slate-950 font-black px-2 py-1 rounded-lg flex items-center gap-1 cursor-pointer"><Download size={11} /> Excel</button>
@@ -1495,10 +1513,10 @@ export default function App() {
 
                     <div className="space-y-1.5 overflow-y-auto flex-1">
                       {coaches.map(c => (
-                        <button key={c.name} onClick={() => setSelectedRosterCoach(c.name)} className={`w-full flex justify-between items-center p-2 rounded-xl border text-left cursor-pointer ${selectedRosterCoach === c.name ? 'bg-amber-500/10 border-amber-500 text-amber-300' : 'bg-[#0B132B] border-slate-800 text-white'}`}>
+                        <button key={c.name} onClick={() => setSelectedRosterCoach(c.name)} className={`w-full flex justify-between items-center p-2 rounded-xl border text-left cursor-pointer ${selectedRosterCoach === c.name ? 'bg-amber-500/15 border-amber-400 text-amber-300 shadow-md' : 'bg-[#0B132B] border-slate-800 text-white hover:border-slate-700'}`}>
                           <div className="truncate pr-1">
                             <span className="font-black text-xs block truncate uppercase">{c.teamName}</span>
-                            <span className="text-[9px] text-slate-400 block truncate">{c.name}</span>
+                            <span className="text-[10px] text-slate-400 block truncate">{c.name}</span>
                           </div>
                           <span className="font-black text-amber-400 text-xs shrink-0">{c.budget} FM</span>
                         </button>
@@ -1508,28 +1526,55 @@ export default function App() {
 
                   <section className="flex-1 bg-[#060D1E] border border-cyan-500/30 rounded-2xl p-4 overflow-y-auto">
                     {rosterViewMode === 'GRID' ? (
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center bg-[#0B132B] p-3 rounded-xl border border-slate-800">
+                      <div className="space-y-4">
+                        <div className="flex flex-wrap justify-between items-center bg-[#0B132B] p-3 rounded-2xl border-2 border-slate-800 gap-2">
                           <div>
-                            <h2 className="text-lg font-black text-white uppercase">{coaches.find(x => x.name === selectedRosterCoach)?.teamName}</h2>
-                            <p className="text-xs text-slate-400">Mister: {selectedRosterCoach} • Offerta Max: <strong className="text-emerald-400">{getCoachMaxBid(selectedRosterCoach)} FM</strong></p>
+                            <h2 className="text-xl font-black text-white uppercase flex items-center gap-2">
+                              {coaches.find(x => x.name === selectedRosterCoach)?.teamName}
+                            </h2>
+                            <p className="text-xs text-slate-300 mt-0.5">
+                              Mister: <strong className="text-white">{selectedRosterCoach}</strong> • Offerta Max Bid: <strong className="text-emerald-400">{getCoachMaxBid(selectedRosterCoach)} FM</strong> • Residui: <strong className="text-amber-400">{coaches.find(x => x.name === selectedRosterCoach)?.budget} FM</strong>
+                            </p>
                           </div>
-                          <span className="text-sm font-black text-amber-400">{(purchasedPlayers[selectedRosterCoach] || []).length} / {TOTAL_SLOTS} Acquistati</span>
+                          <span className="text-xs font-black bg-amber-400 text-slate-950 px-3 py-1.5 rounded-xl uppercase shadow-md">
+                            {(purchasedPlayers[selectedRosterCoach] || []).length} / {TOTAL_SLOTS} Calciatori
+                          </span>
                         </div>
 
                         {(['P', 'D', 'C', 'A'] as const).map(role => {
                           const items = (purchasedPlayers[selectedRosterCoach] || []).filter(i => i.player.role === role);
                           const max = ROLE_LIMITS[role];
+                          const roleLabel = role === 'P' ? 'Portieri' : role === 'D' ? 'Difensori' : role === 'C' ? 'Centrocampisti' : 'Attaccanti';
                           return (
-                            <div key={role} className="space-y-1">
-                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${getRoleBadge(role)}`}>{role} ({items.length}/{max})</span>
-                              <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2">
-                                {Array.from({ length: max }).map((_, idx) => items[idx] ? (
-                                  <div key={idx} className="bg-[#0B132B] border border-slate-800 p-2 rounded-lg text-xs flex flex-col justify-between">
-                                    <span className="font-bold block truncate">{items[idx].player.name}</span>
-                                    <span className="text-amber-400 font-black text-[10px] mt-1">{items[idx].price} FM</span>
-                                  </div>
-                                ) : <div key={idx} className="bg-[#0B132B]/40 border border-dashed border-slate-800 p-2 rounded-lg text-[9px] text-slate-600 text-center">Libero</div>)}
+                            <div key={role} className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <span className={`text-xs font-black px-2.5 py-0.5 rounded-full ${getRoleBadge(role)}`}>{role}</span>
+                                <span className="text-xs font-bold text-slate-300 uppercase">{roleLabel} ({items.length}/{max})</span>
+                              </div>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2">
+                                {Array.from({ length: max }).map((_, idx) => {
+                                  const item = items[idx];
+                                  return item ? (
+                                    <div key={idx} className="bg-gradient-to-b from-[#0F1E36] to-[#0A1424] border-2 border-amber-400/80 rounded-xl p-2 flex flex-col justify-between shadow-lg relative min-h-[68px]">
+                                      <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold">
+                                        <span>#{idx + 1}</span>
+                                        <span className="text-slate-300 uppercase truncate max-w-[55px]">{item.player.team}</span>
+                                      </div>
+                                      <span className="font-black text-xs text-white uppercase truncate my-1" title={item.player.name}>
+                                        {item.player.name}
+                                      </span>
+                                      <div className="flex justify-between items-center text-[10px] pt-1 border-t border-slate-700/60 font-black">
+                                        <span className="text-emerald-400">FM {item.price}</span>
+                                        <span className="text-slate-400 text-[9px]">{item.player.mv || '6.0'}</span>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div key={idx} className="bg-[#060D1E]/80 border-2 border-dashed border-slate-700/90 rounded-xl p-2 flex flex-col items-center justify-center min-h-[68px] text-center">
+                                      <span className="text-[10px] font-black text-slate-500 uppercase">Slot #{idx + 1}</span>
+                                      <span className="text-[11px] font-bold text-slate-400 mt-0.5">Libero</span>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
                           );
