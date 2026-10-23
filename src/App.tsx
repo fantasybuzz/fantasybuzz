@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Trophy, Zap, X, SkipForward, History, LogOut,
-  Share2, Search, Download, Shirt, CreditCard,
+  Share2, Search, Download, Shirt, CreditCard, Edit2, Check,
   Monitor, Timer, Flame, Award, PieChart, AlertCircle, TrendingUp, Gavel,
   RotateCcw, Shuffle, UserPlus, Trash2, Sparkles, QrCode, Volume2, VolumeX,
-  FileSignature, Coins, ArrowUp, Info, Copy, Users2, Bell, Crown
+  FileSignature, ArrowUp, Info, Copy, Users2, Bell, Crown
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import rawListone from './data/listone.json';
@@ -234,8 +234,8 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<'ALL' | Role>('ALL');
   const [hidePurchased, setHidePurchased] = useState(true);
-  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v12_startFromOne') !== 'false');
-  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v12_voiceEnabled') !== 'false');
+  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v13_startFromOne') !== 'false');
+  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v13_voiceEnabled') !== 'false');
   const [activeLegalSection, setActiveLegalSection] = useState<LegalSection>(null);
 
   const [activeLeaguesCount, setActiveLeaguesCount] = useState<number>(42);
@@ -262,17 +262,18 @@ export default function App() {
   const [manualPriceInput, setManualPriceInput] = useState<string>('');
   const [customBidInput, setCustomBidInput] = useState<string>('');
 
-  const [activePackage] = useState<'TV' | 'LIVE'>(() => (localStorage.getItem('fb_v12_activePackage') as 'TV' | 'LIVE') || 'LIVE');
   const [selectedPackage, setSelectedPackage] = useState<'TV' | 'LIVE'>('LIVE');
-  const [paymentType, setPaymentType] = useState<'SINGLE' | 'SPLIT'>('SPLIT');
-  const [isLicenseUnlocked, setIsLicenseUnlocked] = useState<boolean>(() => localStorage.getItem('fb_v12_unlocked') === 'true');
-  const [collettaPaidCoaches, setCollettaPaidCoaches] = useState<string[]>([]);
-  const [customCoachesCount, setCustomCoachesCount] = useState<number>(10);
+  const [isLicenseUnlocked, setIsLicenseUnlocked] = useState<boolean>(() => localStorage.getItem('fb_v13_unlocked') === 'true');
+  const [customCoachesCount, setCustomCoachesCount] = useState<number>(8);
 
   const [showCustomLeagueModal, setShowCustomLeagueModal] = useState(false);
   const [customLeagueInput, setCustomLeagueInput] = useState('');
   const [newCoachInput, setNewCoachInput] = useState('');
   const [newTeamNameInput, setNewTeamNameInput] = useState('');
+  const [editingCoachIdx, setEditingCoachIdx] = useState<number | null>(null);
+  const [editCoachName, setEditCoachName] = useState('');
+  const [editTeamName, setEditTeamName] = useState('');
+  const [editBudgetVal, setEditBudgetVal] = useState<number>(500);
 
   const [showPaywall, setShowPaywall] = useState(false);
   const [selectedStep, setSelectedStep] = useState<number>(1);
@@ -283,14 +284,14 @@ export default function App() {
   const [userRole, setUserRole] = useState<'PRESIDENT' | 'PLAYER' | null>(null);
   const [playerName, setPlayerName] = useState<string>('');
   const [inputLeagueName, setInputLeagueName] = useState('');
-  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v12_roomCode') || 'LEGA2026');
+  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v13_roomCode') || 'LEGA2026');
   const [isRoomCodeConfirmed, setIsRoomCodeConfirmed] = useState(false);
-  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v12_initialBudget')) || 500);
-  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v12_leagueName') || 'FantaLega Serie A');
+  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v13_initialBudget')) || 500);
+  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v13_leagueName') || 'FantaLega Serie A');
 
-  // Il primo slot è SEMPRE il Presidente: non eliminabile
+  // Elenco partecipanti lega iniziale
   const [coaches, setCoaches] = useState<Coach[]>(() => {
-    const saved = localStorage.getItem('fb_v12_coaches');
+    const saved = localStorage.getItem('fb_v13_coaches');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -307,7 +308,7 @@ export default function App() {
   });
 
   const [purchasedPlayers, setPurchasedPlayers] = useState<Record<string, PurchasedItem[]>>(() => {
-    const saved = localStorage.getItem('fb_v12_purchasedPlayers');
+    const saved = localStorage.getItem('fb_v13_purchasedPlayers');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -324,13 +325,14 @@ export default function App() {
   const [activeChannel, setActiveChannel] = useState<any>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
 
+  // Calcolo prezzo dinamico da 6 partecipanti in su
   const calculateLivePrice = (count: number) => {
     if (count <= 8) return 7.99;
     if (count <= 10) return 9.99;
     return 9.99 + (count - 10) * 1.0;
   };
 
-  const effectiveCoachesCount = coaches.length > 3 ? coaches.length : customCoachesCount;
+  const effectiveCoachesCount = coaches.length >= 6 ? coaches.length : customCoachesCount;
   const currentLivePrice = calculateLivePrice(effectiveCoachesCount);
   const currentPackagePrice = selectedPackage === 'TV' ? 4.99 : currentLivePrice;
   const perPersonPrice = (currentLivePrice / effectiveCoachesCount).toFixed(2);
@@ -341,9 +343,9 @@ export default function App() {
     setHeroBid(prev => prev + 2);
     setHeroBidder('La Tua Fanta-Squadra');
     try {
-      confetti({ particleCount: 40, spread: 60, origin: { y: 0.7 } });
+      confetti({ particleCount: 35, spread: 55, origin: { y: 0.65 } });
     } catch { /* ignore */ }
-    setTimeout(() => setHeroBuzzerPressed(false), 250);
+    setTimeout(() => setHeroBuzzerPressed(false), 220);
   };
 
   useEffect(() => {
@@ -366,16 +368,15 @@ export default function App() {
   }, [coaches, selectedWinnerManual]);
 
   useEffect(() => {
-    localStorage.setItem('fb_v12_coaches', JSON.stringify(coaches));
-    localStorage.setItem('fb_v12_purchasedPlayers', JSON.stringify(purchasedPlayers));
-    localStorage.setItem('fb_v12_leagueName', leagueName);
-    localStorage.setItem('fb_v12_roomCode', roomCode);
-    localStorage.setItem('fb_v12_initialBudget', String(initialBudget));
-    localStorage.setItem('fb_v12_startFromOne', String(startFromOne));
-    localStorage.setItem('fb_v12_voiceEnabled', String(voiceEnabled));
-    localStorage.setItem('fb_v12_activePackage', activePackage);
-    localStorage.setItem('fb_v12_unlocked', String(isLicenseUnlocked));
-  }, [coaches, purchasedPlayers, leagueName, roomCode, initialBudget, startFromOne, voiceEnabled, activePackage, isLicenseUnlocked]);
+    localStorage.setItem('fb_v13_coaches', JSON.stringify(coaches));
+    localStorage.setItem('fb_v13_purchasedPlayers', JSON.stringify(purchasedPlayers));
+    localStorage.setItem('fb_v13_leagueName', leagueName);
+    localStorage.setItem('fb_v13_roomCode', roomCode);
+    localStorage.setItem('fb_v13_initialBudget', String(initialBudget));
+    localStorage.setItem('fb_v13_startFromOne', String(startFromOne));
+    localStorage.setItem('fb_v13_voiceEnabled', String(voiceEnabled));
+    localStorage.setItem('fb_v13_unlocked', String(isLicenseUnlocked));
+  }, [coaches, purchasedPlayers, leagueName, roomCode, initialBudget, startFromOne, voiceEnabled, isLicenseUnlocked]);
 
   useEffect(() => {
     const r = new URLSearchParams(window.location.search).get('room');
@@ -763,105 +764,104 @@ export default function App() {
           50% { transform: rotate(12deg) scale(1.15); opacity: 0.6; }
         }
         @keyframes pulseGlow {
-          0%, 100% { box-shadow: 0 0 25px rgba(245, 158, 11, 0.4); transform: scale(1); }
-          50% { box-shadow: 0 0 50px rgba(245, 158, 11, 0.85); transform: scale(1.02); }
+          0%, 100% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.4); transform: scale(1); }
+          50% { box-shadow: 0 0 40px rgba(245, 158, 11, 0.8); transform: scale(1.02); }
         }
       `}</style>
 
+      {/* === HERO SECTION ULTRA-COMPATTA (ABOVE-THE-FOLD GARANTITO) === */}
       {!userRole ? (
         <div
-          className="min-h-screen w-full text-white flex flex-col items-center justify-between p-4 md:p-8 select-none overflow-y-auto relative z-10"
-          style={{ background: `radial-gradient(circle at 50% 18%, rgba(16, 185, 129, 0.32) 0%, rgba(4, 28, 18, 0.96) 55%, rgba(2, 10, 18, 1) 100%)` }}
+          className="min-h-screen w-full text-white flex flex-col items-center justify-between p-3 md:p-6 select-none overflow-y-auto relative z-10"
+          style={{ background: `radial-gradient(circle at 50% 18%, rgba(16, 185, 129, 0.28) 0%, rgba(4, 28, 18, 0.96) 55%, rgba(2, 10, 18, 1) 100%)` }}
         >
           <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
             <div className="absolute -top-32 left-1/4 w-96 h-[550px] bg-gradient-to-b from-emerald-400/20 via-cyan-400/5 to-transparent blur-3xl" style={{ animation: 'stadiumSpotlight 7s ease-in-out infinite' }} />
             <div className="absolute -top-32 right-1/4 w-96 h-[550px] bg-gradient-to-b from-amber-400/20 via-emerald-400/5 to-transparent blur-3xl" style={{ animation: 'stadiumSpotlight 9s ease-in-out infinite reverse' }} />
           </div>
 
-          <div className="max-w-3xl w-full text-center space-y-3 pt-2 relative z-10">
+          <div className="max-w-3xl w-full text-center space-y-1.5 pt-1 relative z-10">
             <div className="flex flex-wrap items-center justify-center gap-2">
-              <div className="inline-flex items-center gap-2 bg-[#060D1E]/95 border border-amber-400/70 px-4 py-1.5 rounded-full shadow-lg">
-                <BuzzMark size={20} />
-                <span className="text-xs font-black uppercase tracking-widest text-amber-400">
+              <div className="inline-flex items-center gap-1.5 bg-[#060D1E]/95 border border-amber-400/70 px-3 py-1 rounded-full shadow-lg">
+                <BuzzMark size={16} />
+                <span className="text-[10px] font-black uppercase tracking-widest text-amber-400">
                   L'Asta del Fantacalcio diventa uno Show TV
                 </span>
               </div>
-              <div className="inline-flex items-center gap-2 bg-emerald-950/90 border border-emerald-400/60 px-3.5 py-1.5 rounded-full shadow-lg">
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-ping" />
-                <span className="text-xs font-black text-emerald-300 uppercase tracking-wide">
+              <div className="inline-flex items-center gap-1.5 bg-emerald-950/90 border border-emerald-400/60 px-3 py-1 rounded-full shadow-lg">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                <span className="text-[10px] font-black text-emerald-300 uppercase tracking-wide">
                   🔥 {activeLeaguesCount} Leghe in asta adesso
                 </span>
               </div>
             </div>
             
-            <h1 className="text-3xl md:text-6xl font-black uppercase tracking-tight leading-tight drop-shadow-xl">
-              Basta fogli Excel e litigi.<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-emerald-300 to-cyan-400">Regia sulla TV. Buzzer sullo smartphone.</span>
+            <h1 className="text-2xl md:text-5xl font-black uppercase tracking-tight leading-tight drop-shadow-xl">
+              L'Asta del Fantacalcio<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-emerald-300 to-cyan-400">diventa uno Show TV.</span>
             </h1>
-            <p className="text-xs md:text-sm text-slate-300 font-semibold max-w-xl mx-auto leading-relaxed">
-              Collega il PC alla TV del salotto. Gli amici rilanciano dal divano con lo smartphone in tempo reale.
+            <p className="text-xs md:text-sm text-slate-300 font-semibold max-w-xl mx-auto leading-tight">
+              Addio Excel e chiamate sovrapposte: Regia sulla TV, Buzzer live sullo smartphone.
             </p>
           </div>
 
-          {/* SIMULATORE LIVE NELLA HERO: PROVA IL BUZZER IN 1 CLICK */}
-          <div className="max-w-2xl w-full my-4 bg-gradient-to-b from-[#0B1528] to-[#040C1A] border-2 border-amber-400/80 rounded-3xl p-5 shadow-[0_0_60px_rgba(245,158,11,0.3)] relative z-10">
-            <div className="text-center mb-3">
-              <span className="bg-amber-400/20 text-amber-300 border border-amber-400/50 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest inline-flex items-center gap-1.5">
-                <Sparkles size={14} className="text-amber-400" /> PROVA IL BUZZER ORA (CLICCA SOTTO)
+          {/* SIMULATORE COMPATTO NELLA HERO (ENTRA TUTTO NELLO SCHERMO) */}
+          <div className="max-w-2xl w-full my-2 bg-gradient-to-b from-[#0B1528] to-[#040C1A] border-2 border-amber-400/80 rounded-2xl p-3.5 shadow-[0_0_50px_rgba(245,158,11,0.25)] relative z-10">
+            <div className="text-center mb-2">
+              <span className="bg-amber-400/20 text-amber-300 border border-amber-400/50 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-1">
+                <Sparkles size={12} className="text-amber-400" /> PROVA IL BUZZER QUI SOTTO
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center bg-[#060D1E]/90 p-4 rounded-2xl border border-slate-700">
-              {/* Schermo TV simulato */}
-              <div className="bg-[#020712] border-2 border-emerald-400/60 rounded-2xl p-3.5 text-center shadow-inner relative overflow-hidden">
-                <div className="flex justify-between items-center text-[10px] font-black text-slate-400 mb-1">
-                  <span className="bg-rose-600 text-white px-2 py-0.5 rounded-full font-black">A • INTER</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center bg-[#060D1E]/90 p-3 rounded-xl border border-slate-700">
+              <div className="bg-[#020712] border border-emerald-400/60 rounded-xl p-2.5 text-center shadow-inner relative overflow-hidden">
+                <div className="flex justify-between items-center text-[9px] font-black text-slate-400 mb-0.5">
+                  <span className="bg-rose-600 text-white px-1.5 py-0.2 rounded font-black">A • INTER</span>
                   <span className="text-emerald-400">REGIA TV SALOTTO</span>
                 </div>
-                <h3 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight">LAUTARO MARTINEZ</h3>
-                <div className="my-2 bg-gradient-to-r from-amber-500/20 via-amber-400/30 to-amber-500/20 py-1.5 rounded-xl border border-amber-400/40">
-                  <span className="text-[10px] text-amber-300 font-bold block uppercase">Offerta Corrente</span>
-                  <span className="text-3xl font-black text-amber-400">{heroBid} FM</span>
+                <h3 className="text-lg md:text-xl font-black text-white uppercase tracking-tight">LAUTARO MARTINEZ</h3>
+                <div className="my-1 bg-gradient-to-r from-amber-500/20 via-amber-400/30 to-amber-500/20 py-1 rounded-lg border border-amber-400/40">
+                  <span className="text-[9px] text-amber-300 font-bold block uppercase">Offerta Corrente</span>
+                  <span className="text-2xl font-black text-amber-400">{heroBid} FM</span>
                 </div>
-                <p className="text-[11px] text-slate-300 font-bold truncate">
+                <p className="text-[10px] text-slate-300 font-bold truncate">
                   In testa: <strong className="text-emerald-300">{heroBidder}</strong>
                 </p>
               </div>
 
-              {/* Pulsante Buzzer interattivo */}
-              <div className="flex flex-col items-center justify-center gap-2">
+              <div className="flex flex-col items-center justify-center gap-1.5">
                 <button
                   type="button"
                   onClick={handleHeroBuzzerClick}
-                  className={`w-36 h-36 rounded-full flex flex-col items-center justify-center gap-1 text-slate-950 font-black cursor-pointer select-none transition-transform active:scale-90 ${
+                  className={`w-28 h-28 rounded-full flex flex-col items-center justify-center gap-0.5 text-slate-950 font-black cursor-pointer select-none transition-transform active:scale-90 ${
                     heroBuzzerPressed
-                      ? 'scale-90 bg-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.9)]'
-                      : 'bg-gradient-to-b from-amber-300 via-amber-400 to-amber-600 border-4 border-white shadow-2xl'
+                      ? 'scale-90 bg-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.9)]'
+                      : 'bg-gradient-to-b from-amber-300 via-amber-400 to-amber-600 border-4 border-white shadow-xl'
                   }`}
                   style={{ animation: heroBuzzerPressed ? 'none' : 'pulseGlow 2.5s infinite' }}
                 >
-                  <Zap size={28} className="fill-slate-950" />
-                  <span className="text-base font-black uppercase tracking-wider">BUZZ!</span>
-                  <span className="text-[10px] font-extrabold">+2 FM</span>
+                  <Zap size={22} className="fill-slate-950" />
+                  <span className="text-sm font-black uppercase tracking-wider">BUZZ!</span>
+                  <span className="text-[9px] font-extrabold">+2 FM</span>
                 </button>
-                <span className="text-[10px] text-slate-400 font-bold text-center">
-                  👆 Clicca per provare il suono e il rilancio in diretta!
+                <span className="text-[9px] text-slate-400 font-bold text-center">
+                  Premi per il suono del rilancio live!
                 </span>
               </div>
             </div>
 
-            <div className="mt-4 flex flex-col sm:flex-row gap-3">
+            <div className="mt-3 flex flex-col sm:flex-row gap-2">
               <button
                 type="button"
                 onClick={() => setShowCustomLeagueModal(true)}
-                className="flex-1 py-4 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black rounded-2xl text-sm md:text-base uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_25px_rgba(16,185,129,0.4)]"
+                className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black rounded-xl text-xs md:text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-lg"
               >
-                <Zap size={20} className="fill-slate-950" /> 🚀 AVVIA SHOW D'ASTA GRATIS
+                <Zap size={18} className="fill-slate-950" /> 🚀 AVVIA SHOW D'ASTA GRATIS
               </button>
             </div>
 
-            <div className="mt-3.5 bg-[#020712] p-3 rounded-2xl border border-cyan-500/30 flex flex-col sm:flex-row items-center gap-2">
-              <span className="text-xs font-black uppercase text-cyan-300 shrink-0 flex items-center gap-1">
+            <div className="mt-2.5 bg-[#020712] p-2 rounded-xl border border-cyan-500/30 flex flex-col sm:flex-row items-center gap-2">
+              <span className="text-[11px] font-black uppercase text-cyan-300 shrink-0 flex items-center gap-1">
                 🔑 CODICE STANZA:
               </span>
               <input
@@ -869,7 +869,7 @@ export default function App() {
                 placeholder="Es. BUZZ2026..."
                 value={inputLeagueName}
                 onChange={e => { setInputLeagueName(e.target.value); setIsRoomCodeConfirmed(false); }}
-                className="w-full flex-1 bg-[#0B1528] border border-slate-700 rounded-xl p-2 text-sm text-amber-400 font-black tracking-widest text-center uppercase"
+                className="w-full flex-1 bg-[#0B1528] border border-slate-700 rounded-lg p-1.5 text-xs text-amber-400 font-black tracking-widest text-center uppercase"
               />
               <button
                 type="button"
@@ -882,16 +882,16 @@ export default function App() {
                     setCustomAlertMessage('Inserisci il Codice Stanza fornito dal Presidente!');
                   }
                 }}
-                className="w-full sm:w-auto px-6 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl font-black text-xs uppercase cursor-pointer shrink-0"
+                className="w-full sm:w-auto px-5 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-lg font-black text-xs uppercase cursor-pointer shrink-0"
               >
                 ENTRA COL TELEFONO
               </button>
             </div>
 
             {isRoomCodeConfirmed && (
-              <div className="space-y-1.5 pt-2.5 mt-2 border-t border-slate-800 text-left">
-                <label className="text-xs font-bold text-emerald-400 block uppercase text-center">✅ Stanza Trovata! Scegli la tua Squadra:</label>
-                <div className="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto">
+              <div className="space-y-1.5 pt-2 mt-2 border-t border-slate-800 text-left">
+                <label className="text-[11px] font-bold text-emerald-400 block uppercase text-center">✅ Stanza Trovata! Scegli la tua Squadra:</label>
+                <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto">
                   {coaches.map(c => (
                     <button
                       key={c.name}
@@ -902,10 +902,10 @@ export default function App() {
                         if (activeChannel) activeChannel.send({ type: 'broadcast', event: 'player_online', payload: { name: c.name } });
                         setUserRole('PLAYER');
                       }}
-                      className="p-2.5 bg-[#0B1528] border border-slate-800 rounded-xl text-left cursor-pointer hover:border-cyan-400"
+                      className="p-2 bg-[#0B1528] border border-slate-800 rounded-lg text-left cursor-pointer hover:border-cyan-400"
                     >
                       <span className="font-extrabold text-amber-400 text-xs block truncate">{c.teamName}</span>
-                      <span className="text-[10px] text-slate-300 block truncate">Mister: {c.name}</span>
+                      <span className="text-[9px] text-slate-300 block truncate">Mister: {c.name}</span>
                     </button>
                   ))}
                 </div>
@@ -913,12 +913,12 @@ export default function App() {
             )}
           </div>
 
-          <p className="text-xs text-slate-300 text-center font-semibold bg-[#060D1E]/80 py-2 px-4 rounded-xl border border-slate-800 relative z-10">
-            Zero carta di credito. I primi 6 acquisti sono gratuiti al 100% per testare TV e smartphone.
+          <p className="text-[11px] text-slate-300 text-center font-semibold bg-[#060D1E]/80 py-1.5 px-3 rounded-lg border border-slate-800 relative z-10">
+            Zero carta di credito. Primi 6 acquisti gratis per testare Regia TV e Buzzer smartphone.
           </p>
 
-          <footer className="max-w-3xl w-full text-center space-y-2 py-4 border-t border-slate-800 text-xs text-slate-400 relative z-10 mt-6">
-            <div className="flex flex-wrap justify-center gap-5 font-bold text-slate-300">
+          <footer className="max-w-3xl w-full text-center space-y-1.5 py-3 border-t border-slate-800 text-[11px] text-slate-400 relative z-10 mt-2">
+            <div className="flex flex-wrap justify-center gap-4 font-bold text-slate-300">
               <button onClick={() => setActiveLegalSection('TERMS')} className="hover:text-amber-400 cursor-pointer">Termini & Condizioni</button>
               <span>•</span>
               <button onClick={() => setActiveLegalSection('PRIVACY')} className="hover:text-amber-400 cursor-pointer">Privacy (GDPR)</button>
@@ -965,7 +965,7 @@ export default function App() {
                 </h1>
               </div>
 
-              {userRole === 'PRESIDENT' && activePackage === 'LIVE' && (
+              {userRole === 'PRESIDENT' && (
                 <div className="relative">
                   <button onClick={() => setShowQrModal(true)} className="bg-amber-500/20 border-2 border-amber-400 px-3 py-1 rounded-xl flex items-center gap-2 cursor-pointer hover:bg-amber-500/30 transition-all shadow-md">
                     <QrCode size={15} className="text-amber-400" />
@@ -1315,7 +1315,6 @@ export default function App() {
                 </main>
               )}
 
-              {/* SCHERMATA ROSE: CASELLE AD ALTISSIMA VISIBILITÀ */}
               {activeTab === 'ROSTERS' && (
                 <main className="flex-1 flex flex-col lg:flex-row gap-3 my-1 overflow-y-auto w-full min-h-0">
                   <aside className="w-full lg:w-[260px] bg-[#060D1E] border border-cyan-500/30 rounded-2xl p-3 flex flex-col gap-2">
@@ -1550,16 +1549,33 @@ export default function App() {
         </div>
       )}
 
+      {/* === MODALE CREAZIONE STANZA CON PRESIDENTE MODIFICABILE E BUDGET LIBERO === */}
       {showCustomLeagueModal && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <div className="bg-[#0B132B] border border-amber-500/40 rounded-3xl p-5 max-w-md w-full flex flex-col gap-3 text-center relative max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#0B132B] border border-amber-500/40 rounded-3xl p-5 max-w-md w-full flex flex-col gap-3 text-center relative max-h-[92vh] overflow-y-auto">
             <button onClick={() => setShowCustomLeagueModal(false)} className="absolute top-4 right-4 text-slate-400 cursor-pointer"><X size={16} /></button>
             <h3 className="text-base font-black text-white uppercase">Crea la tua Lega di Fantacalcio</h3>
             <input type="text" placeholder="Nome della Lega (es. FantaLega 2026)..." value={customLeagueInput} onChange={e => setCustomLeagueInput(e.target.value)} className="w-full bg-[#060D1E] border border-slate-700 rounded-xl p-2.5 text-xs text-amber-400 font-bold text-center" />
             
-            <div className="flex justify-between bg-[#060D1E] p-2.5 rounded-xl text-xs">
-              <span className="font-bold">Fantamilioni Iniziali:</span>
-              <div className="flex gap-1">{[300, 500, 1000].map(b => <button key={b} onClick={() => setInitialBudget(b)} className={`px-2 py-0.5 rounded font-black ${initialBudget === b ? 'bg-amber-500 text-slate-950' : 'bg-slate-800'}`}>{b}</button>)}</div>
+            {/* Budget Iniziale modificabile liberamente con campo numerico */}
+            <div className="flex items-center justify-between bg-[#060D1E] p-2.5 rounded-xl text-xs border border-slate-800">
+              <span className="font-bold text-slate-300">Fantamilioni Iniziali Standard:</span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  min="50"
+                  max="2000"
+                  step="10"
+                  value={initialBudget}
+                  onChange={e => {
+                    const val = Number(e.target.value) || 500;
+                    setInitialBudget(val);
+                    setCoaches(prev => prev.map(c => ({ ...c, budget: val })));
+                  }}
+                  className="w-20 bg-[#0B132B] border border-amber-400/60 rounded-lg p-1 text-xs font-black text-amber-400 text-center"
+                />
+                <span className="text-[10px] text-slate-400 font-bold">FM</span>
+              </div>
             </div>
 
             <div className="space-y-1.5 bg-[#060D1E] p-3 rounded-xl border border-slate-800">
@@ -1582,20 +1598,68 @@ export default function App() {
               </button>
             </div>
 
-            <div className="max-h-36 overflow-y-auto space-y-1 text-left">
+            {/* Lista Squadre: Slot Presidente e crediti squadra per squadra modificabili */}
+            <div className="max-h-44 overflow-y-auto space-y-1.5 text-left">
               {coaches.map((c, i) => {
                 const isPresident = i === 0;
+                const isEditing = editingCoachIdx === i;
+
+                if (isEditing) {
+                  return (
+                    <div key={i} className="p-2 bg-[#060D1E] border border-cyan-400/70 rounded-xl space-y-1.5">
+                      <div className="grid grid-cols-2 gap-1">
+                        <input type="text" value={editTeamName} onChange={e => setEditTeamName(e.target.value)} placeholder="Nome Squadra" className="bg-[#0B132B] border border-slate-700 rounded p-1 text-xs text-amber-300" />
+                        <input type="text" value={editCoachName} onChange={e => setEditCoachName(e.target.value)} placeholder="Nome Mister" className="bg-[#0B132B] border border-slate-700 rounded p-1 text-xs text-white" />
+                      </div>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-slate-400">Crediti:</span>
+                        <input type="number" value={editBudgetVal} onChange={e => setEditBudgetVal(Number(e.target.value))} className="w-16 bg-[#0B132B] border border-slate-700 rounded p-1 text-xs text-amber-400 font-bold text-center" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCoaches(prev => prev.map((item, idx) => idx === i ? { ...item, name: editCoachName.trim() || item.name, teamName: editTeamName.trim() || item.teamName, budget: editBudgetVal } : item));
+                            setEditingCoachIdx(null);
+                          }}
+                          className="px-2 py-1 bg-emerald-500 text-slate-950 font-bold rounded text-xs flex items-center gap-1 cursor-pointer"
+                        >
+                          <Check size={12} /> Salva
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
-                  <div key={c.name} className={`flex justify-between items-center px-2.5 py-1.5 rounded text-xs border ${isPresident ? 'bg-amber-500/15 border-amber-400/50' : 'bg-[#060D1E] border-slate-800'}`}>
-                    <span className="truncate">
+                  <div key={c.name} className={`flex justify-between items-center px-2.5 py-1.5 rounded-xl text-xs border ${isPresident ? 'bg-amber-500/15 border-amber-400/50' : 'bg-[#060D1E] border-slate-800'}`}>
+                    <div className="truncate pr-1">
                       <strong>{i + 1}. {c.teamName}</strong> <span className="text-slate-400">({c.name})</span>
                       {isPresident && <span className="ml-1.5 text-[9px] bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded font-black uppercase">👑 Presidente</span>}
-                    </span>
-                    {!isPresident && (
-                      <button onClick={() => setCoaches(prev => prev.filter(x => x.name !== c.name))} className="text-rose-400 hover:text-rose-300 cursor-pointer">
+                      <span className="ml-2 text-emerald-400 font-bold text-[10px]">{c.budget} FM</span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingCoachIdx(i);
+                          setEditCoachName(c.name);
+                          setEditTeamName(c.teamName);
+                          setEditBudgetVal(c.budget);
+                        }}
+                        className="text-amber-400 hover:text-amber-300 p-1 cursor-pointer"
+                        title="Modifica squadra e crediti"
+                      >
+                        <Edit2 size={13} />
+                      </button>
+                      {/* Anche il Presidente può essere rimosso, passando la corona al successivo */}
+                      <button
+                        type="button"
+                        onClick={() => setCoaches(prev => prev.filter((_, idx) => idx !== i))}
+                        className="text-rose-400 hover:text-rose-300 p-1 cursor-pointer"
+                        title="Rimuovi"
+                      >
                         <Trash2 size={13} />
                       </button>
-                    )}
+                    </div>
                   </div>
                 );
               })}
@@ -1603,6 +1667,10 @@ export default function App() {
 
             <button
               onClick={() => {
+                if (coaches.length === 0) {
+                  setCustomAlertMessage('Aggiungi almeno una squadra alla lega!');
+                  return;
+                }
                 const n = customLeagueInput.trim() || leagueName;
                 setLeagueName(n); setRoomCode(n.toUpperCase().replace(/[^A-Z0-9]/g, '') || 'LEGA2026');
                 setShowCustomLeagueModal(false); setUserRole('PRESIDENT'); setShowWelcomeGuide(true); setShowRoomCodeArrow(true);
@@ -1616,13 +1684,14 @@ export default function App() {
         </div>
       )}
 
+      {/* === PAYWALL RAZIONALE: NO COLLETTE FRAZIONATE, SCAGLIONI TRASPARENTI === */}
       {showPaywall && (
         <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#0B132B] border-2 border-amber-400 rounded-3xl p-5 max-w-lg w-full flex flex-col gap-3.5 relative text-center">
             <button onClick={() => setShowPaywall(false)} className="absolute top-4 right-4 text-slate-400 cursor-pointer"><X size={16} /></button>
             <h2 className="text-xl font-black text-white uppercase">Sblocca l'Asta Completa (Rose fino al 25° Giocatore) 🏆</h2>
             <p className="text-xs text-slate-300">
-              I primi {FREE_TRIAL_LIMIT} acquisti sono salvati. Lo sblocco vale per tutta la stagione, copre il completamento di tutte le rose fino a 25 calciatori per squadra e le aste di riparazione.
+              I primi {FREE_TRIAL_LIMIT} acquisti sono salvati. Lo sblocco è unico per tutta la stagione, copre il completamento di tutte le rose e le future aste di riparazione.
             </p>
 
             <div className="grid grid-cols-2 gap-2.5 text-left">
@@ -1647,35 +1716,19 @@ export default function App() {
                 <input
                   type="range"
                   min="6"
-                  max="20"
+                  max="18"
                   value={effectiveCoachesCount}
                   onChange={e => setCustomCoachesCount(Number(e.target.value))}
                   className="w-full accent-amber-400 cursor-pointer"
                 />
+                <span className="text-[10px] text-slate-400 block text-right">Fino a 8: €7,99 • 10: €9,99 • Da 11 in su: +€1/squadra</span>
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-2 text-xs font-bold">
-              <button onClick={() => setPaymentType('SINGLE')} className={`py-2 rounded-xl border flex items-center justify-center gap-1 cursor-pointer ${paymentType === 'SINGLE' ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-[#060D1E] text-slate-400 border-slate-800'}`}>
-                <CreditCard size={13} /> Paga il Presidente
-              </button>
-              <button onClick={() => setPaymentType('SPLIT')} className={`py-2 rounded-xl border flex items-center justify-center gap-1 cursor-pointer ${paymentType === 'SPLIT' ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-[#060D1E] text-slate-400 border-slate-800'}`}>
-                <Users2 size={13} /> Dividi con Colletta
-              </button>
+            <div className="bg-[#060D1E] p-2.5 rounded-xl border border-slate-800 text-xs text-slate-300 flex items-center justify-between">
+              <span className="flex items-center gap-1.5"><Users2 size={15} className="text-amber-400" /> Spesa per partecipante:</span>
+              <strong className="text-emerald-400 font-black text-sm">Circa €{perPersonPrice} a testa</strong>
             </div>
-
-            {paymentType === 'SPLIT' && (
-              <div className="bg-[#060D1E] border border-slate-800 rounded-2xl p-3 text-left space-y-2">
-                <span className="text-[10px] font-black uppercase text-amber-400 flex items-center gap-1"><Coins size={13} /> Tabella Colletta ({collettaPaidCoaches.length}/{coaches.length} quote raccolte)</span>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-24 overflow-y-auto">
-                  {coaches.map(c => (
-                    <button key={c.name} onClick={() => setCollettaPaidCoaches(prev => prev.includes(c.name) ? prev.filter(n => n !== c.name) : [...prev, c.name])} className={`p-1.5 rounded-lg border text-[11px] font-bold flex justify-between cursor-pointer ${collettaPaidCoaches.includes(c.name) ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300' : 'bg-[#0B132B] border-slate-800 text-slate-400'}`}>
-                      <span className="truncate">{c.teamName}</span> <span>{collettaPaidCoaches.includes(c.name) ? '✅' : '⏳'}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             <button onClick={() => { setIsLicenseUnlocked(true); setShowPaywall(false); }} className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase cursor-pointer flex items-center justify-center gap-2 shadow-lg">
               <CreditCard size={15} /> Sblocca Ora (€{currentPackagePrice.toFixed(2)} totale lega)
