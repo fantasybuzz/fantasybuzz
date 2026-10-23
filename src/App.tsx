@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Trophy, Zap, X, SkipForward, History, LogOut,
-  Share2, Search, Download, Shirt, Play, CreditCard, Tv, Smartphone,
+  Share2, Search, Download, Shirt, CreditCard,
   Monitor, Timer, Flame, Award, PieChart, AlertCircle, TrendingUp, Gavel,
   RotateCcw, Shuffle, UserPlus, Trash2, Sparkles, QrCode, Volume2, VolumeX,
-  FileSignature, ChevronDown, Coins, ArrowUp, Info, Copy, Users2, Bell, Crown
+  FileSignature, Coins, ArrowUp, Info, Copy, Users2, Bell, Crown
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import rawListone from './data/listone.json';
@@ -234,9 +234,8 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<'ALL' | Role>('ALL');
   const [hidePurchased, setHidePurchased] = useState(true);
-  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v11_startFromOne') !== 'false');
-  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v11_voiceEnabled') !== 'false');
-  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v12_startFromOne') !== 'false');
+  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v12_voiceEnabled') !== 'false');
   const [activeLegalSection, setActiveLegalSection] = useState<LegalSection>(null);
 
   const [activeLeaguesCount, setActiveLeaguesCount] = useState<number>(42);
@@ -263,10 +262,10 @@ export default function App() {
   const [manualPriceInput, setManualPriceInput] = useState<string>('');
   const [customBidInput, setCustomBidInput] = useState<string>('');
 
-  const [activePackage, setActivePackage] = useState<'TV' | 'LIVE'>(() => (localStorage.getItem('fb_v11_activePackage') as 'TV' | 'LIVE') || 'LIVE');
+  const [activePackage] = useState<'TV' | 'LIVE'>(() => (localStorage.getItem('fb_v12_activePackage') as 'TV' | 'LIVE') || 'LIVE');
   const [selectedPackage, setSelectedPackage] = useState<'TV' | 'LIVE'>('LIVE');
   const [paymentType, setPaymentType] = useState<'SINGLE' | 'SPLIT'>('SPLIT');
-  const [isLicenseUnlocked, setIsLicenseUnlocked] = useState<boolean>(() => localStorage.getItem('fb_v11_unlocked') === 'true');
+  const [isLicenseUnlocked, setIsLicenseUnlocked] = useState<boolean>(() => localStorage.getItem('fb_v12_unlocked') === 'true');
   const [collettaPaidCoaches, setCollettaPaidCoaches] = useState<string[]>([]);
   const [customCoachesCount, setCustomCoachesCount] = useState<number>(10);
 
@@ -274,9 +273,6 @@ export default function App() {
   const [customLeagueInput, setCustomLeagueInput] = useState('');
   const [newCoachInput, setNewCoachInput] = useState('');
   const [newTeamNameInput, setNewTeamNameInput] = useState('');
-
-  const [isDemoMode, setIsDemoMode] = useState(false);
-  const [demoAuctionCount, setDemoAuctionCount] = useState(0);
 
   const [showPaywall, setShowPaywall] = useState(false);
   const [selectedStep, setSelectedStep] = useState<number>(1);
@@ -287,14 +283,14 @@ export default function App() {
   const [userRole, setUserRole] = useState<'PRESIDENT' | 'PLAYER' | null>(null);
   const [playerName, setPlayerName] = useState<string>('');
   const [inputLeagueName, setInputLeagueName] = useState('');
-  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v11_roomCode') || 'LEGA2026');
+  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v12_roomCode') || 'LEGA2026');
   const [isRoomCodeConfirmed, setIsRoomCodeConfirmed] = useState(false);
-  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v11_initialBudget')) || 500);
-  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v11_leagueName') || 'FantaLega Serie A');
+  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v12_initialBudget')) || 500);
+  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v12_leagueName') || 'FantaLega Serie A');
 
   // Il primo slot è SEMPRE il Presidente: non eliminabile
   const [coaches, setCoaches] = useState<Coach[]>(() => {
-    const saved = localStorage.getItem('fb_v11_coaches');
+    const saved = localStorage.getItem('fb_v12_coaches');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -311,7 +307,7 @@ export default function App() {
   });
 
   const [purchasedPlayers, setPurchasedPlayers] = useState<Record<string, PurchasedItem[]>>(() => {
-    const saved = localStorage.getItem('fb_v11_purchasedPlayers');
+    const saved = localStorage.getItem('fb_v12_purchasedPlayers');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -339,7 +335,6 @@ export default function App() {
   const currentPackagePrice = selectedPackage === 'TV' ? 4.99 : currentLivePrice;
   const perPersonPrice = (currentLivePrice / effectiveCoachesCount).toFixed(2);
 
-  // Azione del Buzzer Test nella Hero
   const handleHeroBuzzerClick = () => {
     playBuzzSound();
     setHeroBuzzerPressed(true);
@@ -371,18 +366,16 @@ export default function App() {
   }, [coaches, selectedWinnerManual]);
 
   useEffect(() => {
-    if (!isDemoMode) {
-      localStorage.setItem('fb_v11_coaches', JSON.stringify(coaches));
-      localStorage.setItem('fb_v11_purchasedPlayers', JSON.stringify(purchasedPlayers));
-      localStorage.setItem('fb_v11_leagueName', leagueName);
-      localStorage.setItem('fb_v11_roomCode', roomCode);
-      localStorage.setItem('fb_v11_initialBudget', String(initialBudget));
-      localStorage.setItem('fb_v11_startFromOne', String(startFromOne));
-      localStorage.setItem('fb_v11_voiceEnabled', String(voiceEnabled));
-      localStorage.setItem('fb_v11_activePackage', activePackage);
-      localStorage.setItem('fb_v11_unlocked', String(isLicenseUnlocked));
-    }
-  }, [coaches, purchasedPlayers, leagueName, roomCode, initialBudget, startFromOne, voiceEnabled, activePackage, isLicenseUnlocked, isDemoMode]);
+    localStorage.setItem('fb_v12_coaches', JSON.stringify(coaches));
+    localStorage.setItem('fb_v12_purchasedPlayers', JSON.stringify(purchasedPlayers));
+    localStorage.setItem('fb_v12_leagueName', leagueName);
+    localStorage.setItem('fb_v12_roomCode', roomCode);
+    localStorage.setItem('fb_v12_initialBudget', String(initialBudget));
+    localStorage.setItem('fb_v12_startFromOne', String(startFromOne));
+    localStorage.setItem('fb_v12_voiceEnabled', String(voiceEnabled));
+    localStorage.setItem('fb_v12_activePackage', activePackage);
+    localStorage.setItem('fb_v12_unlocked', String(isLicenseUnlocked));
+  }, [coaches, purchasedPlayers, leagueName, roomCode, initialBudget, startFromOne, voiceEnabled, activePackage, isLicenseUnlocked]);
 
   useEffect(() => {
     const r = new URLSearchParams(window.location.search).get('room');
@@ -454,13 +447,12 @@ export default function App() {
     if (speak) {
       speakTelecronista(`Colpo di mercato! ${player.name} firma con ${clubLabel} per ${price} fantamilioni!`, voiceEnabled);
     }
-    if (isDemoMode) setDemoAuctionCount(prev => prev + 1);
     setCoaches(prev => prev.map(c => c.name === winner ? { ...c, budget: c.budget - price, playersCount: c.playersCount + 1 } : c));
     setPurchasedPlayers(prev => ({ ...prev, [winner]: [...(prev[winner] || []), { player, price }] }));
     setLastAwardHistory({ player, winner, price });
     setAwardModal({ show: true, player, winner, price });
     setCurrentBid(0); setHighestBidder(null); setCountdown(null);
-  }, [coaches, voiceEnabled, isDemoMode]);
+  }, [coaches, voiceEnabled]);
 
   const stateRef = useRef({ coaches, purchasedPlayers, activePlayer, currentBid, highestBidder, userRole, leagueName, startFromOne, isLicenseUnlocked });
   useEffect(() => { stateRef.current = { coaches, purchasedPlayers, activePlayer, currentBid, highestBidder, userRole, leagueName, startFromOne, isLicenseUnlocked }; }, [coaches, purchasedPlayers, activePlayer, currentBid, highestBidder, userRole, leagueName, startFromOne, isLicenseUnlocked]);
@@ -776,13 +768,11 @@ export default function App() {
         }
       `}</style>
 
-      {/* === LANDING PAGE VIRALE AD IMPATTO IMMEDIATO === */}
       {!userRole ? (
         <div
           className="min-h-screen w-full text-white flex flex-col items-center justify-between p-4 md:p-8 select-none overflow-y-auto relative z-10"
           style={{ background: `radial-gradient(circle at 50% 18%, rgba(16, 185, 129, 0.32) 0%, rgba(4, 28, 18, 0.96) 55%, rgba(2, 10, 18, 1) 100%)` }}
         >
-          {/* Spotlight da Stadio */}
           <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
             <div className="absolute -top-32 left-1/4 w-96 h-[550px] bg-gradient-to-b from-emerald-400/20 via-cyan-400/5 to-transparent blur-3xl" style={{ animation: 'stadiumSpotlight 7s ease-in-out infinite' }} />
             <div className="absolute -top-32 right-1/4 w-96 h-[550px] bg-gradient-to-b from-amber-400/20 via-emerald-400/5 to-transparent blur-3xl" style={{ animation: 'stadiumSpotlight 9s ease-in-out infinite reverse' }} />
@@ -813,7 +803,7 @@ export default function App() {
             </p>
           </div>
 
-          {/* === SIMULATORE LIVE NELLA HERO: PROVA IL BUZZER IN 1 CLICK === */}
+          {/* SIMULATORE LIVE NELLA HERO: PROVA IL BUZZER IN 1 CLICK */}
           <div className="max-w-2xl w-full my-4 bg-gradient-to-b from-[#0B1528] to-[#040C1A] border-2 border-amber-400/80 rounded-3xl p-5 shadow-[0_0_60px_rgba(245,158,11,0.3)] relative z-10">
             <div className="text-center mb-3">
               <span className="bg-amber-400/20 text-amber-300 border border-amber-400/50 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest inline-flex items-center gap-1.5">
@@ -838,7 +828,7 @@ export default function App() {
                 </p>
               </div>
 
-              {/* Pulsante Buzzer da premere subito */}
+              {/* Pulsante Buzzer interattivo */}
               <div className="flex flex-col items-center justify-center gap-2">
                 <button
                   type="button"
@@ -860,7 +850,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Azioni Principali: Crea Stanza o Entra */}
             <div className="mt-4 flex flex-col sm:flex-row gap-3">
               <button
                 type="button"
@@ -871,7 +860,6 @@ export default function App() {
               </button>
             </div>
 
-            {/* Box Codice Stanza per gli amici col telefono */}
             <div className="mt-3.5 bg-[#020712] p-3 rounded-2xl border border-cyan-500/30 flex flex-col sm:flex-row items-center gap-2">
               <span className="text-xs font-black uppercase text-cyan-300 shrink-0 flex items-center gap-1">
                 🔑 CODICE STANZA:
@@ -908,7 +896,6 @@ export default function App() {
                     <button
                       key={c.name}
                       onClick={() => {
-                        setIsDemoMode(false);
                         setPlayerName(c.name);
                         setSelectedRosterCoach(c.name);
                         setCoaches(prev => prev.map(x => x.name === c.name ? { ...x, isOnline: true } : x));
@@ -930,7 +917,6 @@ export default function App() {
             Zero carta di credito. I primi 6 acquisti sono gratuiti al 100% per testare TV e smartphone.
           </p>
 
-          {/* Footer Essenziale */}
           <footer className="max-w-3xl w-full text-center space-y-2 py-4 border-t border-slate-800 text-xs text-slate-400 relative z-10 mt-6">
             <div className="flex flex-wrap justify-center gap-5 font-bold text-slate-300">
               <button onClick={() => setActiveLegalSection('TERMS')} className="hover:text-amber-400 cursor-pointer">Termini & Condizioni</button>
@@ -1041,7 +1027,6 @@ export default function App() {
             </div>
           </header>
 
-          {/* VISTA SMARTPHONE PARTECIPANTE */}
           {userRole === 'PLAYER' ? (
             <main
               className="flex-1 flex flex-col gap-2 max-w-sm mx-auto w-full my-auto overflow-y-auto items-center justify-between py-2 px-3 rounded-3xl border-2 border-emerald-400/50"
@@ -1565,7 +1550,6 @@ export default function App() {
         </div>
       )}
 
-      {/* MODALE CREAZIONE STANZA CON PRESIDENTE PROTETTO */}
       {showCustomLeagueModal && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#0B132B] border border-amber-500/40 rounded-3xl p-5 max-w-md w-full flex flex-col gap-3 text-center relative max-h-[90vh] overflow-y-auto">
@@ -1621,7 +1605,7 @@ export default function App() {
               onClick={() => {
                 const n = customLeagueInput.trim() || leagueName;
                 setLeagueName(n); setRoomCode(n.toUpperCase().replace(/[^A-Z0-9]/g, '') || 'LEGA2026');
-                setIsDemoMode(false); setShowCustomLeagueModal(false); setUserRole('PRESIDENT'); setShowWelcomeGuide(true); setShowRoomCodeArrow(true);
+                setShowCustomLeagueModal(false); setUserRole('PRESIDENT'); setShowWelcomeGuide(true); setShowRoomCodeArrow(true);
                 setSelectedRole('ALL'); setCurrentPlayer(listoneUfficiale[0]);
               }}
               className="w-full py-3 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase cursor-pointer shadow-lg"
@@ -1632,7 +1616,6 @@ export default function App() {
         </div>
       )}
 
-      {/* PAYWALL MOSTRATO SOLO AL TERMINE DELLA PROVA GRATUITA */}
       {showPaywall && (
         <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#0B132B] border-2 border-amber-400 rounded-3xl p-5 max-w-lg w-full flex flex-col gap-3.5 relative text-center">
@@ -1643,12 +1626,12 @@ export default function App() {
             </p>
 
             <div className="grid grid-cols-2 gap-2.5 text-left">
-              <button onClick={() => { setSelectedPackage('TV'); setActivePackage('TV'); }} className={`p-3 rounded-2xl border-2 cursor-pointer ${selectedPackage === 'TV' ? 'bg-amber-500/15 border-amber-400' : 'bg-[#060D1E] border-slate-800'}`}>
+              <button onClick={() => setSelectedPackage('TV')} className={`p-3 rounded-2xl border-2 cursor-pointer ${selectedPackage === 'TV' ? 'bg-amber-500/15 border-amber-400' : 'bg-[#060D1E] border-slate-800'}`}>
                 <span className="text-xs font-black block">🖥️ Solo Tabellone TV</span>
                 <span className="text-2xl font-black text-amber-400">€4,99</span>
                 <span className="text-[10px] text-slate-400 block">Una tantum per tutta la lega</span>
               </button>
-              <button onClick={() => { setSelectedPackage('LIVE'); setActivePackage('LIVE'); }} className={`p-3 rounded-2xl border-2 cursor-pointer ${selectedPackage === 'LIVE' ? 'bg-emerald-500/15 border-emerald-400' : 'bg-[#060D1E] border-slate-800'}`}>
+              <button onClick={() => setSelectedPackage('LIVE')} className={`p-3 rounded-2xl border-2 cursor-pointer ${selectedPackage === 'LIVE' ? 'bg-emerald-500/15 border-emerald-400' : 'bg-[#060D1E] border-slate-800'}`}>
                 <span className="text-xs font-black block">📱 TV + Telefoni Buzzer</span>
                 <span className="text-2xl font-black text-emerald-400">€{currentLivePrice.toFixed(2)}</span>
                 <span className="text-[10px] text-emerald-300 font-bold block">~ €{perPersonPrice} a testa ({effectiveCoachesCount} squadre)</span>
@@ -1701,7 +1684,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Modali Legali */}
       {activeLegalSection && (
         <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#0B132B] border-2 border-slate-700 rounded-3xl p-6 max-w-lg w-full flex flex-col gap-4 text-left relative max-h-[88vh] overflow-y-auto shadow-2xl">
