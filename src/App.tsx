@@ -234,8 +234,8 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<'ALL' | Role>('ALL');
   const [hidePurchased, setHidePurchased] = useState(true);
-  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v13_startFromOne') !== 'false');
-  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v13_voiceEnabled') !== 'false');
+  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v14_startFromOne') !== 'false');
+  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v14_voiceEnabled') !== 'false');
   const [activeLegalSection, setActiveLegalSection] = useState<LegalSection>(null);
 
   const [activeLeaguesCount, setActiveLeaguesCount] = useState<number>(42);
@@ -263,7 +263,7 @@ export default function App() {
   const [customBidInput, setCustomBidInput] = useState<string>('');
 
   const [selectedPackage, setSelectedPackage] = useState<'TV' | 'LIVE'>('LIVE');
-  const [isLicenseUnlocked, setIsLicenseUnlocked] = useState<boolean>(() => localStorage.getItem('fb_v13_unlocked') === 'true');
+  const [isLicenseUnlocked, setIsLicenseUnlocked] = useState<boolean>(() => localStorage.getItem('fb_v14_unlocked') === 'true');
   const [customCoachesCount, setCustomCoachesCount] = useState<number>(8);
 
   const [showCustomLeagueModal, setShowCustomLeagueModal] = useState(false);
@@ -284,14 +284,14 @@ export default function App() {
   const [userRole, setUserRole] = useState<'PRESIDENT' | 'PLAYER' | null>(null);
   const [playerName, setPlayerName] = useState<string>('');
   const [inputLeagueName, setInputLeagueName] = useState('');
-  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v13_roomCode') || 'LEGA2026');
+  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v14_roomCode') || 'LEGA2026');
   const [isRoomCodeConfirmed, setIsRoomCodeConfirmed] = useState(false);
-  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v13_initialBudget')) || 500);
-  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v13_leagueName') || 'FantaLega Serie A');
+  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v14_initialBudget')) || 500);
+  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v14_leagueName') || 'FantaLega Serie A');
 
   // Elenco partecipanti lega iniziale
   const [coaches, setCoaches] = useState<Coach[]>(() => {
-    const saved = localStorage.getItem('fb_v13_coaches');
+    const saved = localStorage.getItem('fb_v14_coaches');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -308,7 +308,7 @@ export default function App() {
   });
 
   const [purchasedPlayers, setPurchasedPlayers] = useState<Record<string, PurchasedItem[]>>(() => {
-    const saved = localStorage.getItem('fb_v13_purchasedPlayers');
+    const saved = localStorage.getItem('fb_v14_purchasedPlayers');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -368,14 +368,14 @@ export default function App() {
   }, [coaches, selectedWinnerManual]);
 
   useEffect(() => {
-    localStorage.setItem('fb_v13_coaches', JSON.stringify(coaches));
-    localStorage.setItem('fb_v13_purchasedPlayers', JSON.stringify(purchasedPlayers));
-    localStorage.setItem('fb_v13_leagueName', leagueName);
-    localStorage.setItem('fb_v13_roomCode', roomCode);
-    localStorage.setItem('fb_v13_initialBudget', String(initialBudget));
-    localStorage.setItem('fb_v13_startFromOne', String(startFromOne));
-    localStorage.setItem('fb_v13_voiceEnabled', String(voiceEnabled));
-    localStorage.setItem('fb_v13_unlocked', String(isLicenseUnlocked));
+    localStorage.setItem('fb_v14_coaches', JSON.stringify(coaches));
+    localStorage.setItem('fb_v14_purchasedPlayers', JSON.stringify(purchasedPlayers));
+    localStorage.setItem('fb_v14_leagueName', leagueName);
+    localStorage.setItem('fb_v14_roomCode', roomCode);
+    localStorage.setItem('fb_v14_initialBudget', String(initialBudget));
+    localStorage.setItem('fb_v14_startFromOne', String(startFromOne));
+    localStorage.setItem('fb_v14_voiceEnabled', String(voiceEnabled));
+    localStorage.setItem('fb_v14_unlocked', String(isLicenseUnlocked));
   }, [coaches, purchasedPlayers, leagueName, roomCode, initialBudget, startFromOne, voiceEnabled, isLicenseUnlocked]);
 
   useEffect(() => {
@@ -1549,7 +1549,7 @@ export default function App() {
         </div>
       )}
 
-      {/* === MODALE CREAZIONE STANZA CON PRESIDENTE MODIFICABILE E BUDGET LIBERO === */}
+      {/* === MODALE CREAZIONE STANZA === */}
       {showCustomLeagueModal && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#0B132B] border border-amber-500/40 rounded-3xl p-5 max-w-md w-full flex flex-col gap-3 text-center relative max-h-[92vh] overflow-y-auto">
@@ -1557,7 +1557,6 @@ export default function App() {
             <h3 className="text-base font-black text-white uppercase">Crea la tua Lega di Fantacalcio</h3>
             <input type="text" placeholder="Nome della Lega (es. FantaLega 2026)..." value={customLeagueInput} onChange={e => setCustomLeagueInput(e.target.value)} className="w-full bg-[#060D1E] border border-slate-700 rounded-xl p-2.5 text-xs text-amber-400 font-bold text-center" />
             
-            {/* Budget Iniziale modificabile liberamente con campo numerico */}
             <div className="flex items-center justify-between bg-[#060D1E] p-2.5 rounded-xl text-xs border border-slate-800">
               <span className="font-bold text-slate-300">Fantamilioni Iniziali Standard:</span>
               <div className="flex items-center gap-1.5">
@@ -1598,7 +1597,6 @@ export default function App() {
               </button>
             </div>
 
-            {/* Lista Squadre: Slot Presidente e crediti squadra per squadra modificabili */}
             <div className="max-h-44 overflow-y-auto space-y-1.5 text-left">
               {coaches.map((c, i) => {
                 const isPresident = i === 0;
@@ -1650,7 +1648,6 @@ export default function App() {
                       >
                         <Edit2 size={13} />
                       </button>
-                      {/* Anche il Presidente può essere rimosso, passando la corona al successivo */}
                       <button
                         type="button"
                         onClick={() => setCoaches(prev => prev.filter((_, idx) => idx !== i))}
@@ -1684,7 +1681,7 @@ export default function App() {
         </div>
       )}
 
-      {/* === PAYWALL RAZIONALE: NO COLLETTE FRAZIONATE, SCAGLIONI TRASPARENTI === */}
+      {/* === PAYWALL: TESTI E PREZZI COERENTI AL 100% === */}
       {showPaywall && (
         <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#0B132B] border-2 border-amber-400 rounded-3xl p-5 max-w-lg w-full flex flex-col gap-3.5 relative text-center">
@@ -1725,9 +1722,18 @@ export default function App() {
               </div>
             )}
 
+            {/* Riquadro dettagli pacchetto coerente */}
             <div className="bg-[#060D1E] p-2.5 rounded-xl border border-slate-800 text-xs text-slate-300 flex items-center justify-between">
-              <span className="flex items-center gap-1.5"><Users2 size={15} className="text-amber-400" /> Spesa per partecipante:</span>
-              <strong className="text-emerald-400 font-black text-sm">Circa €{perPersonPrice} a testa</strong>
+              {selectedPackage === 'TV' ? (
+                <span className="flex items-center gap-1.5 text-amber-300 font-semibold">
+                  🖥️ Regia TV, contratti con firma e rose stagionali (chiamate a voce)
+                </span>
+              ) : (
+                <>
+                  <span className="flex items-center gap-1.5"><Users2 size={15} className="text-amber-400" /> Quota stimata per partecipante:</span>
+                  <strong className="text-emerald-400 font-black text-sm">Circa €{perPersonPrice} a testa</strong>
+                </>
+              )}
             </div>
 
             <button onClick={() => { setIsLicenseUnlocked(true); setShowPaywall(false); }} className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase cursor-pointer flex items-center justify-center gap-2 shadow-lg">
