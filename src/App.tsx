@@ -233,17 +233,19 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<'ALL' | Role>('ALL');
   const [hidePurchased, setHidePurchased] = useState(true);
-  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v15_startFromOne') !== 'false');
-  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v15_voiceEnabled') !== 'false');
+  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v16_startFromOne') !== 'false');
+  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v16_voiceEnabled') !== 'false');
   const [activeLegalSection, setActiveLegalSection] = useState<LegalSection>(null);
 
   const [activeLeaguesCount, setActiveLeaguesCount] = useState<number>(42);
   const [activeLeagueTab, setActiveLeagueTab] = useState<'REGULAR' | 'REPAIR'>('REGULAR');
 
-  // Mini-Simulatore interattivo nella Hero
+  // Mini-Simulatore interattivo nella Hero con feedback scenico avanzato
   const [heroBid, setHeroBid] = useState<number>(85);
   const [heroBidder, setHeroBidder] = useState<string>('Sempre Ultimi F.C.');
   const [heroBuzzerPressed, setHeroBuzzerPressed] = useState<boolean>(false);
+  const [heroFlash, setHeroFlash] = useState<boolean>(false);
+  const [heroIdleWarning, setHeroIdleWarning] = useState<boolean>(false);
 
   const [showWelcomeGuide, setShowWelcomeGuide] = useState(false);
   const [showRoomCodeArrow, setShowRoomCodeArrow] = useState(true);
@@ -262,7 +264,7 @@ export default function App() {
   const [customBidInput, setCustomBidInput] = useState<string>('');
 
   const [selectedPackage, setSelectedPackage] = useState<'TV' | 'LIVE'>('LIVE');
-  const [isLicenseUnlocked, setIsLicenseUnlocked] = useState<boolean>(() => localStorage.getItem('fb_v15_unlocked') === 'true');
+  const [isLicenseUnlocked, setIsLicenseUnlocked] = useState<boolean>(() => localStorage.getItem('fb_v16_unlocked') === 'true');
   const [customCoachesCount, setCustomCoachesCount] = useState<number>(8);
 
   const [showCustomLeagueModal, setShowCustomLeagueModal] = useState(false);
@@ -283,14 +285,13 @@ export default function App() {
   const [userRole, setUserRole] = useState<'PRESIDENT' | 'PLAYER' | null>(null);
   const [playerName, setPlayerName] = useState<string>('');
   const [inputLeagueName, setInputLeagueName] = useState('');
-  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v15_roomCode') || 'LEGA2026');
+  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v16_roomCode') || 'LEGA2026');
   const [isRoomCodeConfirmed, setIsRoomCodeConfirmed] = useState(false);
-  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v15_initialBudget')) || 500);
-  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v15_leagueName') || 'FantaLega Serie A');
+  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v16_initialBudget')) || 500);
+  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v16_leagueName') || 'FantaLega Serie A');
 
-  // Elenco partecipanti lega iniziale
   const [coaches, setCoaches] = useState<Coach[]>(() => {
-    const saved = localStorage.getItem('fb_v15_coaches');
+    const saved = localStorage.getItem('fb_v16_coaches');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -307,7 +308,7 @@ export default function App() {
   });
 
   const [purchasedPlayers, setPurchasedPlayers] = useState<Record<string, PurchasedItem[]>>(() => {
-    const saved = localStorage.getItem('fb_v15_purchasedPlayers');
+    const saved = localStorage.getItem('fb_v16_purchasedPlayers');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -324,7 +325,6 @@ export default function App() {
   const [activeChannel, setActiveChannel] = useState<any>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
 
-  // Calcolo prezzo scalare per le leghe ufficiali (da 4 squadre in su)
   const calculateLivePrice = (count: number) => {
     if (count <= 8) return 7.99;
     if (count <= 10) return 9.99;
@@ -337,15 +337,26 @@ export default function App() {
   const currentPackagePrice = selectedPackage === 'TV' ? 4.99 : currentLivePrice;
   const perPersonPrice = (currentLivePrice / effectiveCoachesCount).toFixed(2);
 
+  // Battuta simulata nella Hero se l'utente è inattivo
+  useEffect(() => {
+    if (userRole) return;
+    const t = setInterval(() => {
+      setHeroIdleWarning(prev => !prev);
+    }, 3500);
+    return () => clearInterval(t);
+  }, [userRole]);
+
   const handleHeroBuzzerClick = () => {
     playBuzzSound();
     setHeroBuzzerPressed(true);
+    setHeroFlash(true);
     setHeroBid(prev => prev + 2);
     setHeroBidder('La Tua Fanta-Squadra');
     try {
       confetti({ particleCount: 35, spread: 55, origin: { y: 0.65 } });
     } catch { /* ignore */ }
     setTimeout(() => setHeroBuzzerPressed(false), 220);
+    setTimeout(() => setHeroFlash(false), 380);
   };
 
   useEffect(() => {
@@ -368,14 +379,14 @@ export default function App() {
   }, [coaches, selectedWinnerManual]);
 
   useEffect(() => {
-    localStorage.setItem('fb_v15_coaches', JSON.stringify(coaches));
-    localStorage.setItem('fb_v15_purchasedPlayers', JSON.stringify(purchasedPlayers));
-    localStorage.setItem('fb_v15_leagueName', leagueName);
-    localStorage.setItem('fb_v15_roomCode', roomCode);
-    localStorage.setItem('fb_v15_initialBudget', String(initialBudget));
-    localStorage.setItem('fb_v15_startFromOne', String(startFromOne));
-    localStorage.setItem('fb_v15_voiceEnabled', String(voiceEnabled));
-    localStorage.setItem('fb_v15_unlocked', String(isLicenseUnlocked));
+    localStorage.setItem('fb_v16_coaches', JSON.stringify(coaches));
+    localStorage.setItem('fb_v16_purchasedPlayers', JSON.stringify(purchasedPlayers));
+    localStorage.setItem('fb_v16_leagueName', leagueName);
+    localStorage.setItem('fb_v16_roomCode', roomCode);
+    localStorage.setItem('fb_v16_initialBudget', String(initialBudget));
+    localStorage.setItem('fb_v16_startFromOne', String(startFromOne));
+    localStorage.setItem('fb_v16_voiceEnabled', String(voiceEnabled));
+    localStorage.setItem('fb_v16_unlocked', String(isLicenseUnlocked));
   }, [coaches, purchasedPlayers, leagueName, roomCode, initialBudget, startFromOne, voiceEnabled, isLicenseUnlocked]);
 
   useEffect(() => {
@@ -579,7 +590,6 @@ export default function App() {
   const handleAward = useCallback(async () => {
     if (purchasedPlayerIds.has(activePlayer.id)) { handleNextPlayer(); return; }
     
-    // Nelle leghe ufficiali (da 4 squadre in su), se non è ancora sbloccata apre il paywall trasparente
     if (!isFreeTestTier && !isLicenseUnlocked) {
       setShowPaywall(true);
       return;
@@ -775,7 +785,7 @@ export default function App() {
         }
       `}</style>
 
-      {/* === HERO SECTION ULTRA-COMPATTA CON FOCUS SU SALOTTO E REMOTO === */}
+      {/* === HERO SECTION ULTRA-COMPATTA CON CORREZIONI GRAFICHE E DI COPY === */}
       {!userRole ? (
         <div
           className="min-h-screen w-full text-white flex flex-col items-center justify-between p-3 md:p-6 select-none overflow-y-auto relative z-10"
@@ -788,10 +798,11 @@ export default function App() {
 
           <div className="max-w-3xl w-full text-center space-y-1.5 pt-1 relative z-10">
             <div className="flex flex-wrap items-center justify-center gap-2">
+              {/* Badge senza duplicazione dell'H1 */}
               <div className="inline-flex items-center gap-1.5 bg-[#060D1E]/95 border border-amber-400/70 px-3 py-1 rounded-full shadow-lg">
                 <BuzzMark size={16} />
                 <span className="text-[10px] font-black uppercase tracking-widest text-amber-400">
-                  L'Asta del Fantacalcio diventa uno Show TV
+                  🏆 PIATTAFORMA LIVE SALOTTO & REMOTO • 2026/2027
                 </span>
               </div>
               <div className="inline-flex items-center gap-1.5 bg-emerald-950/90 border border-emerald-400/60 px-3 py-1 rounded-full shadow-lg">
@@ -811,7 +822,7 @@ export default function App() {
             </p>
           </div>
 
-          {/* SIMULATORE COMPATTO NELLA HERO */}
+          {/* SIMULATORE SHOW TV AD ALTA REATTIVITÀ SCENICA */}
           <div className="max-w-2xl w-full my-2 bg-gradient-to-b from-[#0B1528] to-[#040C1A] border-2 border-amber-400/80 rounded-2xl p-3.5 shadow-[0_0_50px_rgba(245,158,11,0.25)] relative z-10">
             <div className="text-center mb-2 flex items-center justify-center gap-2">
               <span className="bg-amber-400/20 text-amber-300 border border-amber-400/50 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-1">
@@ -823,19 +834,43 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center bg-[#060D1E]/90 p-3 rounded-xl border border-slate-700">
-              <div className="bg-[#020712] border border-emerald-400/60 rounded-xl p-2.5 text-center shadow-inner relative overflow-hidden">
-                <div className="flex justify-between items-center text-[9px] font-black text-slate-400 mb-0.5">
-                  <span className="bg-rose-600 text-white px-1.5 py-0.2 rounded font-black">A • INTER</span>
-                  <span className="text-emerald-400">REGIA TV SALOTTO</span>
+              {/* Box Calciatore Reattivo (Show Engine) */}
+              <div className={`bg-gradient-to-b from-[#0B162C] to-[#030914] border-2 rounded-xl p-2.5 text-center shadow-2xl relative overflow-hidden transition-all duration-300 ${heroFlash ? 'border-amber-300 shadow-[0_0_35px_rgba(245,158,11,0.8)] scale-[1.02]' : 'border-emerald-500/60'}`}>
+                <div className="flex justify-between items-center text-[10px] font-black text-slate-300 mb-1 border-b border-slate-800 pb-1">
+                  <div className="flex items-center gap-1">
+                    <span className="bg-rose-600 text-white px-1.5 py-0.5 rounded font-black text-[9px]">A</span>
+                    <TeamBadge team="Inter" size={14} />
+                    <span className="font-extrabold text-white tracking-wider">INTER</span>
+                  </div>
+                  <span className="text-emerald-400 font-extrabold uppercase flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> REGIA TV
+                  </span>
                 </div>
-                <h3 className="text-lg md:text-xl font-black text-white uppercase tracking-tight">LAUTARO MARTINEZ</h3>
-                <div className="my-1 bg-gradient-to-r from-amber-500/20 via-amber-400/30 to-amber-500/20 py-1 rounded-lg border border-amber-400/40">
-                  <span className="text-[9px] text-amber-300 font-bold block uppercase">Offerta Corrente</span>
-                  <span className="text-2xl font-black text-amber-400">{heroBid} FM</span>
+
+                <h3 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight drop-shadow-md">
+                  LAUTARO MARTINEZ
+                </h3>
+
+                <div className="flex justify-center items-center gap-2 text-[10px] font-bold text-slate-300 mt-0.5">
+                  <span className="bg-[#020712] px-2 py-0.5 rounded border border-slate-700">Base: <strong className="text-amber-400">38 FM</strong></span>
+                  <span className="bg-[#020712] px-2 py-0.5 rounded border border-slate-700">FM: <strong className="text-cyan-400">8.40</strong></span>
                 </div>
-                <p className="text-[10px] text-slate-300 font-bold truncate">
-                  In testa: <strong className="text-emerald-300">{heroBidder}</strong>
-                </p>
+
+                <div className={`my-1.5 bg-gradient-to-r from-amber-500/25 via-amber-400/35 to-amber-500/25 py-1.5 rounded-lg border border-amber-400/60 transition-transform ${heroFlash ? 'scale-110 bg-amber-400/40' : 'scale-100'}`}>
+                  <span className="text-[9px] text-amber-300 font-extrabold block uppercase tracking-wider">Offerta Corrente</span>
+                  <span className="text-3xl font-black text-amber-400 tracking-tight">{heroBid} <span className="text-sm">FM</span></span>
+                </div>
+
+                <div className="pt-0.5">
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full inline-block transition-all ${heroBidder === 'La Tua Fanta-Squadra' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-300'}`}>
+                    {heroBidder === 'La Tua Fanta-Squadra' ? '🔥 SEI IN TESTA TU!' : `In testa: ${heroBidder}`}
+                  </span>
+                </div>
+
+                {/* Avviso dinamico di battuta asta */}
+                <div className="mt-1 text-[9px] font-extrabold text-amber-300/90 tracking-tight">
+                  {heroIdleWarning ? '⏳ E uno... E due... Premi il Buzzer!' : '⚡ Rilancio live con suono di studio'}
+                </div>
               </div>
 
               {/* BUZZER CON EFFETTO ORO METALLIZZATO */}
@@ -860,7 +895,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* PULSANTE UNICO AD ALTA CONVERSIONE SENZA DISPERSIONI */}
+            {/* PULSANTE UNICO CON TESTO PIÙ LEGGIBILE E CONTRASTATO */}
             <div className="mt-3">
               <button
                 type="button"
@@ -870,12 +905,13 @@ export default function App() {
                 <span className="flex items-center gap-1.5">
                   <Zap size={16} className="fill-slate-950" /> 🚀 AVVIA SHOW D'ASTA (TEST GRATUITO)
                 </span>
-                <span className="text-[10px] font-extrabold text-slate-900 tracking-normal normal-case">
-                  Nessun account richiesto • Gratis fino a 3 smartphone • Entri in 5 secondi
+                <span className="text-[10px] font-black text-slate-950 tracking-wide normal-case mt-0.5">
+                  Zero registrazione • 100% Gratis fino a 3 smartphone • Entri subito
                 </span>
               </button>
             </div>
 
+            {/* CODICE STANZA CON BOTTONE RETTIFICATO */}
             <div className="mt-2 bg-[#020712] p-2 rounded-xl border border-cyan-500/30 flex flex-col sm:flex-row items-center gap-2">
               <span className="text-[11px] font-black uppercase text-cyan-300 shrink-0 flex items-center gap-1">
                 🔑 CODICE STANZA:
@@ -900,7 +936,7 @@ export default function App() {
                 }}
                 className="w-full sm:w-auto px-5 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-lg font-black text-xs uppercase cursor-pointer shrink-0"
               >
-                ENTRA COL TELEFONO
+                ENTRA NELLA STANZA
               </button>
             </div>
 
@@ -1571,7 +1607,7 @@ export default function App() {
         </div>
       )}
 
-      {/* === MODALE CREAZIONE STANZA CON INTEGRAZIONE DIRETTA TIER TEST (0€) vs LEGA UFFICIALE === */}
+      {/* === MODALE CREAZIONE STANZA === */}
       {showCustomLeagueModal && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#0B132B] border border-amber-500/40 rounded-3xl p-5 max-w-md w-full flex flex-col gap-3 text-center relative max-h-[92vh] overflow-y-auto">
@@ -1684,7 +1720,6 @@ export default function App() {
               })}
             </div>
 
-            {/* Badge trasparente sulle condizioni di prezzo in base al numero di squadre */}
             <div className="p-2 rounded-xl text-xs font-bold text-center border bg-[#060D1E]">
               {isFreeTestTier ? (
                 <span className="text-emerald-400 flex items-center justify-center gap-1.5">
@@ -1716,7 +1751,7 @@ export default function App() {
         </div>
       )}
 
-      {/* === PAYWALL TRASPARENTE: TABELLONE FISSO 4,99€ VS BUZZER SCALARE === */}
+      {/* === PAYWALL TRASPARENTE === */}
       {showPaywall && (
         <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#0B132B] border-2 border-amber-400 rounded-3xl p-5 max-w-lg w-full flex flex-col gap-3.5 relative text-center">
