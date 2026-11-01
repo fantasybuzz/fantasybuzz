@@ -233,8 +233,8 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<'ALL' | Role>('ALL');
   const [hidePurchased, setHidePurchased] = useState(true);
-  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v18_startFromOne') !== 'false');
-  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v18_voiceEnabled') !== 'false');
+  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v19_startFromOne') !== 'false');
+  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v19_voiceEnabled') !== 'false');
   const [activeLegalSection, setActiveLegalSection] = useState<LegalSection>(null);
 
   const [activeLeaguesCount, setActiveLeaguesCount] = useState<number>(42);
@@ -264,7 +264,7 @@ export default function App() {
   const [customBidInput, setCustomBidInput] = useState<string>('');
 
   const [selectedPackage, setSelectedPackage] = useState<'TV' | 'LIVE'>('LIVE');
-  const [isLicenseUnlocked, setIsLicenseUnlocked] = useState<boolean>(() => localStorage.getItem('fb_v18_unlocked') === 'true');
+  const [isLicenseUnlocked, setIsLicenseUnlocked] = useState<boolean>(() => localStorage.getItem('fb_v19_unlocked') === 'true');
   const [customCoachesCount, setCustomCoachesCount] = useState<number>(8);
 
   const [showCustomLeagueModal, setShowCustomLeagueModal] = useState(false);
@@ -285,13 +285,15 @@ export default function App() {
   const [userRole, setUserRole] = useState<'PRESIDENT' | 'PLAYER' | null>(null);
   const [playerName, setPlayerName] = useState<string>('');
   const [inputLeagueName, setInputLeagueName] = useState('');
-  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v18_roomCode') || 'LEGA2026');
+  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v19_roomCode') || 'LEGA2026');
+  const [isSearchingRoom, setIsSearchingRoom] = useState(false);
   const [isRoomCodeConfirmed, setIsRoomCodeConfirmed] = useState(false);
-  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v18_initialBudget')) || 500);
-  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v18_leagueName') || 'FantaLega Serie A');
+  const [availableRemoteCoaches, setAvailableRemoteCoaches] = useState<Coach[]>([]);
+  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v19_initialBudget')) || 500);
+  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v19_leagueName') || 'FantaLega Serie A');
 
   const [coaches, setCoaches] = useState<Coach[]>(() => {
-    const saved = localStorage.getItem('fb_v18_coaches');
+    const saved = localStorage.getItem('fb_v19_coaches');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -308,7 +310,7 @@ export default function App() {
   });
 
   const [purchasedPlayers, setPurchasedPlayers] = useState<Record<string, PurchasedItem[]>>(() => {
-    const saved = localStorage.getItem('fb_v18_purchasedPlayers');
+    const saved = localStorage.getItem('fb_v19_purchasedPlayers');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -378,20 +380,15 @@ export default function App() {
   }, [coaches, selectedWinnerManual]);
 
   useEffect(() => {
-    localStorage.setItem('fb_v18_coaches', JSON.stringify(coaches));
-    localStorage.setItem('fb_v18_purchasedPlayers', JSON.stringify(purchasedPlayers));
-    localStorage.setItem('fb_v18_leagueName', leagueName);
-    localStorage.setItem('fb_v18_roomCode', roomCode);
-    localStorage.setItem('fb_v18_initialBudget', String(initialBudget));
-    localStorage.setItem('fb_v18_startFromOne', String(startFromOne));
-    localStorage.setItem('fb_v18_voiceEnabled', String(voiceEnabled));
-    localStorage.setItem('fb_v18_unlocked', String(isLicenseUnlocked));
+    localStorage.setItem('fb_v19_coaches', JSON.stringify(coaches));
+    localStorage.setItem('fb_v19_purchasedPlayers', JSON.stringify(purchasedPlayers));
+    localStorage.setItem('fb_v19_leagueName', leagueName);
+    localStorage.setItem('fb_v19_roomCode', roomCode);
+    localStorage.setItem('fb_v19_initialBudget', String(initialBudget));
+    localStorage.setItem('fb_v19_startFromOne', String(startFromOne));
+    localStorage.setItem('fb_v19_voiceEnabled', String(voiceEnabled));
+    localStorage.setItem('fb_v19_unlocked', String(isLicenseUnlocked));
   }, [coaches, purchasedPlayers, leagueName, roomCode, initialBudget, startFromOne, voiceEnabled, isLicenseUnlocked]);
-
-  useEffect(() => {
-    const r = new URLSearchParams(window.location.search).get('room');
-    if (r) { setInputLeagueName(r.trim().toUpperCase()); setRoomCode(r.trim().toUpperCase()); setIsRoomCodeConfirmed(true); }
-  }, []);
 
   const getCoachDisplay = useCallback((coachName: string | null) => {
     if (!coachName) return '';
@@ -476,7 +473,7 @@ export default function App() {
   }, [registerBidLocally, applyAwardState]);
 
   useEffect(() => {
-    if (!roomCode) return;
+    if (!roomCode || (!userRole && !isRoomCodeConfirmed)) return;
     let isMounted = true;
     const ch = supabase.channel(`room_${roomCode}`)
       .on('broadcast', { event: 'quick_bid' }, ({ payload }: any) => {
@@ -495,7 +492,12 @@ export default function App() {
       })
       .on('broadcast', { event: 'sync_league_state' }, ({ payload }: any) => {
         if (!isMounted) return;
-        if (payload?.coaches) setCoaches(payload.coaches);
+        if (payload?.coaches && Array.isArray(payload.coaches)) {
+          setCoaches(payload.coaches);
+          setAvailableRemoteCoaches(payload.coaches);
+          setIsRoomCodeConfirmed(true);
+          setIsSearchingRoom(false);
+        }
         if (payload?.purchasedPlayers) setPurchasedPlayers(payload.purchasedPlayers);
         if (payload?.leagueName) setLeagueName(payload.leagueName);
         if (payload?.activePlayer) setCurrentPlayer(payload.activePlayer);
@@ -523,7 +525,55 @@ export default function App() {
         }
       });
     return () => { isMounted = false; supabase.removeChannel(ch); setActiveChannel(null); setIsConnected(false); };
-  }, [roomCode, userRole, playerName]);
+  }, [roomCode, userRole, playerName, isRoomCodeConfirmed]);
+
+  // Verifica reale stanza Supabase
+  const handleConnectToRoom = () => {
+    const clean = inputLeagueName.trim().toUpperCase().replace(/\s+/g, '');
+    if (!clean) {
+      setCustomAlertMessage('Inserisci il Codice Stanza fornito dal Presidente!');
+      return;
+    }
+    
+    // Se il codice inserito corrisponde alla stanza locale già memorizzata
+    const localSavedRoom = localStorage.getItem('fb_v19_roomCode') || 'LEGA2026';
+    if (clean === localSavedRoom) {
+      setRoomCode(clean);
+      setAvailableRemoteCoaches(coaches);
+      setIsRoomCodeConfirmed(true);
+      return;
+    }
+
+    // Se è un codice differente, interroga la stanza live
+    setIsSearchingRoom(true);
+    setIsRoomCodeConfirmed(false);
+    setRoomCode(clean);
+
+    const testCh = supabase.channel(`room_${clean}`);
+    let resolved = false;
+
+    testCh.on('broadcast', { event: 'sync_league_state' }, ({ payload }: any) => {
+      if (payload?.coaches && Array.isArray(payload.coaches) && payload.coaches.length > 0) {
+        resolved = true;
+        setCoaches(payload.coaches);
+        setAvailableRemoteCoaches(payload.coaches);
+        setIsRoomCodeConfirmed(true);
+        setIsSearchingRoom(false);
+      }
+    }).subscribe(status => {
+      if (status === 'SUBSCRIBED') {
+        testCh.send({ type: 'broadcast', event: 'request_sync', payload: {} });
+      }
+    });
+
+    setTimeout(() => {
+      if (!resolved) {
+        setIsSearchingRoom(false);
+        setIsRoomCodeConfirmed(false);
+        setCustomAlertMessage(`❌ Nessuna sala d'asta attiva con il codice "${clean}". Verifica che il Presidente abbia avviato la stanza!`);
+      }
+    }, 2800);
+  };
 
   const handleSelectPlayer = useCallback(async (player: Player) => {
     setCurrentPlayer(player); setCurrentBid(0); setHighestBidder(null); setBidHistory([]); setManualPriceInput(''); setCountdown(null); setAwardModal(null);
@@ -650,7 +700,6 @@ export default function App() {
     window.open(`https://wa.me/?text=${encodeURIComponent(viralText)}`, '_blank');
   };
 
-  // Funzione Canvas con 4 argomenti esatti (x, y, w, h) corretti per evitare errori TypeScript
   const handleDownloadSocialCard = async () => {
     if (!awardModal) return;
     const winnerObj = coaches.find(x => x.name === awardModal.winner);
@@ -785,10 +834,10 @@ export default function App() {
         }
       `}</style>
 
-      {/* === HERO SECTION PROPORZIONATA PER SCHERMI 15" E LAPTOP === */}
+      {/* === HERO SECTION OTTIMIZZATA PER LAPTOP 15" (ABOVE-THE-FOLD GARANTITO) === */}
       {!userRole ? (
         <div
-          className="min-h-screen w-full text-white flex flex-col items-center justify-between p-3 md:p-6 select-none overflow-y-auto relative z-10"
+          className="min-h-screen w-full text-white flex flex-col items-center justify-between p-2 md:p-4 select-none overflow-y-auto relative z-10"
           style={{ background: `radial-gradient(circle at 50% 18%, rgba(16, 185, 129, 0.28) 0%, rgba(4, 28, 18, 0.96) 55%, rgba(2, 10, 18, 1) 100%)` }}
         >
           <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
@@ -796,120 +845,120 @@ export default function App() {
             <div className="absolute -top-32 right-1/4 w-96 h-[550px] bg-gradient-to-b from-amber-400/20 via-emerald-400/5 to-transparent blur-3xl" style={{ animation: 'stadiumSpotlight 9s ease-in-out infinite reverse' }} />
           </div>
 
-          <div className="max-w-3xl w-full text-center space-y-1 pt-1 relative z-10">
+          <div className="max-w-2xl w-full text-center space-y-1 pt-0.5 relative z-10">
             <div className="flex flex-wrap items-center justify-center gap-2">
-              <div className="inline-flex items-center gap-1.5 bg-[#060D1E]/95 border border-amber-400/70 px-3 py-1 rounded-full shadow-lg">
-                <BuzzMark size={16} />
-                <span className="text-xs font-black uppercase tracking-widest text-amber-400">
+              <div className="inline-flex items-center gap-1.5 bg-[#060D1E]/95 border border-amber-400/70 px-3 py-0.5 rounded-full shadow-lg">
+                <BuzzMark size={15} />
+                <span className="text-[11px] font-black uppercase tracking-widest text-amber-400">
                   🏆 PIATTAFORMA LIVE SALOTTO & REMOTO • 2026/2027
                 </span>
               </div>
-              <div className="inline-flex items-center gap-1.5 bg-emerald-950/90 border border-emerald-400/60 px-3 py-1 rounded-full shadow-lg">
+              <div className="inline-flex items-center gap-1.5 bg-emerald-950/90 border border-emerald-400/60 px-3 py-0.5 rounded-full shadow-lg">
                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-                <span className="text-xs font-black text-emerald-300 uppercase tracking-wide">
+                <span className="text-[11px] font-black text-emerald-300 uppercase tracking-wide">
                   🔥 {activeLeaguesCount} Leghe in asta adesso
                 </span>
               </div>
             </div>
             
-            <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tight leading-tight drop-shadow-xl mt-1">
+            <h1 className="text-2xl md:text-4xl font-black uppercase tracking-tight leading-tight drop-shadow-xl">
               L'Asta del Fantacalcio<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-emerald-300 to-cyan-400">diventa uno Show TV.</span>
             </h1>
-            <p className="text-xs md:text-base text-slate-200 font-semibold max-w-xl mx-auto leading-normal">
+            <p className="text-xs md:text-sm text-slate-200 font-semibold max-w-xl mx-auto leading-tight">
               Addio Excel: Regia sulla TV, Buzzer live sullo smartphone.<br className="hidden sm:inline" /> In salotto sul divano o a distanza da qualsiasi parte del mondo.
             </p>
           </div>
 
-          {/* SIMULATORE ESPANSO: BUZZER GIGANTE E CONTESTO TV VS SMARTPHONE CHIARO */}
-          <div className="max-w-3xl w-full my-2 bg-gradient-to-b from-[#0B1528] to-[#040C1A] border-2 border-amber-400/80 rounded-3xl p-4 md:p-5 shadow-[0_0_50px_rgba(245,158,11,0.25)] relative z-10">
-            <div className="text-center mb-2.5 flex items-center justify-center gap-2">
-              <span className="bg-amber-400/20 text-amber-300 border border-amber-400/50 px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest inline-flex items-center gap-1.5 shadow-sm">
-                <Sparkles size={13} className="text-amber-400" /> PROVA IL SIMULATORE LIVE QUI SOTTO
+          {/* SIMULATORE COMPATTO AD ALTA DENSITÀ */}
+          <div className="max-w-2xl w-full my-1.5 bg-gradient-to-b from-[#0B1528] to-[#040C1A] border-2 border-amber-400/80 rounded-2xl p-3 md:p-3.5 shadow-[0_0_40px_rgba(245,158,11,0.22)] relative z-10">
+            <div className="text-center mb-1.5 flex items-center justify-center gap-2">
+              <span className="bg-amber-400/20 text-amber-300 border border-amber-400/50 px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-widest inline-flex items-center gap-1.5 shadow-sm">
+                <Sparkles size={12} className="text-amber-400" /> PROVA IL SIMULATORE LIVE QUI SOTTO
               </span>
-              <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-cyan-300 font-bold bg-[#020712] px-2.5 py-1 rounded-full border border-cyan-500/30">
-                <Globe size={12} /> Anche da remoto
+              <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-cyan-300 font-bold bg-[#020712] px-2 py-0.5 rounded-full border border-cyan-500/30">
+                <Globe size={11} /> Anche da remoto
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center bg-[#060D1E]/95 p-3.5 md:p-4 rounded-2xl border border-slate-700">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center bg-[#060D1E]/95 p-3 rounded-xl border border-slate-700">
               
               {/* Box Calciatore Reattivo (Schermo TV) */}
-              <div className={`bg-gradient-to-b from-[#0B162C] to-[#030914] border-2 rounded-2xl p-3.5 text-center shadow-2xl relative overflow-hidden transition-all duration-300 ${heroFlash ? 'border-amber-300 shadow-[0_0_40px_rgba(245,158,11,0.85)] scale-[1.02]' : 'border-emerald-500/70'}`}>
-                <div className="flex justify-between items-center text-xs font-black text-slate-300 mb-1.5 border-b border-slate-800 pb-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <span className="bg-rose-600 text-white px-2 py-0.5 rounded font-black text-[10px]">A</span>
-                    <TeamBadge team="inter" size={17} />
+              <div className={`bg-gradient-to-b from-[#0B162C] to-[#030914] border-2 rounded-xl p-2.5 text-center shadow-2xl relative overflow-hidden transition-all duration-300 ${heroFlash ? 'border-amber-300 shadow-[0_0_35px_rgba(245,158,11,0.85)] scale-[1.02]' : 'border-emerald-500/70'}`}>
+                <div className="flex justify-between items-center text-[11px] font-black text-slate-300 mb-1 border-b border-slate-800 pb-1">
+                  <div className="flex items-center gap-1">
+                    <span className="bg-rose-600 text-white px-1.5 py-0.2 rounded font-black text-[9px]">A</span>
+                    <TeamBadge team="inter" size={15} />
                     <span className="font-extrabold text-white tracking-wider">INTER</span>
                   </div>
-                  <span className="text-emerald-400 font-extrabold uppercase flex items-center gap-1 bg-emerald-950/70 px-2 py-0.5 rounded border border-emerald-500/40 text-[10px]">
+                  <span className="text-emerald-400 font-extrabold uppercase flex items-center gap-1 bg-emerald-950/70 px-1.5 py-0.2 rounded border border-emerald-500/40 text-[9px]">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> 🖥️ REGIA TV
                   </span>
                 </div>
 
-                <h3 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight drop-shadow-md">
+                <h3 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight drop-shadow-md">
                   LAUTARO MARTINEZ
                 </h3>
 
-                <div className="flex justify-center items-center gap-3 text-xs font-bold text-slate-300 mt-1">
-                  <span className="bg-[#020712] px-2.5 py-1 rounded border border-slate-700">Base: <strong className="text-amber-400">38 FM</strong></span>
-                  <span className="bg-[#020712] px-2.5 py-1 rounded border border-slate-700">FantaMedia: <strong className="text-cyan-400">8.40</strong></span>
+                <div className="flex justify-center items-center gap-2 text-[11px] font-bold text-slate-300 mt-0.5">
+                  <span className="bg-[#020712] px-2 py-0.5 rounded border border-slate-700">Base: <strong className="text-amber-400">38 FM</strong></span>
+                  <span className="bg-[#020712] px-2 py-0.5 rounded border border-slate-700">FantaMedia: <strong className="text-cyan-400">8.40</strong></span>
                 </div>
 
-                <div className={`my-2 bg-gradient-to-r from-amber-500/25 via-amber-400/40 to-amber-500/25 py-2 rounded-xl border-2 border-amber-400/80 transition-transform ${heroFlash ? 'scale-105 bg-amber-400/40' : 'scale-100'}`}>
-                  <span className="text-[10px] text-amber-300 font-extrabold block uppercase tracking-wider">Offerta Corrente</span>
-                  <span className="text-3xl md:text-4xl font-black text-amber-400 tracking-tight">{heroBid} <span className="text-base font-bold">FM</span></span>
+                <div className={`my-1 bg-gradient-to-r from-amber-500/25 via-amber-400/40 to-amber-500/25 py-1.5 rounded-lg border-2 border-amber-400/80 transition-transform ${heroFlash ? 'scale-105 bg-amber-400/40' : 'scale-100'}`}>
+                  <span className="text-[9px] text-amber-300 font-extrabold block uppercase tracking-wider">Offerta Corrente</span>
+                  <span className="text-2xl md:text-3xl font-black text-amber-400 tracking-tight">{heroBid} <span className="text-sm font-bold">FM</span></span>
                 </div>
 
                 <div>
-                  <span className={`text-xs font-black px-3 py-1 rounded-full inline-block transition-all shadow-md ${heroBidder === 'La Tua Fanta-Squadra' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-200'}`}>
+                  <span className={`text-[11px] font-black px-2.5 py-0.5 rounded-full inline-block transition-all shadow-md ${heroBidder === 'La Tua Fanta-Squadra' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-200'}`}>
                     {heroBidder === 'La Tua Fanta-Squadra' ? '🔥 SEI IN TESTA TU!' : `In testa: ${heroBidder}`}
                   </span>
                 </div>
 
-                <div className="mt-1.5 text-[11px] font-black text-amber-300/90 tracking-tight">
+                <div className="mt-1 text-[10px] font-black text-amber-300/90 tracking-tight">
                   {heroIdleWarning ? '⏳ E uno... E due... Premi il Buzzer!' : '⚡ Battuta live: rilancia con 1 click'}
                 </div>
               </div>
 
               {/* BUZZER SMARTPHONE */}
-              <div className="flex flex-col items-center justify-center gap-2 py-1">
-                <span className="text-xs font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1 bg-[#020712] px-3 py-1 rounded-full border border-cyan-500/40 shadow-sm">
+              <div className="flex flex-col items-center justify-center gap-1.5 py-0.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1 bg-[#020712] px-2.5 py-0.5 rounded-full border border-cyan-500/40 shadow-sm">
                   📱 IL TUO TELEFONO (BUZZER)
                 </span>
                 
                 <button
                   type="button"
                   onClick={handleHeroBuzzerClick}
-                  className={`w-36 h-36 md:w-40 md:h-40 rounded-full flex flex-col items-center justify-center gap-1 text-slate-950 font-black cursor-pointer select-none transition-transform active:scale-90 ${
+                  className={`w-32 h-32 md:w-36 md:h-36 rounded-full flex flex-col items-center justify-center gap-0.5 text-slate-950 font-black cursor-pointer select-none transition-transform active:scale-90 ${
                     heroBuzzerPressed
-                      ? 'scale-90 bg-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.95)]'
+                      ? 'scale-90 bg-emerald-400 shadow-[0_0_35px_rgba(16,185,129,0.95)]'
                       : 'bg-gradient-to-b from-amber-200 via-amber-400 to-amber-600 border-4 border-amber-100 shadow-2xl hover:brightness-105'
                   }`}
                   style={{ animation: heroBuzzerPressed ? 'none' : 'pulseGlowGold 2.4s infinite' }}
                 >
-                  <Zap size={32} className="fill-slate-950 drop-shadow" />
-                  <span className="text-xl md:text-2xl font-black uppercase tracking-wider leading-none">BUZZ!</span>
-                  <span className="text-xs font-black bg-slate-950/20 px-2 py-0.5 rounded-full mt-0.5">+2 FM</span>
+                  <Zap size={28} className="fill-slate-950 drop-shadow" />
+                  <span className="text-lg md:text-xl font-black uppercase tracking-wider leading-none">BUZZ!</span>
+                  <span className="text-[10px] font-black bg-slate-950/20 px-2 py-0.2 rounded-full mt-0.5">+2 FM</span>
                 </button>
 
-                <span className="text-xs text-slate-300 font-bold text-center">
-                  👆 Tocca qui per provare il rilancio con audio!
+                <span className="text-[11px] text-slate-300 font-bold text-center">
+                  👆 Tocca per rilanciare con l'audio!
                 </span>
               </div>
             </div>
 
             {/* PULSANTE VERDE E BENEFICI */}
-            <div className="mt-3.5">
+            <div className="mt-2.5">
               <button
                 type="button"
                 onClick={() => setShowCustomLeagueModal(true)}
-                className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 hover:from-emerald-400 text-slate-950 font-black rounded-2xl text-sm md:text-base uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xl transition-transform active:scale-98"
+                className="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 hover:from-emerald-400 text-slate-950 font-black rounded-xl text-xs md:text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-lg transition-transform active:scale-98"
               >
-                <Zap size={20} className="fill-slate-950" /> AVVIA SHOW D'ASTA (TEST GRATUITO)
+                <Zap size={16} className="fill-slate-950" /> AVVIA SHOW D'ASTA (TEST GRATUITO)
               </button>
               
-              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-emerald-300 font-black text-center mt-2">
+              <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-0.5 text-[11px] text-emerald-300 font-black text-center mt-1.5">
                 <span>✨ Zero registrazione</span>
                 <span>•</span>
                 <span>📱 100% Gratis fino a 3 smartphone</span>
@@ -918,40 +967,46 @@ export default function App() {
               </div>
             </div>
 
-            {/* INGRESSO CODICE STANZA */}
-            <div className="mt-2.5 bg-[#020712] p-2.5 rounded-2xl border border-cyan-500/30 flex flex-col sm:flex-row items-center gap-2">
-              <span className="text-xs font-black uppercase text-cyan-300 shrink-0 flex items-center gap-1">
+            {/* INGRESSO CODICE STANZA CON VERIFICA REALE */}
+            <div className="mt-2 bg-[#020712] p-2 rounded-xl border border-cyan-500/30 flex flex-col sm:flex-row items-center gap-2">
+              <span className="text-[11px] font-black uppercase text-cyan-300 shrink-0 flex items-center gap-1">
                 🔑 CODICE STANZA:
               </span>
               <input
                 type="text"
                 placeholder="Es. BUZZ2026..."
                 value={inputLeagueName}
-                onChange={e => { setInputLeagueName(e.target.value); setIsRoomCodeConfirmed(false); }}
-                className="w-full flex-1 bg-[#0B1528] border border-slate-700 rounded-xl p-2 text-xs md:text-sm text-amber-400 font-black tracking-widest text-center uppercase"
+                onChange={e => { 
+                  setInputLeagueName(e.target.value); 
+                  setIsRoomCodeConfirmed(false); 
+                }}
+                className="w-full flex-1 bg-[#0B1528] border border-slate-700 rounded-lg p-1.5 text-xs text-amber-400 font-black tracking-widest text-center uppercase"
               />
               <button
                 type="button"
-                onClick={() => {
-                  if (inputLeagueName.trim() !== '') {
-                    const clean = inputLeagueName.trim().toUpperCase().replace(/\s+/g, '');
-                    setRoomCode(clean);
-                    setIsRoomCodeConfirmed(true);
-                  } else {
-                    setCustomAlertMessage('Inserisci il Codice Stanza fornito dal Presidente!');
-                  }
-                }}
-                className="w-full sm:w-auto px-6 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl font-black text-xs uppercase cursor-pointer shrink-0 shadow-md"
+                disabled={isSearchingRoom}
+                onClick={handleConnectToRoom}
+                className="w-full sm:w-auto px-5 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-lg font-black text-xs uppercase cursor-pointer shrink-0 shadow-md flex items-center justify-center gap-1.5"
               >
-                ENTRA NELLA STANZA
+                {isSearchingRoom ? (
+                  <>
+                    <span className="w-3 h-3 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                    <span>VERIFICA...</span>
+                  </>
+                ) : (
+                  'ENTRA NELLA STANZA'
+                )}
               </button>
             </div>
 
-            {isRoomCodeConfirmed && (
+            {/* SQUADRE VISIBILI SOLO SE LA STANZA È STATA REALMENTE TROVATA */}
+            {isRoomCodeConfirmed && availableRemoteCoaches.length > 0 && (
               <div className="space-y-1.5 pt-2 mt-2 border-t border-slate-800 text-left">
-                <label className="text-xs font-bold text-emerald-400 block uppercase text-center">✅ Stanza Trovata! Scegli la tua Squadra:</label>
-                <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto">
-                  {coaches.map(c => (
+                <label className="text-xs font-bold text-emerald-400 block uppercase text-center">
+                  ✅ Stanza "{roomCode}" Trovata! Scegli la tua Squadra:
+                </label>
+                <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto">
+                  {availableRemoteCoaches.map(c => (
                     <button
                       key={c.name}
                       onClick={() => {
@@ -961,7 +1016,7 @@ export default function App() {
                         if (activeChannel) activeChannel.send({ type: 'broadcast', event: 'player_online', payload: { name: c.name } });
                         setUserRole('PLAYER');
                       }}
-                      className="p-2.5 bg-[#0B132B] border border-slate-800 rounded-xl text-left cursor-pointer hover:border-cyan-400"
+                      className="p-2 bg-[#0B132B] border border-slate-800 rounded-lg text-left cursor-pointer hover:border-cyan-400"
                     >
                       <span className="font-extrabold text-amber-400 text-xs block truncate">{c.teamName}</span>
                       <span className="text-[10px] text-slate-300 block truncate">Mister: {c.name}</span>
@@ -972,8 +1027,8 @@ export default function App() {
             )}
           </div>
 
-          <footer className="max-w-3xl w-full text-center space-y-1 py-2 border-t border-slate-800 text-xs text-slate-400 relative z-10 mt-1">
-            <div className="flex flex-wrap justify-center gap-4 font-bold text-slate-300">
+          <footer className="max-w-2xl w-full text-center space-y-0.5 py-1.5 border-t border-slate-800 text-[10px] text-slate-400 relative z-10">
+            <div className="flex flex-wrap justify-center gap-3 font-bold text-slate-300">
               <button onClick={() => setActiveLegalSection('TERMS')} className="hover:text-amber-400 cursor-pointer">Termini & Condizioni</button>
               <span>•</span>
               <button onClick={() => setActiveLegalSection('PRIVACY')} className="hover:text-amber-400 cursor-pointer">Privacy (GDPR)</button>
