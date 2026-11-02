@@ -233,8 +233,8 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<'ALL' | Role>('ALL');
   const [hidePurchased, setHidePurchased] = useState(true);
-  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v20_startFromOne') !== 'false');
-  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v20_voiceEnabled') !== 'false');
+  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v21_startFromOne') !== 'false');
+  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v21_voiceEnabled') !== 'false');
   const [activeLegalSection, setActiveLegalSection] = useState<LegalSection>(null);
 
   const [activeLeaguesCount, setActiveLeaguesCount] = useState<number>(42);
@@ -264,7 +264,7 @@ export default function App() {
   const [customBidInput, setCustomBidInput] = useState<string>('');
 
   const [selectedPackage, setSelectedPackage] = useState<'TV' | 'LIVE'>('LIVE');
-  const [isLicenseUnlocked, setIsLicenseUnlocked] = useState<boolean>(true); // Sbloccata per promo lancio riparazione
+  const [isLicenseUnlocked, setIsLicenseUnlocked] = useState<boolean>(true);
   const [customCoachesCount, setCustomCoachesCount] = useState<number>(8);
 
   const [showCustomLeagueModal, setShowCustomLeagueModal] = useState(false);
@@ -285,16 +285,16 @@ export default function App() {
   const [userRole, setUserRole] = useState<'PRESIDENT' | 'PLAYER' | null>(null);
   const [playerName, setPlayerName] = useState<string>('');
   const [inputLeagueName, setInputLeagueName] = useState('');
-  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v20_roomCode') || 'LEGA2026');
+  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v21_roomCode') || 'LEGA2026');
   const [isSearchingRoom, setIsSearchingRoom] = useState(false);
   const [isRoomCodeConfirmed, setIsRoomCodeConfirmed] = useState(false);
   const [availableRemoteCoaches, setAvailableRemoteCoaches] = useState<Coach[]>([]);
-  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v20_initialBudget')) || 500);
-  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v20_leagueName') || 'FantaLega Serie A');
+  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v21_initialBudget')) || 500);
+  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v21_leagueName') || 'FantaLega Serie A');
 
-  // Configurazione default impostata a 3 squadre (Mario P., Pasquale R., Gianni L.)
+  // Configurazione default a 3 squadre
   const [coaches, setCoaches] = useState<Coach[]>(() => {
-    const saved = localStorage.getItem('fb_v20_coaches');
+    const saved = localStorage.getItem('fb_v21_coaches');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -310,7 +310,7 @@ export default function App() {
   });
 
   const [purchasedPlayers, setPurchasedPlayers] = useState<Record<string, PurchasedItem[]>>(() => {
-    const saved = localStorage.getItem('fb_v20_purchasedPlayers');
+    const saved = localStorage.getItem('fb_v21_purchasedPlayers');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -333,7 +333,6 @@ export default function App() {
     return 9.99 + (count - 10) * 1.0;
   };
 
-  const isFreeTestTier = coaches.length <= 3;
   const effectiveCoachesCount = coaches.length >= 4 ? coaches.length : customCoachesCount;
   const currentLivePrice = calculateLivePrice(effectiveCoachesCount);
   const currentPackagePrice = selectedPackage === 'TV' ? 4.99 : currentLivePrice;
@@ -380,14 +379,14 @@ export default function App() {
   }, [coaches, selectedWinnerManual]);
 
   useEffect(() => {
-    localStorage.setItem('fb_v20_coaches', JSON.stringify(coaches));
-    localStorage.setItem('fb_v20_purchasedPlayers', JSON.stringify(purchasedPlayers));
-    localStorage.setItem('fb_v20_leagueName', leagueName);
-    localStorage.setItem('fb_v20_roomCode', roomCode);
-    localStorage.setItem('fb_v20_initialBudget', String(initialBudget));
-    localStorage.setItem('fb_v20_startFromOne', String(startFromOne));
-    localStorage.setItem('fb_v20_voiceEnabled', String(voiceEnabled));
-    localStorage.setItem('fb_v20_unlocked', String(isLicenseUnlocked));
+    localStorage.setItem('fb_v21_coaches', JSON.stringify(coaches));
+    localStorage.setItem('fb_v21_purchasedPlayers', JSON.stringify(purchasedPlayers));
+    localStorage.setItem('fb_v21_leagueName', leagueName);
+    localStorage.setItem('fb_v21_roomCode', roomCode);
+    localStorage.setItem('fb_v21_initialBudget', String(initialBudget));
+    localStorage.setItem('fb_v21_startFromOne', String(startFromOne));
+    localStorage.setItem('fb_v21_voiceEnabled', String(voiceEnabled));
+    localStorage.setItem('fb_v21_unlocked', String(isLicenseUnlocked));
   }, [coaches, purchasedPlayers, leagueName, roomCode, initialBudget, startFromOne, voiceEnabled, isLicenseUnlocked]);
 
   const getCoachDisplay = useCallback((coachName: string | null) => {
@@ -534,7 +533,7 @@ export default function App() {
       return;
     }
     
-    const localSavedRoom = localStorage.getItem('fb_v20_roomCode') || 'LEGA2026';
+    const localSavedRoom = localStorage.getItem('fb_v21_roomCode') || 'LEGA2026';
     if (clean === localSavedRoom) {
       setRoomCode(clean);
       setAvailableRemoteCoaches(coaches);
@@ -633,7 +632,6 @@ export default function App() {
     if (activeChannel) await activeChannel.send({ type: 'broadcast', event: 'quick_bid', payload: { bidder, amount: nextBid } });
   }, [purchasedPlayerIds, activePlayer, userRole, handleNextPlayer, selectedWinnerManual, coaches, playerName, highestBidder, currentBid, startFromOne, getCoachMaxBid, getCoachRoleCount, voiceEnabled, registerBidLocally, activeChannel]);
 
-  // AGGIUDICAZIONE SENZA BLOCCO: Nessun paywall interrompe l'asta reale
   const handleAward = useCallback(async () => {
     if (purchasedPlayerIds.has(activePlayer.id)) { handleNextPlayer(); return; }
 
@@ -833,7 +831,7 @@ export default function App() {
         }
       `}</style>
 
-      {/* === HERO SECTION OTTIMIZZATA PER SCHERMI 15" === */}
+      {/* === HERO SECTION === */}
       {!userRole ? (
         <div
           className="min-h-screen w-full text-white flex flex-col items-center justify-between p-2 md:p-4 select-none overflow-y-auto relative z-10"
@@ -869,7 +867,7 @@ export default function App() {
             </p>
           </div>
 
-          {/* SIMULATORE COMPATTO */}
+          {/* SIMULATORE */}
           <div className="max-w-2xl w-full my-1.5 bg-gradient-to-b from-[#0B1528] to-[#040C1A] border-2 border-amber-400/80 rounded-2xl p-3 md:p-3.5 shadow-[0_0_40px_rgba(245,158,11,0.22)] relative z-10">
             <div className="text-center mb-1.5 flex items-center justify-center gap-2">
               <span className="bg-amber-400/20 text-amber-300 border border-amber-400/50 px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-widest inline-flex items-center gap-1.5 shadow-sm">
@@ -947,7 +945,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* PULSANTE VERDE E BENEFICI */}
+            {/* PULSANTE VERDE */}
             <div className="mt-2.5">
               <button
                 type="button"
@@ -966,7 +964,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* INGRESSO CODICE STANZA */}
+            {/* CODICE STANZA CON VERIFICA */}
             <div className="mt-2 bg-[#020712] p-2 rounded-xl border border-cyan-500/30 flex flex-col sm:flex-row items-center gap-2">
               <span className="text-[11px] font-black uppercase text-cyan-300 shrink-0 flex items-center gap-1">
                 🔑 CODICE STANZA:
@@ -998,7 +996,7 @@ export default function App() {
               </button>
             </div>
 
-            {/* SQUADRE VISIBILI DOPO VERIFICA REALE */}
+            {/* SQUADRE VISIBILI DOPO VERIFICA */}
             {isRoomCodeConfirmed && availableRemoteCoaches.length > 0 && (
               <div className="space-y-1.5 pt-2 mt-2 border-t border-slate-800 text-left">
                 <label className="text-xs font-bold text-emerald-400 block uppercase text-center">
