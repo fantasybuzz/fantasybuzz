@@ -244,8 +244,8 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<'ALL' | Role>('ALL');
   const [hidePurchased, setHidePurchased] = useState(true);
-  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v22_startFromOne') !== 'false');
-  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v22_voiceEnabled') !== 'false');
+  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v24_startFromOne') !== 'false');
+  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v24_voiceEnabled') !== 'false');
   const [activeLegalSection, setActiveLegalSection] = useState<LegalSection>(null);
 
   const [activeLeaguesCount, setActiveLeaguesCount] = useState<number>(42);
@@ -284,6 +284,11 @@ export default function App() {
   const [editTeamName, setEditTeamName] = useState('');
   const [editBudgetVal, setEditBudgetVal] = useState<number>(500);
 
+  // Campi per aggiunta rapida nel modale di gestione
+  const [manageAddCoachName, setManageAddCoachName] = useState('');
+  const [manageAddTeamName, setManageAddTeamName] = useState('');
+  const [manageAddBudget, setManageAddBudget] = useState<number>(500);
+
   const [selectedStep, setSelectedStep] = useState<number>(1);
   const [activeTab, setActiveTab] = useState<'AUCTION' | 'ROSTERS' | 'HIGHLIGHTS'>('AUCTION');
   const [rosterViewMode, setRosterViewMode] = useState<'GRID' | 'FIELD'>('GRID');
@@ -292,16 +297,16 @@ export default function App() {
   const [userRole, setUserRole] = useState<'PRESIDENT' | 'PLAYER' | null>(null);
   const [playerName, setPlayerName] = useState<string>('');
   const [inputLeagueName, setInputLeagueName] = useState('');
-  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v22_roomCode') || 'LEGA2026');
+  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v24_roomCode') || 'LEGA2026');
   const [isSearchingRoom, setIsSearchingRoom] = useState(false);
   const [isRoomCodeConfirmed, setIsRoomCodeConfirmed] = useState(false);
   const [availableRemoteCoaches, setAvailableRemoteCoaches] = useState<Coach[]>([]);
-  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v22_initialBudget')) || 500);
-  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v22_leagueName') || 'FantaLega Serie A');
+  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v24_initialBudget')) || 500);
+  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v24_leagueName') || 'FantaLega Serie A');
 
   // Configurazione default
   const [coaches, setCoaches] = useState<Coach[]>(() => {
-    const saved = localStorage.getItem('fb_v22_coaches');
+    const saved = localStorage.getItem('fb_v24_coaches');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -309,11 +314,11 @@ export default function App() {
         /* ignore */
       }
     }
-    return DEFAULT_DEMO_COACHES.slice(0, 3);
+    return DEFAULT_DEMO_COACHES;
   });
 
   const [purchasedPlayers, setPurchasedPlayers] = useState<Record<string, PurchasedItem[]>>(() => {
-    const saved = localStorage.getItem('fb_v22_purchasedPlayers');
+    const saved = localStorage.getItem('fb_v24_purchasedPlayers');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -371,13 +376,13 @@ export default function App() {
   }, [coaches, selectedWinnerManual]);
 
   useEffect(() => {
-    localStorage.setItem('fb_v22_coaches', JSON.stringify(coaches));
-    localStorage.setItem('fb_v22_purchasedPlayers', JSON.stringify(purchasedPlayers));
-    localStorage.setItem('fb_v22_leagueName', leagueName);
-    localStorage.setItem('fb_v22_roomCode', roomCode);
-    localStorage.setItem('fb_v22_initialBudget', String(initialBudget));
-    localStorage.setItem('fb_v22_startFromOne', String(startFromOne));
-    localStorage.setItem('fb_v22_voiceEnabled', String(voiceEnabled));
+    localStorage.setItem('fb_v24_coaches', JSON.stringify(coaches));
+    localStorage.setItem('fb_v24_purchasedPlayers', JSON.stringify(purchasedPlayers));
+    localStorage.setItem('fb_v24_leagueName', leagueName);
+    localStorage.setItem('fb_v24_roomCode', roomCode);
+    localStorage.setItem('fb_v24_initialBudget', String(initialBudget));
+    localStorage.setItem('fb_v24_startFromOne', String(startFromOne));
+    localStorage.setItem('fb_v24_voiceEnabled', String(voiceEnabled));
   }, [coaches, purchasedPlayers, leagueName, roomCode, initialBudget, startFromOne, voiceEnabled]);
 
   const getCoachDisplay = useCallback((coachName: string | null) => {
@@ -523,7 +528,7 @@ export default function App() {
       return;
     }
     
-    const localSavedRoom = localStorage.getItem('fb_v22_roomCode') || 'LEGA2026';
+    const localSavedRoom = localStorage.getItem('fb_v24_roomCode') || 'LEGA2026';
     if (clean === localSavedRoom) {
       setRoomCode(clean);
       setAvailableRemoteCoaches(coaches);
@@ -651,22 +656,20 @@ export default function App() {
     if (activeChannel) await activeChannel.send({ type: 'broadcast', event: 'sync_league_state', payload: { coaches: uCoaches, purchasedPlayers: uPurchased, leagueName, activePlayer: player, currentBid: 0, highestBidder: null } });
   };
 
-  // Scorciatoia di azzeramento rose per avviare l'asta reale senza perdere amici connessi
   const handleResetRostersForRealAuction = async () => {
-    const cleanCoaches = coaches.map(c => ({ ...c, budget: initialBudget, playersCount: 0 }));
     setPurchasedPlayers({});
-    setCoaches(cleanCoaches);
+    setCoaches(prev => prev.map(c => ({ ...c, playersCount: 0 })));
     setLastAwardHistory(null);
     setAwardModal(null);
     setCurrentBid(0);
     setHighestBidder(null);
     setShowLeagueSettingsModal(false);
-    setCustomAlertMessage('🧹 Rose e crediti azzerati con successo! La stanza resta attiva con tutti i telefoni connessi.');
+    setCustomAlertMessage('🧹 Rose azzerate con successo! I crediti personalizzati e le squadre rimangono invariati.');
     if (activeChannel) {
       await activeChannel.send({
         type: 'broadcast',
         event: 'sync_league_state',
-        payload: { coaches: cleanCoaches, purchasedPlayers: {}, leagueName, activePlayer, currentBid: 0, highestBidder: null }
+        payload: { coaches, purchasedPlayers: {}, leagueName, activePlayer, currentBid: 0, highestBidder: null }
       });
     }
   };
@@ -712,6 +715,7 @@ export default function App() {
     window.open(`https://wa.me/?text=${encodeURIComponent(viralText)}`, '_blank');
   };
 
+  // Funzione con tutti i parametri Canvas corretti a 4 argomenti (x, y, w, h)
   const handleDownloadSocialCard = async () => {
     if (!awardModal) return;
     const winnerObj = coaches.find(x => x.name === awardModal.winner);
@@ -720,81 +724,113 @@ export default function App() {
     const roleColors: Record<string, string> = { P: '#f59e0b', D: '#10b981', C: '#38bdf8', A: '#f43f5e' };
 
     const canvas = document.createElement('canvas');
-    canvas.width = 1080; canvas.height = 1920;
+    canvas.width = 1080; 
+    canvas.height = 1920;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     const bg = ctx.createLinearGradient(0, 0, 1080, 1920);
-    bg.addColorStop(0, '#021B12'); bg.addColorStop(0.55, '#062E1E'); bg.addColorStop(1, '#021B12');
-    ctx.fillStyle = bg; ctx.fillRect(0, 0, 1080, 1920);
+    bg.addColorStop(0, '#021B12'); 
+    bg.addColorStop(0.55, '#062E1E'); 
+    bg.addColorStop(1, '#021B12');
+    ctx.fillStyle = bg; 
+    ctx.fillRect(0, 0, 1080, 1920);
 
     const glow = ctx.createRadialGradient(540, 720, 30, 540, 720, 780);
-    glow.addColorStop(0, 'rgba(16,185,129,0.28)'); glow.addColorStop(1, 'rgba(16,185,129,0)');
-    ctx.fillStyle = glow; ctx.fillRect(0, 0, 1080, 1920);
+    glow.addColorStop(0, 'rgba(16,185,129,0.28)'); 
+    glow.addColorStop(1, 'rgba(16,185,129,0)');
+    ctx.fillStyle = glow; 
+    ctx.fillRect(0, 0, 1080, 1920);
 
     ctx.save();
-    ctx.globalAlpha = 0.14; ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.14; 
+    ctx.strokeStyle = '#38bdf8'; 
+    ctx.lineWidth = 2;
     for (let i = -700; i < 1500; i += 140) {
-      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + 700, 1920); ctx.stroke();
+      ctx.beginPath(); 
+      ctx.moveTo(i, 0); 
+      ctx.lineTo(i + 700, 1920); 
+      ctx.stroke();
     }
     ctx.restore();
 
-    ctx.strokeStyle = '#F59E0B'; ctx.lineWidth = 6;
+    ctx.strokeStyle = '#F59E0B'; 
+    ctx.lineWidth = 6;
     ctx.strokeRect(36, 36, 1008, 1848);
 
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#ffffff'; ctx.font = '900 54px system-ui, sans-serif';
+    ctx.fillStyle = '#ffffff'; 
+    ctx.font = '900 54px system-ui, sans-serif';
     ctx.fillText('FANTASYBUZZ • ASTA FANTACALCIO', 540, 165);
-    ctx.fillStyle = '#F59E0B'; ctx.font = '800 32px system-ui, sans-serif';
+    ctx.fillStyle = '#F59E0B'; 
+    ctx.font = '800 32px system-ui, sans-serif';
     ctx.fillText(leagueName.toUpperCase(), 540, 225);
 
     ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
     ctx.fillRect(170, 280, 740, 80);
-    ctx.strokeStyle = stamp.color; ctx.lineWidth = 4;
+    ctx.strokeStyle = stamp.color; 
+    ctx.lineWidth = 4;
     ctx.strokeRect(170, 280, 740, 80);
-    ctx.fillStyle = stamp.color; ctx.font = '900 38px system-ui, sans-serif';
+    ctx.fillStyle = stamp.color; 
+    ctx.font = '900 38px system-ui, sans-serif';
     ctx.fillText(stamp.label, 540, 332);
 
     ctx.fillStyle = '#0B132B';
     ctx.fillRect(100, 420, 880, 580);
-    ctx.strokeStyle = '#F59E0B'; ctx.lineWidth = 3;
+    ctx.strokeStyle = '#F59E0B'; 
+    ctx.lineWidth = 3;
     ctx.strokeRect(100, 420, 880, 580);
 
     ctx.fillStyle = roleColors[awardModal.player.role] || '#10b981';
     ctx.fillRect(150, 465, 110, 64);
-    ctx.fillStyle = '#0B132B'; ctx.font = '900 36px system-ui, sans-serif';
+    ctx.fillStyle = '#0B132B'; 
+    ctx.font = '900 36px system-ui, sans-serif';
     ctx.fillText(awardModal.player.role, 205, 510);
 
     drawTeamBadgeOnCanvas(ctx, awardModal.player.team, 640, 460, 62);
-    ctx.fillStyle = '#e2e8f0'; ctx.font = '800 28px system-ui, sans-serif';
+    ctx.fillStyle = '#e2e8f0'; 
+    ctx.font = '800 28px system-ui, sans-serif';
     ctx.fillText(awardModal.player.team.toUpperCase(), 810, 505);
 
-    ctx.beginPath(); ctx.arc(540, 675, 105, 0, Math.PI * 2);
-    ctx.fillStyle = '#060D1E'; ctx.fill();
-    ctx.strokeStyle = '#F59E0B'; ctx.lineWidth = 4; ctx.stroke();
-    ctx.fillStyle = '#F59E0B'; ctx.font = '900 95px system-ui, sans-serif';
+    ctx.beginPath(); 
+    ctx.arc(540, 675, 105, 0, Math.PI * 2);
+    ctx.fillStyle = '#060D1E'; 
+    ctx.fill();
+    ctx.strokeStyle = '#F59E0B'; 
+    ctx.lineWidth = 4; 
+    ctx.stroke();
+    ctx.fillStyle = '#F59E0B'; 
+    ctx.font = '900 95px system-ui, sans-serif';
     ctx.fillText(awardModal.player.name.charAt(0).toUpperCase(), 540, 708);
 
-    ctx.fillStyle = '#ffffff'; ctx.font = '900 66px system-ui, sans-serif';
+    ctx.fillStyle = '#ffffff'; 
+    ctx.font = '900 66px system-ui, sans-serif';
     ctx.fillText(awardModal.player.name.toUpperCase(), 540, 880);
-    ctx.fillStyle = '#94A3B8'; ctx.font = '700 28px system-ui, sans-serif';
+    ctx.fillStyle = '#94A3B8'; 
+    ctx.font = '700 28px system-ui, sans-serif';
     ctx.fillText(`QUOTAZIONE BASE: ${awardModal.player.basePrice} FM  •  MV: ${awardModal.player.mv || '6.00'}`, 540, 945);
 
-    ctx.fillStyle = '#F59E0B'; ctx.font = '900 150px system-ui, sans-serif';
+    ctx.fillStyle = '#F59E0B'; 
+    ctx.font = '900 150px system-ui, sans-serif';
     ctx.fillText(`${awardModal.price} FM`, 540, 1210);
 
     ctx.fillStyle = '#0B132B';
     ctx.fillRect(120, 1330, 840, 220);
-    ctx.strokeStyle = '#10b981'; ctx.lineWidth = 3;
+    ctx.strokeStyle = '#10b981'; 
+    ctx.lineWidth = 3;
     ctx.strokeRect(120, 1330, 840, 220);
-    ctx.fillStyle = '#94A3B8'; ctx.font = '800 26px system-ui, sans-serif';
+    ctx.fillStyle = '#94A3B8'; 
+    ctx.font = '800 26px system-ui, sans-serif';
     ctx.fillText('TESSERATO DALLA FANTA-SOCIETÀ', 540, 1390);
-    ctx.fillStyle = '#10b981'; ctx.font = '900 54px system-ui, sans-serif';
+    ctx.fillStyle = '#10b981'; 
+    ctx.font = '900 54px system-ui, sans-serif';
     ctx.fillText(club.toUpperCase(), 540, 1460);
-    ctx.fillStyle = '#cbd5e1'; ctx.font = '700 30px system-ui, sans-serif';
+    ctx.fillStyle = '#cbd5e1'; 
+    ctx.font = '700 30px system-ui, sans-serif';
     ctx.fillText(`Fantallenatore: ${awardModal.winner}`, 540, 1515);
 
-    ctx.fillStyle = '#ffffff'; ctx.font = '28px system-ui, sans-serif';
+    ctx.fillStyle = '#ffffff'; 
+    ctx.font = '28px system-ui, sans-serif';
     ctx.fillText('L’ASTA DEL FANTACALCIO DIVENTA UNO SHOW LIVE • FANTASYBUZZ', 540, 1720);
 
     const fileName = `FantasyBuzz_${awardModal.player.name.replace(/\s+/g, '_')}.png`;
@@ -811,7 +847,10 @@ export default function App() {
         return;
       } catch { /* fallback download */ }
     }
-    const a = document.createElement('a'); a.download = fileName; a.href = URL.createObjectURL(blob); a.click();
+    const a = document.createElement('a'); 
+    a.download = fileName; 
+    a.href = URL.createObjectURL(blob); 
+    a.click();
   };
 
   const handleExportCSV = () => {
@@ -1610,7 +1649,7 @@ export default function App() {
             <button onClick={() => setShowWelcomeGuide(false)} className="absolute top-4 right-4 text-slate-400 cursor-pointer"><X size={18} /></button>
             <h3 className="text-xl font-black text-white uppercase">Fai entrare i tuoi amici col Telefono 📱</h3>
             <p className="text-xs text-slate-300">
-              Sul divano o a distanza: inviagli subito il link WhatsApp o fagli inquadrare il QR Code dalla TV:
+              Sul divano o a distanza: dagli questo Codice Stanza o inviagli il link WhatsApp:
             </p>
             <div className="bg-[#060D1E] border-2 border-dashed border-amber-400 rounded-2xl p-4 space-y-3">
               <div className="text-3xl font-black text-white tracking-widest bg-[#0B132B] py-2 rounded-xl">{roomCode}</div>
@@ -1624,278 +1663,238 @@ export default function App() {
         </div>
       )}
 
-      {/* === MODALE GESTIONE LEGA & RESET ASTA VERA (SCORCIATOIA PRESIDENTE) === */}
+      {/* === MODALE GESTIONE LEGA CON COMPONENTI DI MODIFICA FUNZIONANTI === */}
       {showLeagueSettingsModal && (
         <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <div className="bg-[#0B132B] border-2 border-purple-400 rounded-3xl p-6 max-w-lg w-full flex flex-col gap-4 text-left relative max-h-[88vh] overflow-y-auto shadow-2xl">
+          <div className="bg-[#0B132B] border-2 border-purple-400 rounded-3xl p-5 max-w-lg w-full flex flex-col gap-3 text-left relative max-h-[92vh] overflow-y-auto shadow-2xl">
             <button onClick={() => setShowLeagueSettingsModal(false)} className="absolute top-4 right-4 text-slate-400 cursor-pointer"><X size={18} /></button>
+            
             <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
-              <Settings className="text-purple-400" size={22} />
-              <div>
-                <h3 className="text-lg font-black text-white uppercase">Gestione Stanza & Asta Ufficiale</h3>
-                <span className="text-[11px] text-slate-400">Codice Stanza: <strong className="text-amber-400">{roomCode}</strong> (Amici connessi: {coaches.filter(c => c.isOnline).length})</span>
+              <Settings className="text-purple-400 shrink-0" size={20} />
+              <div className="flex-1">
+                <h3 className="text-base font-black text-white uppercase">Gestione Stanza & Asta Ufficiale</h3>
+                <span className="text-[10px] text-slate-400 block">Codice Stanza: <strong className="text-amber-400">{roomCode}</strong> • Squadre attuali: {coaches.length}</span>
               </div>
             </div>
 
-            <div className="space-y-2 bg-[#060D1E] p-3.5 rounded-2xl border border-slate-800">
-              <span className="text-xs font-black text-amber-300 uppercase block">1. Terminato il test? Azzera per l'Asta Vera:</span>
-              <p className="text-[11px] text-slate-300">
-                Svuota le rose battezzate durante la prova e ripristina i 500 crediti a tutti i partecipanti. <strong>I telefoni degli amici restano agganciati alla stanza senza dover reinserire nulla.</strong>
+            {/* MODIFICA NOME LEGA IN TEMPO REALE */}
+            <div className="bg-[#060D1E] p-2.5 rounded-xl border border-slate-800 space-y-1">
+              <label className="text-[11px] font-black uppercase text-amber-400 block">Nome della Lega:</label>
+              <div className="flex gap-1.5">
+                <input
+                  type="text"
+                  value={leagueName}
+                  onChange={e => setLeagueName(e.target.value)}
+                  className="flex-1 bg-[#0B132B] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-bold"
+                  placeholder="Nome Lega..."
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomAlertMessage(`Nome lega aggiornato in "${leagueName}"!`);
+                    if (activeChannel) {
+                      activeChannel.send({
+                        type: 'broadcast',
+                        event: 'sync_league_state',
+                        payload: { coaches, purchasedPlayers, leagueName, activePlayer, currentBid: 0, highestBidder: null }
+                      });
+                    }
+                  }}
+                  className="px-3 bg-amber-500 text-slate-950 font-black rounded-lg text-xs uppercase cursor-pointer"
+                >
+                  Salva
+                </button>
+              </div>
+            </div>
+
+            {/* AZZERAMENTO ROSE */}
+            <div className="bg-[#060D1E] p-2.5 rounded-xl border border-slate-800 space-y-1">
+              <div className="flex justify-between items-center">
+                <span className="text-[11px] font-black text-rose-400 uppercase">Terminato il test?</span>
+                <span className="text-[10px] text-slate-400">Contratti battuti: {totalPurchasesCount}</span>
+              </div>
+              <p className="text-[10px] text-slate-300">
+                Azzera tutti i calciatori acquistati per iniziare l'asta ufficiale. <strong>I crediti personalizzati e i telefoni già connessi restano validi.</strong>
               </p>
               <button
                 type="button"
                 onClick={handleResetRostersForRealAuction}
-                className="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-black rounded-xl text-xs uppercase flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+                className="w-full py-2 bg-rose-600/30 border border-rose-500/50 hover:bg-rose-600 text-rose-200 hover:text-white font-black rounded-xl text-xs uppercase flex items-center justify-center gap-1.5 cursor-pointer shadow"
               >
-                <RefreshCw size={14} /> 🧹 Azzera Rose e Crediti (Inizia Asta Vera)
+                <RefreshCw size={12} /> 🧹 Azzera Contratti di Prova (Inizia Asta Vera)
               </button>
             </div>
 
-            <div className="space-y-2 bg-[#060D1E] p-3.5 rounded-2xl border border-slate-800">
-              <span className="text-xs font-black text-cyan-300 uppercase block">2. Modifica Squadre e Mister al Volo:</span>
-              <div className="space-y-1.5 max-h-44 overflow-y-auto">
-                {coaches.map((c, i) => (
-                  <div key={i} className="flex items-center justify-between p-2 bg-[#0B132B] rounded-xl border border-slate-800 text-xs">
-                    <span className="truncate pr-1"><strong>{i + 1}. {c.teamName}</strong> ({c.name})</span>
-                    <span className="text-amber-400 font-bold shrink-0">{c.budget} FM</span>
-                  </div>
-                ))}
+            {/* ELENCO SQUADRE */}
+            <div className="bg-[#060D1E] p-2.5 rounded-xl border border-slate-800 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-[11px] font-black text-cyan-300 uppercase">Squadre & Crediti Riparazione:</span>
+                <span className="text-[10px] text-slate-400">Personalizza i crediti per ognuno</span>
               </div>
-            </div>
 
-            <button onClick={() => setShowLeagueSettingsModal(false)} className="w-full py-2.5 bg-slate-800 text-white font-bold rounded-xl text-xs uppercase cursor-pointer">
-              Chiudi e Torna alla Regia
-            </button>
-          </div>
-        </div>
-      )}
+              <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                {coaches.map((c, i) => {
+                  const isEditing = editingCoachIdx === i;
 
-      {awardModal && awardModal.show && (
-        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <div className="fixed inset-0 bg-white pointer-events-none z-50" style={{ animation: 'paparazziFlash 0.65s ease-out forwards' }} />
-          <div className="bg-[#0B132B] border-2 border-amber-400 rounded-3xl p-6 max-w-md w-full flex flex-col gap-3.5 text-center relative shadow-2xl overflow-hidden">
-            <button onClick={handleCloseAwardAndNext} className="absolute top-4 right-4 text-slate-400 cursor-pointer"><X size={18} /></button>
-            <div className="flex items-center justify-center gap-2 text-amber-400 text-[10px] font-black uppercase"><FileSignature size={15} /> Lega Fantacalcio • Deposito Contratto</div>
-            <div className="bg-[#060D1E] border border-slate-700 rounded-2xl p-4 space-y-2">
-              <h2 className="text-3xl font-black text-white uppercase">{awardModal.player.name}</h2>
-              <p className="text-xs text-slate-400">Tesserato ufficialmente dalla fanta-società</p>
-              <p className="text-xl font-black text-emerald-400 uppercase">{coaches.find(x => x.name === awardModal.winner)?.teamName || awardModal.winner}</p>
-              <p className="text-xs text-slate-300">Mister: <strong>{awardModal.winner}</strong> • Prezzo: <strong className="text-amber-400">{awardModal.price} FM</strong></p>
-              <div className="pt-2 border-t border-slate-800">
-                <span className="text-[9px] uppercase text-slate-500 font-bold block">Firma del Calciatore</span>
-                <div className="text-2xl text-amber-300 italic font-serif py-1" style={{ animation: 'signContractReveal 0.85s ease-out forwards' }}>{awardModal.player.name}</div>
-              </div>
-              {(() => {
-                const s = getViralStampInfo(awardModal.price, awardModal.player.basePrice, initialBudget);
-                return (
-                  <div className={`inline-block border-2 ${s.border} px-3 py-1 rounded-lg font-black text-xs uppercase`} style={{ animation: 'stampSlamEffect 0.35s ease-out 0.55s backwards' }}>
-                    {s.label}
-                  </div>
-                );
-              })()}
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button onClick={handleShareViralDealWhatsApp} className="py-3 bg-emerald-500 text-slate-950 font-black rounded-xl text-[11px] uppercase flex items-center justify-center gap-1.5 cursor-pointer">
-                <Share2 size={14} /> WhatsApp
-              </button>
-              <button onClick={handleDownloadSocialCard} className="py-3 bg-amber-500 text-slate-950 font-black rounded-xl text-[11px] uppercase flex items-center justify-center gap-1.5 cursor-pointer">
-                <Sparkles size={14} /> Card IG / Social
-              </button>
-            </div>
-            <button onClick={handleCloseAwardAndNext} className="w-full py-2.5 bg-[#060D1E] border border-slate-700 text-slate-200 font-black rounded-2xl text-xs uppercase cursor-pointer">Prossimo Calciatore ⏭️</button>
-          </div>
-        </div>
-      )}
-
-      {showQrModal && (
-        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-lg flex items-center justify-center p-6 z-50">
-          <div className="bg-[#060D1E] border-2 border-cyan-400 rounded-3xl p-8 max-w-lg w-full flex flex-col items-center gap-5 text-center relative shadow-2xl">
-            <button onClick={() => setShowQrModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer"><X size={22} /></button>
-            <span className="bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 px-3 py-1 rounded-full text-xs font-black uppercase">Collegamento Rapido Smartphone</span>
-            <h3 className="text-3xl font-black text-white uppercase">Inquadra la TV col Telefono 📱</h3>
-            <div className="bg-white p-5 rounded-3xl shadow-2xl">
-              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(inviteUrl)}`} alt="QR Code" className="w-64 h-64" />
-            </div>
-            <div className="bg-[#0B132B] border border-amber-400/50 px-6 py-3 rounded-2xl w-full">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">Oppure inserisci il Codice Stanza:</span>
-              <strong className="text-3xl font-black text-amber-400 tracking-widest">{roomCode}</strong>
-            </div>
-            <button onClick={handleShareWhatsAppInvite} className="w-full py-3.5 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-2 cursor-pointer shadow-lg">
-              <Share2 size={16} /> Invia Link nel Gruppo WhatsApp
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* === MODALE CREAZIONE STANZA CON GUIDA IN 3 PASSI E SCORCIATOIE AUTOMATICHE === */}
-      {showCustomLeagueModal && (
-        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <div className="bg-[#0B132B] border border-amber-500/40 rounded-3xl p-5 max-w-md w-full flex flex-col gap-3 text-center relative max-h-[92vh] overflow-y-auto shadow-2xl">
-            <button onClick={() => setShowCustomLeagueModal(false)} className="absolute top-4 right-4 text-slate-400 cursor-pointer"><X size={16} /></button>
-            
-            <div>
-              <h3 className="text-base font-black text-white uppercase">Crea la tua Lega di Fantacalcio</h3>
-              {/* GUIDA VISIVA IN 3 PASSI CONTESTUALI */}
-              <div className="grid grid-cols-3 gap-1.5 mt-2 p-2 bg-[#060D1E] rounded-xl border border-slate-800 text-[10px] text-slate-300 font-bold">
-                <div className="flex flex-col items-center gap-0.5"><span className="text-amber-400 text-xs">1. Squadre</span><span>Configura o Prova</span></div>
-                <div className="flex flex-col items-center gap-0.5"><span className="text-cyan-400 text-xs">2. Salotto</span><span>Proietta su TV</span></div>
-                <div className="flex flex-col items-center gap-0.5"><span className="text-emerald-400 text-xs">3. Amici</span><span>Link WhatsApp</span></div>
-              </div>
-            </div>
-
-            <input type="text" placeholder="Nome della Lega (es. FantaLega 2026)..." value={customLeagueInput} onChange={e => setCustomLeagueInput(e.target.value)} className="w-full bg-[#060D1E] border border-slate-700 rounded-xl p-2.5 text-xs text-amber-400 font-bold text-center" />
-            
-            <div className="flex items-center justify-between bg-[#060D1E] p-2 rounded-xl text-xs border border-slate-800">
-              <span className="font-bold text-slate-300 text-[11px]">Fantamilioni Iniziali:</span>
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="number"
-                  min="50"
-                  max="2000"
-                  step="10"
-                  value={initialBudget}
-                  onChange={e => {
-                    const val = Number(e.target.value) || 500;
-                    setInitialBudget(val);
-                    setCoaches(prev => prev.map(c => ({ ...c, budget: val })));
-                  }}
-                  className="w-20 bg-[#0B132B] border border-amber-400/60 rounded-lg p-1 text-xs font-black text-amber-400 text-center"
-                />
-                <span className="text-[10px] text-slate-400 font-bold">FM</span>
-              </div>
-            </div>
-
-            {/* SCORCIATOIA VELOCE PER TESTARE SENZA DIGITARE */}
-            <button
-              type="button"
-              onClick={handleLoadDemo8Teams}
-              className="w-full py-1.5 bg-[#060D1E] hover:bg-slate-800 border border-amber-400/50 text-amber-300 font-bold rounded-xl text-[11px] flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <Zap size={12} className="text-amber-400" /> ⚡ Carica 8 Squadre d'Esempio per il Test
-            </button>
-
-            <div className="space-y-1.5 bg-[#060D1E] p-2.5 rounded-xl border border-slate-800">
-              <span className="text-[10px] font-black uppercase text-cyan-400 block text-left">Aggiungi o Modifica Fanta-Squadre ({coaches.length}):</span>
-              <div className="grid grid-cols-2 gap-1.5">
-                <input type="text" placeholder="Squadra (es. Real Madrink)" value={newTeamNameInput} onChange={e => setNewTeamNameInput(e.target.value)} className="bg-[#0B132B] border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-amber-300" />
-                <input type="text" placeholder="Mister (es. Pasquale R.)" value={newCoachInput} onChange={e => setNewCoachInput(e.target.value)} className="bg-[#0B132B] border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white" />
-              </div>
-              <button
-                onClick={() => {
-                  if (!newCoachInput.trim()) return;
-                  const cName = newCoachInput.trim();
-                  const tName = newTeamNameInput.trim() || `FC ${cName}`;
-                  setCoaches(prev => [...prev, { name: cName, teamName: tName, budget: initialBudget, playersCount: 0, isOnline: true }]);
-                  setNewCoachInput(''); setNewTeamNameInput('');
-                }}
-                className="w-full py-1.5 bg-emerald-500 text-slate-950 font-black rounded-lg text-xs flex items-center justify-center gap-1 cursor-pointer"
-              >
-                <UserPlus size={13} /> Aggiungi alla Lega
-              </button>
-            </div>
-
-            <div className="max-h-40 overflow-y-auto space-y-1.5 text-left">
-              {coaches.map((c, i) => {
-                const isPresident = i === 0;
-                const isEditing = editingCoachIdx === i;
-
-                if (isEditing) {
-                  return (
-                    <div key={i} className="p-2 bg-[#060D1E] border border-cyan-400/70 rounded-xl space-y-1.5">
-                      <div className="grid grid-cols-2 gap-1">
-                        <input type="text" value={editTeamName} onChange={e => setEditTeamName(e.target.value)} placeholder="Nome Squadra" className="bg-[#0B132B] border border-slate-700 rounded p-1 text-xs text-amber-300" />
-                        <input type="text" value={editCoachName} onChange={e => setEditCoachName(e.target.value)} placeholder="Nome Mister" className="bg-[#0B132B] border border-slate-700 rounded p-1 text-xs text-white" />
+                  if (isEditing) {
+                    return (
+                      <div key={i} className="p-2 bg-[#0B132B] border border-cyan-400 rounded-xl space-y-1.5">
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <input type="text" value={editTeamName} onChange={e => setEditTeamName(e.target.value)} placeholder="Squadra" className="bg-[#060D1E] border border-slate-700 rounded p-1 text-xs text-amber-300" />
+                          <input type="text" value={editCoachName} onChange={e => setEditCoachName(e.target.value)} placeholder="Mister" className="bg-[#060D1E] border border-slate-700 rounded p-1 text-xs text-white" />
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-400 text-[11px]">Crediti Residui:</span>
+                          <input type="number" value={editBudgetVal} onChange={e => setEditBudgetVal(Number(e.target.value))} className="w-20 bg-[#060D1E] border border-slate-700 rounded p-1 text-xs text-amber-400 font-bold text-center" />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = coaches.map((item, idx) => idx === i ? { ...item, name: editCoachName.trim() || item.name, teamName: editTeamName.trim() || item.teamName, budget: editBudgetVal } : item);
+                              setCoaches(updated);
+                              setEditingCoachIdx(null);
+                              if (activeChannel) {
+                                activeChannel.send({
+                                  type: 'broadcast',
+                                  event: 'sync_league_state',
+                                  payload: { coaches: updated, purchasedPlayers, leagueName, activePlayer, currentBid: 0, highestBidder: null }
+                                });
+                              }
+                            }}
+                            className="px-2.5 py-1 bg-emerald-500 text-slate-950 font-bold rounded text-xs flex items-center gap-1 cursor-pointer"
+                          >
+                            <Check size={12} /> Salva
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-400">Crediti:</span>
-                        <input type="number" value={editBudgetVal} onChange={e => setEditBudgetVal(Number(e.target.value))} className="w-16 bg-[#0B132B] border border-slate-700 rounded p-1 text-xs text-amber-400 font-bold text-center" />
+                    );
+                  }
+
+                  return (
+                    <div key={i} className="flex items-center justify-between p-2 bg-[#0B132B] rounded-xl border border-slate-800 text-xs">
+                      <div className="truncate pr-1 flex-1">
+                        <span className="font-extrabold text-white">{i + 1}. {c.teamName}</span>
+                        <span className="text-slate-400 text-[10px] ml-1">({c.name})</span>
+                        {i === 0 && <span className="ml-1 text-[9px] bg-amber-400 text-slate-950 px-1 py-0.2 rounded font-black uppercase">👑 Tu</span>}
+                      </div>
+                      
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1 bg-[#060D1E] px-1.5 py-0.5 rounded border border-slate-700">
+                          <input
+                            type="number"
+                            value={c.budget}
+                            onChange={e => {
+                              const val = Number(e.target.value) || 0;
+                              const updated = coaches.map((item, idx) => idx === i ? { ...item, budget: val } : item);
+                              setCoaches(updated);
+                              if (activeChannel) {
+                                activeChannel.send({
+                                  type: 'broadcast',
+                                  event: 'sync_league_state',
+                                  payload: { coaches: updated, purchasedPlayers, leagueName, activePlayer, currentBid: 0, highestBidder: null }
+                                });
+                              }
+                            }}
+                            className="w-14 bg-transparent text-amber-400 font-black text-right text-xs focus:outline-none"
+                            title="Modifica crediti residui per l'asta di riparazione"
+                          />
+                          <span className="text-[10px] text-slate-400 font-bold">FM</span>
+                        </div>
+
                         <button
                           type="button"
                           onClick={() => {
-                            setCoaches(prev => prev.map((item, idx) => idx === i ? { ...item, name: editCoachName.trim() || item.name, teamName: editTeamName.trim() || item.teamName, budget: editBudgetVal } : item));
-                            setEditingCoachIdx(null);
+                            setEditingCoachIdx(i);
+                            setEditCoachName(c.name);
+                            setEditTeamName(c.teamName);
+                            setEditBudgetVal(c.budget);
                           }}
-                          className="px-2 py-1 bg-emerald-500 text-slate-950 font-bold rounded text-xs flex items-center gap-1 cursor-pointer"
+                          className="text-amber-400 hover:text-amber-300 p-1 cursor-pointer"
+                          title="Rinomina Squadra e Mister"
                         >
-                          <Check size={12} /> Salva
+                          <Edit2 size={13} />
                         </button>
+
+                        {coaches.length > 2 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = coaches.filter((_, idx) => idx !== i);
+                              setCoaches(updated);
+                              if (activeChannel) {
+                                activeChannel.send({
+                                  type: 'broadcast',
+                                  event: 'sync_league_state',
+                                  payload: { coaches: updated, purchasedPlayers, leagueName, activePlayer, currentBid: 0, highestBidder: null }
+                                });
+                              }
+                            }}
+                            className="text-rose-400 hover:text-rose-300 p-1 cursor-pointer"
+                            title="Elimina partecipante"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
-                }
+                })}
+              </div>
 
-                return (
-                  <div key={c.name} className={`flex justify-between items-center px-2 py-1.5 rounded-xl text-xs border ${isPresident ? 'bg-amber-500/15 border-amber-400/50' : 'bg-[#060D1E] border-slate-800'}`}>
-                    <div className="truncate pr-1">
-                      <strong>{i + 1}. {c.teamName}</strong> <span className="text-slate-400">({c.name})</span>
-                      {isPresident && <span className="ml-1 text-[9px] bg-amber-400 text-slate-950 px-1 py-0.2 rounded font-black uppercase">👑 Tua Squadra</span>}
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {!isPresident && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            // Sposta questa squadra in cima per sceglierla come squadra del Presidente
-                            setCoaches(prev => {
-                              const selected = prev[i];
-                              const rest = prev.filter((_, idx) => idx !== i);
-                              return [selected, ...rest];
-                            });
-                            setSelectedWinnerManual(c.name);
-                          }}
-                          className="text-amber-400 hover:text-amber-300 px-1 text-[10px] font-bold border border-amber-400/40 rounded cursor-pointer"
-                          title="Scegli come squadra del Presidente"
-                        >
-                          👑 Scegli
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingCoachIdx(i);
-                          setEditCoachName(c.name);
-                          setEditTeamName(c.teamName);
-                          setEditBudgetVal(c.budget);
-                        }}
-                        className="text-amber-400 hover:text-amber-300 p-1 cursor-pointer"
-                        title="Modifica squadra"
-                      >
-                        <Edit2 size={12} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCoaches(prev => prev.filter((_, idx) => idx !== i))}
-                        className="text-rose-400 hover:text-rose-300 p-1 cursor-pointer"
-                        title="Rimuovi"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
+              {/* AGGIUNTA SQUADRA EXTRA */}
+              <div className="pt-2 border-t border-slate-800 space-y-1">
+                <span className="text-[10px] font-black uppercase text-emerald-400 block">Aggiungi Fanta-Squadra extra (es. per leghe a 10 o 12):</span>
+                <div className="grid grid-cols-3 gap-1">
+                  <input
+                    type="text"
+                    placeholder="Squadra..."
+                    value={manageAddTeamName}
+                    onChange={e => setManageAddTeamName(e.target.value)}
+                    className="bg-[#0B132B] border border-slate-700 rounded px-2 py-1 text-xs text-amber-300 font-bold"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Mister..."
+                    value={manageAddCoachName}
+                    onChange={e => setManageAddCoachName(e.target.value)}
+                    className="bg-[#0B132B] border border-slate-700 rounded px-2 py-1 text-xs text-white"
+                  />
+                  <div className="flex gap-1">
+                    <input
+                      type="number"
+                      placeholder="FM"
+                      value={manageAddBudget}
+                      onChange={e => setManageAddBudget(Number(e.target.value) || 0)}
+                      className="w-14 bg-[#0B132B] border border-slate-700 rounded px-1.5 py-1 text-xs text-amber-400 font-bold text-center"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!manageAddCoachName.trim()) return;
+                        const cName = manageAddCoachName.trim();
+                        const tName = manageAddTeamName.trim() || `FC ${cName}`;
+                        const updated = [...coaches, { name: cName, teamName: tName, budget: manageAddBudget, playersCount: 0, isOnline: true }];
+                        setCoaches(updated);
+                        setManageAddCoachName('');
+                        setManageAddTeamName('');
+                        if (activeChannel) {
+                          activeChannel.send({
+                            type: 'broadcast',
+                            event: 'sync_league_state',
+                            payload: { coaches: updated, purchasedPlayers, leagueName, activePlayer, currentBid: 0, highestBidder: null }
+                          });
+                        }
+                      }}
+                      className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded text-xs flex items-center justify-center cursor-pointer"
+                    >
+                      <UserPlus size={13} />
+                    </button>
                   </div>
-                );
-              })}
+                </div>
+              </div>
             </div>
 
-            <div className="p-2 rounded-xl text-xs font-bold text-center border bg-[#060D1E]">
-              <span className="text-emerald-400 flex items-center justify-center gap-1.5">
-                <Sparkles size={13} /> <strong>Promo Mercato di Riparazione:</strong> Tutte le leghe sbloccate gratis a 0€
-              </span>
-            </div>
-
-            <button
-              onClick={() => {
-                if (coaches.length === 0) {
-                  setCustomAlertMessage('Aggiungi almeno una squadra alla lega!');
-                  return;
-                }
-                const n = customLeagueInput.trim() || leagueName;
-                setLeagueName(n); setRoomCode(n.toUpperCase().replace(/[^A-Z0-9]/g, '') || 'LEGA2026');
-                setShowCustomLeagueModal(false); setUserRole('PRESIDENT'); setShowWelcomeGuide(true); setShowRoomCodeArrow(true);
-                setSelectedRole('ALL'); setCurrentPlayer(listoneUfficiale[0]);
-              }}
-              className="w-full py-3 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs md:text-sm uppercase cursor-pointer shadow-lg"
-            >
-              Avvia Lega Ufficiale a 0€ 🚀
+            <button onClick={() => setShowLeagueSettingsModal(false)} className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs uppercase cursor-pointer">
+              Chiudi e Torna alla Regia TV
             </button>
           </div>
         </div>
