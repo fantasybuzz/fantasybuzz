@@ -244,8 +244,8 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<'ALL' | Role>('ALL');
   const [hidePurchased, setHidePurchased] = useState(true);
-  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v24_startFromOne') !== 'false');
-  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v24_voiceEnabled') !== 'false');
+  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v25_startFromOne') !== 'false');
+  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v25_voiceEnabled') !== 'false');
   const [activeLegalSection, setActiveLegalSection] = useState<LegalSection>(null);
 
   const [activeLeaguesCount, setActiveLeaguesCount] = useState<number>(42);
@@ -284,7 +284,7 @@ export default function App() {
   const [editTeamName, setEditTeamName] = useState('');
   const [editBudgetVal, setEditBudgetVal] = useState<number>(500);
 
-  // Campi per aggiunta rapida nel modale di gestione
+  // Campi per gestione
   const [manageAddCoachName, setManageAddCoachName] = useState('');
   const [manageAddTeamName, setManageAddTeamName] = useState('');
   const [manageAddBudget, setManageAddBudget] = useState<number>(500);
@@ -297,16 +297,16 @@ export default function App() {
   const [userRole, setUserRole] = useState<'PRESIDENT' | 'PLAYER' | null>(null);
   const [playerName, setPlayerName] = useState<string>('');
   const [inputLeagueName, setInputLeagueName] = useState('');
-  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v24_roomCode') || 'LEGA2026');
+  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v25_roomCode') || 'LEGA2026');
   const [isSearchingRoom, setIsSearchingRoom] = useState(false);
   const [isRoomCodeConfirmed, setIsRoomCodeConfirmed] = useState(false);
   const [availableRemoteCoaches, setAvailableRemoteCoaches] = useState<Coach[]>([]);
-  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v24_initialBudget')) || 500);
-  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v24_leagueName') || 'FantaLega Serie A');
+  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v25_initialBudget')) || 500);
+  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v25_leagueName') || 'FantaLega Serie A');
 
   // Configurazione default
   const [coaches, setCoaches] = useState<Coach[]>(() => {
-    const saved = localStorage.getItem('fb_v24_coaches');
+    const saved = localStorage.getItem('fb_v25_coaches');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -318,7 +318,7 @@ export default function App() {
   });
 
   const [purchasedPlayers, setPurchasedPlayers] = useState<Record<string, PurchasedItem[]>>(() => {
-    const saved = localStorage.getItem('fb_v24_purchasedPlayers');
+    const saved = localStorage.getItem('fb_v25_purchasedPlayers');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -376,13 +376,13 @@ export default function App() {
   }, [coaches, selectedWinnerManual]);
 
   useEffect(() => {
-    localStorage.setItem('fb_v24_coaches', JSON.stringify(coaches));
-    localStorage.setItem('fb_v24_purchasedPlayers', JSON.stringify(purchasedPlayers));
-    localStorage.setItem('fb_v24_leagueName', leagueName);
-    localStorage.setItem('fb_v24_roomCode', roomCode);
-    localStorage.setItem('fb_v24_initialBudget', String(initialBudget));
-    localStorage.setItem('fb_v24_startFromOne', String(startFromOne));
-    localStorage.setItem('fb_v24_voiceEnabled', String(voiceEnabled));
+    localStorage.setItem('fb_v25_coaches', JSON.stringify(coaches));
+    localStorage.setItem('fb_v25_purchasedPlayers', JSON.stringify(purchasedPlayers));
+    localStorage.setItem('fb_v25_leagueName', leagueName);
+    localStorage.setItem('fb_v25_roomCode', roomCode);
+    localStorage.setItem('fb_v25_initialBudget', String(initialBudget));
+    localStorage.setItem('fb_v25_startFromOne', String(startFromOne));
+    localStorage.setItem('fb_v25_voiceEnabled', String(voiceEnabled));
   }, [coaches, purchasedPlayers, leagueName, roomCode, initialBudget, startFromOne, voiceEnabled]);
 
   const getCoachDisplay = useCallback((coachName: string | null) => {
@@ -528,7 +528,7 @@ export default function App() {
       return;
     }
     
-    const localSavedRoom = localStorage.getItem('fb_v24_roomCode') || 'LEGA2026';
+    const localSavedRoom = localStorage.getItem('fb_v25_roomCode') || 'LEGA2026';
     if (clean === localSavedRoom) {
       setRoomCode(clean);
       setAvailableRemoteCoaches(coaches);
@@ -715,7 +715,6 @@ export default function App() {
     window.open(`https://wa.me/?text=${encodeURIComponent(viralText)}`, '_blank');
   };
 
-  // Funzione con tutti i parametri Canvas corretti a 4 argomenti (x, y, w, h)
   const handleDownloadSocialCard = async () => {
     if (!awardModal) return;
     const winnerObj = coaches.find(x => x.name === awardModal.winner);
@@ -1050,7 +1049,7 @@ export default function App() {
               </button>
             </div>
 
-            {/* SQUADRE VISIBILI DOPO VERIFICA REALE */}
+            {/* SQUADRE VISIBILI DOPO VERIFICA */}
             {isRoomCodeConfirmed && availableRemoteCoaches.length > 0 && (
               <div className="space-y-1.5 pt-2 mt-2 border-t border-slate-800 text-left">
                 <label className="text-xs font-bold text-emerald-400 block uppercase text-center">
@@ -1649,7 +1648,7 @@ export default function App() {
             <button onClick={() => setShowWelcomeGuide(false)} className="absolute top-4 right-4 text-slate-400 cursor-pointer"><X size={18} /></button>
             <h3 className="text-xl font-black text-white uppercase">Fai entrare i tuoi amici col Telefono 📱</h3>
             <p className="text-xs text-slate-300">
-              Sul divano o a distanza: dagli questo Codice Stanza o inviagli il link WhatsApp:
+              Sul divano o a distanza: inviagli subito il link WhatsApp o fagli inquadrare il QR Code dalla TV:
             </p>
             <div className="bg-[#060D1E] border-2 border-dashed border-amber-400 rounded-2xl p-4 space-y-3">
               <div className="text-3xl font-black text-white tracking-widest bg-[#0B132B] py-2 rounded-xl">{roomCode}</div>
@@ -1663,7 +1662,7 @@ export default function App() {
         </div>
       )}
 
-      {/* === MODALE GESTIONE LEGA CON COMPONENTI DI MODIFICA FUNZIONANTI === */}
+      {/* === MODALE GESTIONE LEGA === */}
       {showLeagueSettingsModal && (
         <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#0B132B] border-2 border-purple-400 rounded-3xl p-5 max-w-lg w-full flex flex-col gap-3 text-left relative max-h-[92vh] overflow-y-auto shadow-2xl">
@@ -1677,7 +1676,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* MODIFICA NOME LEGA IN TEMPO REALE */}
             <div className="bg-[#060D1E] p-2.5 rounded-xl border border-slate-800 space-y-1">
               <label className="text-[11px] font-black uppercase text-amber-400 block">Nome della Lega:</label>
               <div className="flex gap-1.5">
@@ -1707,7 +1705,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* AZZERAMENTO ROSE */}
             <div className="bg-[#060D1E] p-2.5 rounded-xl border border-slate-800 space-y-1">
               <div className="flex justify-between items-center">
                 <span className="text-[11px] font-black text-rose-400 uppercase">Terminato il test?</span>
@@ -1725,7 +1722,6 @@ export default function App() {
               </button>
             </div>
 
-            {/* ELENCO SQUADRE */}
             <div className="bg-[#060D1E] p-2.5 rounded-xl border border-slate-800 space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-[11px] font-black text-cyan-300 uppercase">Squadre & Crediti Riparazione:</span>
@@ -1840,7 +1836,6 @@ export default function App() {
                 })}
               </div>
 
-              {/* AGGIUNTA SQUADRA EXTRA */}
               <div className="pt-2 border-t border-slate-800 space-y-1">
                 <span className="text-[10px] font-black uppercase text-emerald-400 block">Aggiungi Fanta-Squadra extra (es. per leghe a 10 o 12):</span>
                 <div className="grid grid-cols-3 gap-1">
@@ -1900,6 +1895,237 @@ export default function App() {
         </div>
       )}
 
+      {/* === MODALE CREAZIONE STANZA === */}
+      {showCustomLeagueModal && (
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
+          <div className="bg-[#0B132B] border border-amber-500/40 rounded-3xl p-5 max-w-md w-full flex flex-col gap-3 text-center relative max-h-[92vh] overflow-y-auto shadow-2xl">
+            <button onClick={() => setShowCustomLeagueModal(false)} className="absolute top-4 right-4 text-slate-400 cursor-pointer"><X size={16} /></button>
+            
+            <div>
+              <h3 className="text-base font-black text-white uppercase">Crea la tua Lega di Fantacalcio</h3>
+              <div className="grid grid-cols-3 gap-1.5 mt-2 p-2 bg-[#060D1E] rounded-xl border border-slate-800 text-[10px] text-slate-300 font-bold">
+                <div className="flex flex-col items-center gap-0.5"><span className="text-amber-400 text-xs">1. Squadre</span><span>Configura o Prova</span></div>
+                <div className="flex flex-col items-center gap-0.5"><span className="text-cyan-400 text-xs">2. Salotto</span><span>Proietta su TV</span></div>
+                <div className="flex flex-col items-center gap-0.5"><span className="text-emerald-400 text-xs">3. Amici</span><span>Link WhatsApp</span></div>
+              </div>
+            </div>
+
+            <input type="text" placeholder="Nome della Lega (es. FantaLega 2026)..." value={customLeagueInput} onChange={e => setCustomLeagueInput(e.target.value)} className="w-full bg-[#060D1E] border border-slate-700 rounded-xl p-2.5 text-xs text-amber-400 font-bold text-center" />
+            
+            <div className="flex items-center justify-between bg-[#060D1E] p-2 rounded-xl text-xs border border-slate-800">
+              <span className="font-bold text-slate-300 text-[11px]">Fantamilioni Iniziali Standard:</span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  min="50"
+                  max="2000"
+                  step="10"
+                  value={initialBudget}
+                  onChange={e => {
+                    const val = Number(e.target.value) || 500;
+                    setInitialBudget(val);
+                    setCoaches(prev => prev.map(c => ({ ...c, budget: val })));
+                  }}
+                  className="w-20 bg-[#0B132B] border border-amber-400/60 rounded-lg p-1 text-xs font-black text-amber-400 text-center"
+                />
+                <span className="text-[10px] text-slate-400 font-bold">FM</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleLoadDemo8Teams}
+              className="w-full py-1.5 bg-[#060D1E] hover:bg-slate-800 border border-amber-400/50 text-amber-300 font-bold rounded-xl text-[11px] flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Zap size={12} className="text-amber-400" /> ⚡ Carica 8 Squadre d'Esempio per il Test
+            </button>
+
+            <div className="space-y-1.5 bg-[#060D1E] p-2.5 rounded-xl border border-slate-800">
+              <span className="text-[10px] font-black uppercase text-cyan-400 block text-left">Aggiungi o Modifica Fanta-Squadre ({coaches.length}):</span>
+              <div className="grid grid-cols-2 gap-1.5">
+                <input type="text" placeholder="Squadra (es. Real Madrink)" value={newTeamNameInput} onChange={e => setNewTeamNameInput(e.target.value)} className="bg-[#0B132B] border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-amber-300" />
+                <input type="text" placeholder="Mister (es. Pasquale R.)" value={newCoachInput} onChange={e => setNewCoachInput(e.target.value)} className="bg-[#0B132B] border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white" />
+              </div>
+              <button
+                onClick={() => {
+                  if (!newCoachInput.trim()) return;
+                  const cName = newCoachInput.trim();
+                  const tName = newTeamNameInput.trim() || `FC ${cName}`;
+                  setCoaches(prev => [...prev, { name: cName, teamName: tName, budget: initialBudget, playersCount: 0, isOnline: true }]);
+                  setNewCoachInput(''); setNewTeamNameInput('');
+                }}
+                className="w-full py-1.5 bg-emerald-500 text-slate-950 font-black rounded-lg text-xs flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <UserPlus size={13} /> Aggiungi alla Lega
+              </button>
+            </div>
+
+            <div className="max-h-40 overflow-y-auto space-y-1.5 text-left">
+              {coaches.map((c, i) => {
+                const isPresident = i === 0;
+                const isEditing = editingCoachIdx === i;
+
+                if (isEditing) {
+                  return (
+                    <div key={i} className="p-2 bg-[#060D1E] border border-cyan-400/70 rounded-xl space-y-1.5">
+                      <div className="grid grid-cols-2 gap-1">
+                        <input type="text" value={editTeamName} onChange={e => setEditTeamName(e.target.value)} placeholder="Nome Squadra" className="bg-[#0B132B] border border-slate-700 rounded p-1 text-xs text-amber-300" />
+                        <input type="text" value={editCoachName} onChange={e => setEditCoachName(e.target.value)} placeholder="Nome Mister" className="bg-[#0B132B] border border-slate-700 rounded p-1 text-xs text-white" />
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-400">Crediti:</span>
+                        <input type="number" value={editBudgetVal} onChange={e => setEditBudgetVal(Number(e.target.value))} className="w-16 bg-[#0B132B] border border-slate-700 rounded p-1 text-xs text-amber-400 font-bold text-center" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCoaches(prev => prev.map((item, idx) => idx === i ? { ...item, name: editCoachName.trim() || item.name, teamName: editTeamName.trim() || item.teamName, budget: editBudgetVal } : item));
+                            setEditingCoachIdx(null);
+                          }}
+                          className="px-2 py-1 bg-emerald-500 text-slate-950 font-bold rounded text-xs flex items-center gap-1 cursor-pointer"
+                        >
+                          <Check size={12} /> Salva
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div key={c.name} className={`flex justify-between items-center px-2 py-1.5 rounded-xl text-xs border ${isPresident ? 'bg-amber-500/15 border-amber-400/50' : 'bg-[#060D1E] border-slate-800'}`}>
+                    <div className="truncate pr-1">
+                      <strong>{i + 1}. {c.teamName}</strong> <span className="text-slate-400">({c.name})</span>
+                      {isPresident && <span className="ml-1 text-[9px] bg-amber-400 text-slate-950 px-1 py-0.2 rounded font-black uppercase">👑 Tua Squadra</span>}
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {!isPresident && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCoaches(prev => {
+                              const selected = prev[i];
+                              const rest = prev.filter((_, idx) => idx !== i);
+                              return [selected, ...rest];
+                            });
+                            setSelectedWinnerManual(c.name);
+                          }}
+                          className="text-amber-400 hover:text-amber-300 px-1 text-[10px] font-bold border border-amber-400/40 rounded cursor-pointer"
+                          title="Scegli come squadra del Presidente"
+                        >
+                          👑 Scegli
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingCoachIdx(i);
+                          setEditCoachName(c.name);
+                          setEditTeamName(c.teamName);
+                          setEditBudgetVal(c.budget);
+                        }}
+                        className="text-amber-400 hover:text-amber-300 p-1 cursor-pointer"
+                        title="Modifica squadra"
+                      >
+                        <Edit2 size={12} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCoaches(prev => prev.filter((_, idx) => idx !== i))}
+                        className="text-rose-400 hover:text-rose-300 p-1 cursor-pointer"
+                        title="Rimuovi"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="p-2 rounded-xl text-xs font-bold text-center border bg-[#060D1E]">
+              <span className="text-emerald-400 flex items-center justify-center gap-1.5">
+                <Sparkles size={13} /> <strong>Promo Mercato di Riparazione:</strong> Tutte le leghe sbloccate gratis a 0€
+              </span>
+            </div>
+
+            <button
+              onClick={() => {
+                if (coaches.length === 0) {
+                  setCustomAlertMessage('Aggiungi almeno una squadra alla lega!');
+                  return;
+                }
+                const n = customLeagueInput.trim() || leagueName;
+                setLeagueName(n); setRoomCode(n.toUpperCase().replace(/[^A-Z0-9]/g, '') || 'LEGA2026');
+                setShowCustomLeagueModal(false); setUserRole('PRESIDENT'); setShowWelcomeGuide(true); setShowRoomCodeArrow(true);
+                setSelectedRole('ALL'); setCurrentPlayer(listoneUfficiale[0]);
+              }}
+              className="w-full py-3 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs md:text-sm uppercase cursor-pointer shadow-lg"
+            >
+              Avvia Lega Ufficiale a 0€ 🚀
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* === MODALE QR CODE === */}
+      {showQrModal && (
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-lg flex items-center justify-center p-6 z-50">
+          <div className="bg-[#060D1E] border-2 border-cyan-400 rounded-3xl p-8 max-w-lg w-full flex flex-col items-center gap-5 text-center relative shadow-2xl">
+            <button onClick={() => setShowQrModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer"><X size={22} /></button>
+            <span className="bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 px-3 py-1 rounded-full text-xs font-black uppercase">Collegamento Rapido Smartphone</span>
+            <h3 className="text-3xl font-black text-white uppercase">Inquadra la TV col Telefono 📱</h3>
+            <div className="bg-white p-5 rounded-3xl shadow-2xl">
+              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(inviteUrl)}`} alt="QR Code" className="w-64 h-64" />
+            </div>
+            <div className="bg-[#0B132B] border border-amber-400/50 px-6 py-3 rounded-2xl w-full">
+              <span className="text-[10px] font-bold text-slate-400 uppercase block">Oppure inserisci il Codice Stanza:</span>
+              <strong className="text-3xl font-black text-amber-400 tracking-widest">{roomCode}</strong>
+            </div>
+            <button onClick={handleShareWhatsAppInvite} className="w-full py-3.5 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-2 cursor-pointer shadow-lg">
+              <Share2 size={16} /> Invia Link nel Gruppo WhatsApp
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* === MODALE CONTRATTO / CARD VIRALE === */}
+      {awardModal && awardModal.show && (
+        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
+          <div className="fixed inset-0 bg-white pointer-events-none z-50" style={{ animation: 'paparazziFlash 0.65s ease-out forwards' }} />
+          <div className="bg-[#0B132B] border-2 border-amber-400 rounded-3xl p-6 max-w-md w-full flex flex-col gap-3.5 text-center relative shadow-2xl overflow-hidden">
+            <button onClick={handleCloseAwardAndNext} className="absolute top-4 right-4 text-slate-400 cursor-pointer"><X size={18} /></button>
+            <div className="flex items-center justify-center gap-2 text-amber-400 text-[10px] font-black uppercase"><FileSignature size={15} /> Lega Fantacalcio • Deposito Contratto</div>
+            <div className="bg-[#060D1E] border border-slate-700 rounded-2xl p-4 space-y-2">
+              <h2 className="text-3xl font-black text-white uppercase">{awardModal.player.name}</h2>
+              <p className="text-xs text-slate-400">Tesserato ufficialmente dalla fanta-società</p>
+              <p className="text-xl font-black text-emerald-400 uppercase">{coaches.find(x => x.name === awardModal.winner)?.teamName || awardModal.winner}</p>
+              <p className="text-xs text-slate-300">Mister: <strong>{awardModal.winner}</strong> • Prezzo: <strong className="text-amber-400">{awardModal.price} FM</strong></p>
+              <div className="pt-2 border-t border-slate-800">
+                <span className="text-[9px] uppercase text-slate-500 font-bold block">Firma del Calciatore</span>
+                <div className="text-2xl text-amber-300 italic font-serif py-1" style={{ animation: 'signContractReveal 0.85s ease-out forwards' }}>{awardModal.player.name}</div>
+              </div>
+              {(() => {
+                const s = getViralStampInfo(awardModal.price, awardModal.player.basePrice, initialBudget);
+                return (
+                  <div className={`inline-block border-2 ${s.border} px-3 py-1 rounded-lg font-black text-xs uppercase`} style={{ animation: 'stampSlamEffect 0.35s ease-out 0.55s backwards' }}>
+                    {s.label}
+                  </div>
+                );
+              })()}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={handleShareViralDealWhatsApp} className="py-3 bg-emerald-500 text-slate-950 font-black rounded-xl text-[11px] uppercase flex items-center justify-center gap-1.5 cursor-pointer">
+                <Share2 size={14} /> WhatsApp
+              </button>
+              <button onClick={handleDownloadSocialCard} className="py-3 bg-amber-500 text-slate-950 font-black rounded-xl text-[11px] uppercase flex items-center justify-center gap-1.5 cursor-pointer">
+                <Sparkles size={14} /> Card IG / Social
+              </button>
+            </div>
+            <button onClick={handleCloseAwardAndNext} className="w-full py-2.5 bg-[#060D1E] border border-slate-700 text-slate-200 font-black rounded-2xl text-xs uppercase cursor-pointer">Prossimo Calciatore ⏭️</button>
+          </div>
+        </div>
+      )}
+
+      {/* === MODALI LEGALI & SUPPORTO === */}
       {activeLegalSection && (
         <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#0B132B] border-2 border-slate-700 rounded-3xl p-6 max-w-lg w-full flex flex-col gap-4 text-left relative max-h-[88vh] overflow-y-auto shadow-2xl">
@@ -1961,6 +2187,7 @@ export default function App() {
         </div>
       )}
 
+      {/* === MODALE AVVISI GENERALI === */}
       {customAlertMessage && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#0B132B] border border-slate-800 rounded-3xl p-5 max-w-sm w-full flex flex-col gap-3 text-center">
