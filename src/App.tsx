@@ -4,7 +4,7 @@ import {
   Share2, Search, Download, Shirt, Edit2, Check,
   Monitor, Timer, Flame, Award, PieChart, AlertCircle, TrendingUp, Gavel,
   RotateCcw, Shuffle, UserPlus, Trash2, Sparkles, QrCode, Volume2, VolumeX,
-  FileSignature, ArrowUp, Info, Copy, Bell, Crown, Globe, Settings, RefreshCw
+  FileSignature, Info, Copy, Bell, Crown, Globe, Settings, RefreshCw
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import rawListone from './data/listone.json';
@@ -39,8 +39,6 @@ interface PurchasedItem {
 
 const ROLE_LIMITS: Record<Role, number> = { P: 3, D: 8, C: 8, A: 6 };
 const TOTAL_SLOTS = 25;
-
-const generateUniqueRoomCode = () => `BUZZ-${Math.floor(1000 + Math.random() * 9000)}`;
 
 const DEFAULT_DEMO_COACHES: Coach[] = [
   { name: 'Mario P.', teamName: 'Sempre Ultimi F.C.', budget: 500, playersCount: 0, isOnline: true },
@@ -261,7 +259,6 @@ export default function App() {
   const [heroIdleWarning, setHeroIdleWarning] = useState<boolean>(false);
 
   const [showWelcomeGuide, setShowWelcomeGuide] = useState(false);
-  const [showRoomCodeArrow, setShowRoomCodeArrow] = useState(true);
   const [codeCopied, setCodeCopied] = useState(false);
   const [isBlinking, setIsBlinking] = useState(false);
   const [bidHistory, setBidHistory] = useState<{ bidder: string; amount: number; time: string }[]>([]);
@@ -297,16 +294,13 @@ export default function App() {
   const [userRole, setUserRole] = useState<'PRESIDENT' | 'PLAYER' | null>(null);
   const [playerName, setPlayerName] = useState<string>('');
   const [inputLeagueName, setInputLeagueName] = useState('');
-  
-  // STANZA UNICA CASUALE GENERATA PER OGNI NUOVA SESSIONE (Zero sovrapposizioni tra utenti)
-  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v29_roomCode') || generateUniqueRoomCode());
+  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v29_roomCode') || 'LEGA2026');
   const [isSearchingRoom, setIsSearchingRoom] = useState(false);
   const [isRoomCodeConfirmed, setIsRoomCodeConfirmed] = useState(false);
   const [availableRemoteCoaches, setAvailableRemoteCoaches] = useState<Coach[]>([]);
   const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v29_initialBudget')) || 500);
   const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v29_leagueName') || 'FantaLega Serie A');
 
-  // Configurazione default sempre pulita e isolata
   const [coaches, setCoaches] = useState<Coach[]>(() => {
     const saved = localStorage.getItem('fb_v29_coaches');
     if (saved) {
@@ -536,6 +530,14 @@ export default function App() {
       return;
     }
     
+    const localSavedRoom = localStorage.getItem('fb_v29_roomCode') || 'LEGA2026';
+    if (clean === localSavedRoom) {
+      setRoomCode(clean);
+      setAvailableRemoteCoaches(coaches);
+      setIsRoomCodeConfirmed(true);
+      return;
+    }
+
     setIsSearchingRoom(true);
     setIsRoomCodeConfirmed(false);
     setRoomCode(clean);
@@ -949,7 +951,7 @@ export default function App() {
               <span className="bg-amber-400/20 text-amber-300 border border-amber-400/50 px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-widest inline-flex items-center gap-1.5 shadow-sm">
                 <Sparkles size={12} className="text-amber-400" /> PROVA IL SIMULATORE LIVE QUI SOTTO
               </span>
-              <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-cyan-300 font-bold bg-[#020712] px-2 py-0.5 rounded-full border border-cyan-500/30">
+              <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-cyan-300 font-bold bg-[#020712] px-2.5 py-0.5 rounded-full border border-cyan-500/30">
                 <Globe size={11} /> Anche da remoto
               </span>
             </div>
@@ -1043,7 +1045,7 @@ export default function App() {
               </span>
               <input
                 type="text"
-                placeholder="Es. BUZZ-1234..."
+                placeholder="Es. BUZZ2026..."
                 value={inputLeagueName}
                 onChange={e => { 
                   setInputLeagueName(e.target.value); 
@@ -1151,17 +1153,13 @@ export default function App() {
               </div>
 
               {userRole === 'PRESIDENT' && (
-                <div className="relative">
-                  <button onClick={() => setShowQrModal(true)} className="bg-amber-500/20 border-2 border-amber-400 px-3 py-1 rounded-xl flex items-center gap-2 cursor-pointer hover:bg-amber-500/30 transition-all shadow-md">
-                    <QrCode size={15} className="text-amber-400" />
-                    <span className="text-xs font-black text-white">MOSTRA QR CODE ({roomCode})</span>
-                  </button>
-                  {showRoomCodeArrow && (
-                    <div onClick={() => setShowRoomCodeArrow(false)} className="absolute top-11 left-0 z-40 bg-amber-400 text-slate-950 px-3 py-1.5 rounded-xl shadow-2xl border-2 border-white w-60 animate-bounce cursor-pointer">
-                      <div className="flex items-center gap-1 font-black text-[10px] uppercase"><ArrowUp size={13} /> <span>Clicca per il QR a tutto schermo!</span></div>
-                    </div>
-                  )}
-                </div>
+                <button
+                  onClick={() => setShowQrModal(true)}
+                  className="bg-amber-500/20 border-2 border-amber-400 px-3 py-1 rounded-xl flex items-center gap-2 cursor-pointer hover:bg-amber-500/30 transition-all shadow-md"
+                >
+                  <QrCode size={15} className="text-amber-400" />
+                  <span className="text-xs font-black text-white">MOSTRA QR CODE ({roomCode})</span>
+                </button>
               )}
 
               {userRole === 'PRESIDENT' && (
@@ -1386,9 +1384,11 @@ export default function App() {
                       `
                     }}
                   >
+                    {/* FASCI DI LUCE VOLUMETRICA RIFLETTORI STADIO */}
                     <div className="absolute -top-16 left-1/4 w-80 h-96 bg-gradient-to-b from-emerald-300/25 via-emerald-400/5 to-transparent blur-3xl pointer-events-none" style={{ animation: 'pitchLightGlow 5s ease-in-out infinite' }} />
                     <div className="absolute -top-16 right-1/4 w-80 h-96 bg-gradient-to-b from-amber-300/20 via-emerald-400/5 to-transparent blur-3xl pointer-events-none" style={{ animation: 'pitchLightGlow 5s ease-in-out infinite reverse' }} />
 
+                    {/* LINEE DEL CAMPO DA CALCIO CON LUMINOSITÀ */}
                     <div className="absolute inset-0 pointer-events-none opacity-30">
                       <div className="absolute inset-3 border-2 border-emerald-100/70 rounded-xl drop-shadow-[0_0_8px_rgba(209,250,229,0.3)]" />
                       <div className="absolute top-1/2 left-3 right-3 h-0.5 bg-emerald-100/70 -translate-y-1/2 drop-shadow-[0_0_6px_rgba(209,250,229,0.3)]" />
@@ -1405,6 +1405,7 @@ export default function App() {
                       </div>
                     )}
 
+                    {/* BARRA SUPERIORE LISTONE */}
                     <div className="w-full bg-[#04160E]/95 rounded-xl p-2 flex flex-col gap-2 z-10 border border-emerald-500/30 shadow-md backdrop-blur-md">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <div className="relative flex-1 min-w-[130px]">
@@ -1480,7 +1481,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* PLANCIA REGIA PERMANENTEMENTE VISIBILE (MAI PIÙ SCOMPARSA) */}
+                    {/* PLANCIA REGIA CON PULSANTI SEMPRE ATTIVI E RILANCIO ESATTO */}
                     <div className="w-full max-w-3xl bg-[#04160E]/95 p-3.5 rounded-2xl flex flex-col gap-2 z-10 border border-emerald-500/30 shadow-2xl backdrop-blur-md">
                       <div className="flex flex-wrap justify-between items-center gap-2">
                         <div>
@@ -1502,7 +1503,7 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* PULSANTI RILANCIO FISSI PER QUALSIASI STATO D'ASTA */}
+                      {/* BARRA DEI COMANDI SEMPRE VISIBILE */}
                       <div className="pt-2 border-t border-emerald-950 flex flex-wrap items-center justify-between gap-2">
                         <select 
                           value={selectedWinnerManual} 
@@ -1517,6 +1518,7 @@ export default function App() {
                             <button key={s} onClick={() => { setSelectedStep(s); handleRaise(s); }} className="px-3 py-1.5 rounded-xl text-xs font-black bg-[#020A06] text-white border border-emerald-900 hover:border-amber-400 hover:text-amber-300 transition-colors cursor-pointer">+{s} FM</button>
                           ))}
                           
+                          {/* INPUT RILANCIO ESATTO */}
                           <div className="flex items-center gap-1 bg-[#020A06] border border-emerald-900 rounded-xl px-1.5 py-1">
                             <input 
                               type="number" 
@@ -1529,7 +1531,7 @@ export default function App() {
                             <button
                               type="button"
                               onClick={handleCustomExactBid}
-                              className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-lg text-xs uppercase cursor-pointer"
+                              className="px-2 py-0.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-lg text-[10px] uppercase cursor-pointer"
                             >
                               Rilancia
                             </button>
@@ -2061,7 +2063,7 @@ export default function App() {
                 }
 
                 return (
-                  <div key={c.name} className={`flex justify-between items-center px-2.5 py-1.5 rounded-xl text-xs border ${isPresident ? 'bg-amber-500/15 border-amber-400/50' : 'bg-[#060D1E] border-slate-800'}`}>
+                  <div key={c.name} className={`flex justify-between items-center px-2 py-1.5 rounded-xl text-xs border ${isPresident ? 'bg-amber-500/15 border-amber-400/50' : 'bg-[#060D1E] border-slate-800'}`}>
                     <div className="truncate pr-1">
                       <strong>{i + 1}. {c.teamName}</strong> <span className="text-slate-400">({c.name})</span>
                       {isPresident && <span className="ml-1 text-[9px] bg-amber-400 text-slate-950 px-1 py-0.2 rounded font-black uppercase">👑 Tua Squadra</span>}
@@ -2124,11 +2126,8 @@ export default function App() {
                   return;
                 }
                 const n = customLeagueInput.trim() || leagueName;
-                setLeagueName(n); 
-                // Generazione codice pulito e univoco
-                const cleanCode = n.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                setRoomCode(cleanCode ? `${cleanCode}-${Math.floor(100 + Math.random() * 900)}` : generateUniqueRoomCode());
-                setShowCustomLeagueModal(false); setUserRole('PRESIDENT'); setShowWelcomeGuide(true); setShowRoomCodeArrow(true);
+                setLeagueName(n); setRoomCode(n.toUpperCase().replace(/[^A-Z0-9]/g, '') || 'LEGA2026');
+                setShowCustomLeagueModal(false); setUserRole('PRESIDENT'); setShowWelcomeGuide(true);
                 setSelectedRole('ALL'); setCurrentPlayer(listoneUfficiale[0]);
               }}
               className="w-full py-3 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs md:text-sm uppercase cursor-pointer shadow-lg"
@@ -2139,18 +2138,13 @@ export default function App() {
         </div>
       )}
 
-      {/* MODALE QR CODE ANCORATO AL BODY CON z-[9999] (CENTRALIZZATO E VISIBILE AL 100%) */}
+      {/* MODALE QR CODE IN PRIMISSIMO PIANO ASSOLUTO (z-[9999]) */}
       {showQrModal && (
-        <div className="fixed inset-0 z-[9999] bg-slate-950/95 backdrop-blur-xl flex items-center justify-center p-4">
-          <div className="bg-[#04160E] border-2 border-emerald-400 rounded-3xl p-6 md:p-8 max-w-lg w-full flex flex-col items-center gap-4 text-center relative shadow-[0_0_60px_rgba(16,185,129,0.3)]">
-            <button 
-              onClick={() => setShowQrModal(false)} 
-              className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer p-1 rounded-lg hover:bg-slate-800"
-            >
-              <X size={26} />
-            </button>
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-xl flex items-center justify-center p-4 z-[9999]">
+          <div className="bg-[#04160E] border-2 border-emerald-400 rounded-3xl p-6 md:p-8 max-w-lg w-full flex flex-col items-center gap-4 text-center relative shadow-[0_0_60px_rgba(16,185,129,0.35)]">
+            <button onClick={() => setShowQrModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer"><X size={24} /></button>
             <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 px-3 py-1 rounded-full text-xs font-black uppercase">Collegamento Rapido Smartphone</span>
-            <h3 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight">Inquadra la TV col Telefono 📱</h3>
+            <h3 className="text-2xl md:text-3xl font-black text-white uppercase">Inquadra la TV col Telefono 📱</h3>
             <div className="bg-white p-4 rounded-3xl shadow-2xl">
               <img src={`https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(inviteUrl)}`} alt="QR Code" className="w-56 h-56 md:w-64 md:h-64" />
             </div>
@@ -2167,7 +2161,7 @@ export default function App() {
 
       {/* MODALE CONTRATTO / CARD VIRALE */}
       {awardModal && awardModal.show && (
-        <div className="fixed inset-0 z-[9999] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="fixed inset-0 bg-white pointer-events-none z-50" style={{ animation: 'paparazziFlash 0.65s ease-out forwards' }} />
           <div className="bg-[#0B132B] border-2 border-amber-400 rounded-3xl p-6 max-w-md w-full flex flex-col gap-3.5 text-center relative shadow-2xl overflow-hidden">
             <button onClick={handleCloseAwardAndNext} className="absolute top-4 right-4 text-slate-400 cursor-pointer"><X size={18} /></button>
@@ -2205,7 +2199,7 @@ export default function App() {
 
       {/* MODALI LEGALI & SUPPORTO */}
       {activeLegalSection && (
-        <div className="fixed inset-0 z-[9999] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#0B132B] border-2 border-slate-700 rounded-3xl p-6 max-w-lg w-full flex flex-col gap-4 text-left relative max-h-[88vh] overflow-y-auto shadow-2xl">
             <button onClick={() => setActiveLegalSection(null)} className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer"><X size={18} /></button>
 
@@ -2267,7 +2261,7 @@ export default function App() {
 
       {/* MODALE AVVISI GENERALI */}
       {customAlertMessage && (
-        <div className="fixed inset-0 z-[9999] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#0B132B] border border-slate-800 rounded-3xl p-5 max-w-sm w-full flex flex-col gap-3 text-center">
             <AlertCircle size={24} className="text-amber-400 mx-auto" />
             <p className="text-xs text-white font-semibold">{customAlertMessage}</p>
