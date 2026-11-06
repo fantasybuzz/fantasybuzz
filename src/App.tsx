@@ -4,7 +4,7 @@ import {
   Share2, Search, Download, Shirt, Edit2, Check,
   Monitor, Timer, Flame, Award, PieChart, AlertCircle, TrendingUp, Gavel,
   RotateCcw, Shuffle, UserPlus, Trash2, Sparkles, QrCode, Volume2, VolumeX,
-  FileSignature, Info, Copy, Bell, Crown, Globe, Settings, RefreshCw
+  FileSignature, ArrowUp, Info, Copy, Bell, Crown, Settings, RefreshCw
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import rawListone from './data/listone.json';
@@ -39,6 +39,8 @@ interface PurchasedItem {
 
 const ROLE_LIMITS: Record<Role, number> = { P: 3, D: 8, C: 8, A: 6 };
 const TOTAL_SLOTS = 25;
+
+const generateDynamicRoomCode = () => `BUZZ${Math.floor(1000 + Math.random() * 9000)}`;
 
 const DEFAULT_DEMO_COACHES: Coach[] = [
   { name: 'Mario P.', teamName: 'Sempre Ultimi F.C.', budget: 500, playersCount: 0, isOnline: true },
@@ -244,8 +246,8 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<'ALL' | Role>('ALL');
   const [hidePurchased, setHidePurchased] = useState(true);
-  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v29_startFromOne') !== 'false');
-  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v29_voiceEnabled') !== 'false');
+  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v30_startFromOne') !== 'false');
+  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v30_voiceEnabled') !== 'false');
   const [activeLegalSection, setActiveLegalSection] = useState<LegalSection>(null);
 
   const [activeLeaguesCount, setActiveLeaguesCount] = useState<number>(42);
@@ -259,6 +261,7 @@ export default function App() {
   const [heroIdleWarning, setHeroIdleWarning] = useState<boolean>(false);
 
   const [showWelcomeGuide, setShowWelcomeGuide] = useState(false);
+  const [showRoomCodeArrow, setShowRoomCodeArrow] = useState(true);
   const [codeCopied, setCodeCopied] = useState(false);
   const [isBlinking, setIsBlinking] = useState(false);
   const [bidHistory, setBidHistory] = useState<{ bidder: string; amount: number; time: string }[]>([]);
@@ -294,15 +297,20 @@ export default function App() {
   const [userRole, setUserRole] = useState<'PRESIDENT' | 'PLAYER' | null>(null);
   const [playerName, setPlayerName] = useState<string>('');
   const [inputLeagueName, setInputLeagueName] = useState('');
-  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('fb_v29_roomCode') || 'LEGA2026');
+  
+  // Codice stanza dinamico generato a ogni nuova sessione
+  const [roomCode, setRoomCode] = useState(() => {
+    return localStorage.getItem('fb_v30_roomCode') || generateDynamicRoomCode();
+  });
+
   const [isSearchingRoom, setIsSearchingRoom] = useState(false);
   const [isRoomCodeConfirmed, setIsRoomCodeConfirmed] = useState(false);
   const [availableRemoteCoaches, setAvailableRemoteCoaches] = useState<Coach[]>([]);
-  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v29_initialBudget')) || 500);
-  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v29_leagueName') || 'FantaLega Serie A');
+  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v30_initialBudget')) || 500);
+  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v30_leagueName') || 'FantaLega 2026');
 
   const [coaches, setCoaches] = useState<Coach[]>(() => {
-    const saved = localStorage.getItem('fb_v29_coaches');
+    const saved = localStorage.getItem('fb_v30_coaches');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -314,7 +322,7 @@ export default function App() {
   });
 
   const [purchasedPlayers, setPurchasedPlayers] = useState<Record<string, PurchasedItem[]>>(() => {
-    const saved = localStorage.getItem('fb_v29_purchasedPlayers');
+    const saved = localStorage.getItem('fb_v30_purchasedPlayers');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -372,13 +380,13 @@ export default function App() {
   }, [coaches, selectedWinnerManual]);
 
   useEffect(() => {
-    localStorage.setItem('fb_v29_coaches', JSON.stringify(coaches));
-    localStorage.setItem('fb_v29_purchasedPlayers', JSON.stringify(purchasedPlayers));
-    localStorage.setItem('fb_v29_leagueName', leagueName);
-    localStorage.setItem('fb_v29_roomCode', roomCode);
-    localStorage.setItem('fb_v29_initialBudget', String(initialBudget));
-    localStorage.setItem('fb_v29_startFromOne', String(startFromOne));
-    localStorage.setItem('fb_v29_voiceEnabled', String(voiceEnabled));
+    localStorage.setItem('fb_v30_coaches', JSON.stringify(coaches));
+    localStorage.setItem('fb_v30_purchasedPlayers', JSON.stringify(purchasedPlayers));
+    localStorage.setItem('fb_v30_leagueName', leagueName);
+    localStorage.setItem('fb_v30_roomCode', roomCode);
+    localStorage.setItem('fb_v30_initialBudget', String(initialBudget));
+    localStorage.setItem('fb_v30_startFromOne', String(startFromOne));
+    localStorage.setItem('fb_v30_voiceEnabled', String(voiceEnabled));
   }, [coaches, purchasedPlayers, leagueName, roomCode, initialBudget, startFromOne, voiceEnabled]);
 
   const getCoachDisplay = useCallback((coachName: string | null) => {
@@ -530,9 +538,7 @@ export default function App() {
       return;
     }
     
-    const localSavedRoom = localStorage.getItem('fb_v29_roomCode') || 'LEGA2026';
-    if (clean === localSavedRoom) {
-      setRoomCode(clean);
+    if (clean === roomCode) {
       setAvailableRemoteCoaches(coaches);
       setIsRoomCodeConfirmed(true);
       return;
@@ -951,9 +957,6 @@ export default function App() {
               <span className="bg-amber-400/20 text-amber-300 border border-amber-400/50 px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-widest inline-flex items-center gap-1.5 shadow-sm">
                 <Sparkles size={12} className="text-amber-400" /> PROVA IL SIMULATORE LIVE QUI SOTTO
               </span>
-              <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-cyan-300 font-bold bg-[#020712] px-2.5 py-0.5 rounded-full border border-cyan-500/30">
-                <Globe size={11} /> Anche da remoto
-              </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center bg-[#060D1E]/95 p-3 rounded-xl border border-slate-700">
@@ -1024,19 +1027,14 @@ export default function App() {
             <div className="mt-2.5">
               <button
                 type="button"
-                onClick={() => setShowCustomLeagueModal(true)}
+                onClick={() => {
+                  setCustomLeagueInput('');
+                  setShowCustomLeagueModal(true);
+                }}
                 className="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 hover:from-emerald-400 text-slate-950 font-black rounded-xl text-xs md:text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-lg transition-transform active:scale-98"
               >
                 <Zap size={16} className="fill-slate-950" /> 🚀 AVVIA SHOW D'ASTA (100% GRATIS)
               </button>
-              
-              <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-0.5 text-[11px] text-emerald-300 font-black text-center mt-1.5">
-                <span>✨ Zero registrazione</span>
-                <span>•</span>
-                <span>🎁 Promo Riparazione 0€</span>
-                <span>•</span>
-                <span>⚡ Crei la stanza in 5 secondi</span>
-              </div>
             </div>
 
             <div className="mt-2 bg-[#020712] p-2 rounded-xl border border-cyan-500/30 flex flex-col sm:flex-row items-center gap-2">
@@ -1045,7 +1043,7 @@ export default function App() {
               </span>
               <input
                 type="text"
-                placeholder="Es. BUZZ2026..."
+                placeholder="Es. BUZZ4921..."
                 value={inputLeagueName}
                 onChange={e => { 
                   setInputLeagueName(e.target.value); 
@@ -1153,13 +1151,31 @@ export default function App() {
               </div>
 
               {userRole === 'PRESIDENT' && (
-                <button
-                  onClick={() => setShowQrModal(true)}
-                  className="bg-amber-500/20 border-2 border-amber-400 px-3 py-1 rounded-xl flex items-center gap-2 cursor-pointer hover:bg-amber-500/30 transition-all shadow-md"
-                >
-                  <QrCode size={15} className="text-amber-400" />
-                  <span className="text-xs font-black text-white">MOSTRA QR CODE ({roomCode})</span>
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      setShowQrModal(true);
+                      setShowRoomCodeArrow(false);
+                    }}
+                    className="bg-amber-500/20 border-2 border-amber-400 px-3 py-1 rounded-xl flex items-center gap-2 cursor-pointer hover:bg-amber-500/30 transition-all shadow-md"
+                  >
+                    <QrCode size={15} className="text-amber-400" />
+                    <span className="text-xs font-black text-white">MOSTRA QR CODE ({roomCode})</span>
+                  </button>
+
+                  {/* FUMETTO SALTELLANTE RIPOSIZIONATO CON Z-INDEX ELEVATO */}
+                  {showRoomCodeArrow && (
+                    <div
+                      onClick={() => setShowRoomCodeArrow(false)}
+                      className="absolute top-12 left-0 z-40 bg-amber-400 text-slate-950 px-3 py-1.5 rounded-xl shadow-[0_5px_20px_rgba(0,0,0,0.6)] border-2 border-white w-60 animate-bounce cursor-pointer"
+                    >
+                      <div className="flex items-center gap-1.5 font-black text-[10px] uppercase">
+                        <ArrowUp size={13} className="shrink-0" />
+                        <span>Clicca per il QR a tutto schermo!</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
 
               {userRole === 'PRESIDENT' && (
@@ -2063,7 +2079,7 @@ export default function App() {
                 }
 
                 return (
-                  <div key={c.name} className={`flex justify-between items-center px-2 py-1.5 rounded-xl text-xs border ${isPresident ? 'bg-amber-500/15 border-amber-400/50' : 'bg-[#060D1E] border-slate-800'}`}>
+                  <div key={c.name} className={`flex justify-between items-center px-2.5 py-1.5 rounded-xl text-xs border ${isPresident ? 'bg-amber-500/15 border-amber-400/50' : 'bg-[#060D1E] border-slate-800'}`}>
                     <div className="truncate pr-1">
                       <strong>{i + 1}. {c.teamName}</strong> <span className="text-slate-400">({c.name})</span>
                       {isPresident && <span className="ml-1 text-[9px] bg-amber-400 text-slate-950 px-1 py-0.2 rounded font-black uppercase">👑 Tua Squadra</span>}
@@ -2125,10 +2141,19 @@ export default function App() {
                   setCustomAlertMessage('Aggiungi almeno una squadra alla lega!');
                   return;
                 }
-                const n = customLeagueInput.trim() || leagueName;
-                setLeagueName(n); setRoomCode(n.toUpperCase().replace(/[^A-Z0-9]/g, '') || 'LEGA2026');
-                setShowCustomLeagueModal(false); setUserRole('PRESIDENT'); setShowWelcomeGuide(true);
-                setSelectedRole('ALL'); setCurrentPlayer(listoneUfficiale[0]);
+                const n = customLeagueInput.trim() || `FantaLega ${Math.floor(100 + Math.random() * 900)}`;
+                const newCode = customLeagueInput.trim() 
+                  ? customLeagueInput.trim().toUpperCase().replace(/[^A-Z0-9]/g, '') 
+                  : generateDynamicRoomCode();
+                
+                setLeagueName(n); 
+                setRoomCode(newCode);
+                setShowCustomLeagueModal(false); 
+                setUserRole('PRESIDENT'); 
+                setShowWelcomeGuide(true); 
+                setShowRoomCodeArrow(true);
+                setSelectedRole('ALL'); 
+                setCurrentPlayer(listoneUfficiale[0]);
               }}
               className="w-full py-3 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs md:text-sm uppercase cursor-pointer shadow-lg"
             >
@@ -2138,7 +2163,7 @@ export default function App() {
         </div>
       )}
 
-      {/* MODALE QR CODE IN PRIMISSIMO PIANO ASSOLUTO (z-[9999]) */}
+      {/* MODALE QR CODE IN PRIMISSIMO PIANO (z-[9999]) CON COPIA CODICE RAPIDA */}
       {showQrModal && (
         <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-xl flex items-center justify-center p-4 z-[9999]">
           <div className="bg-[#04160E] border-2 border-emerald-400 rounded-3xl p-6 md:p-8 max-w-lg w-full flex flex-col items-center gap-4 text-center relative shadow-[0_0_60px_rgba(16,185,129,0.35)]">
@@ -2148,10 +2173,18 @@ export default function App() {
             <div className="bg-white p-4 rounded-3xl shadow-2xl">
               <img src={`https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(inviteUrl)}`} alt="QR Code" className="w-56 h-56 md:w-64 md:h-64" />
             </div>
-            <div className="bg-[#020A06] border border-amber-400/50 px-6 py-2.5 rounded-2xl w-full">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">Oppure inserisci il Codice Stanza:</span>
+            
+            <div className="bg-[#020A06] border border-amber-400/50 p-3 rounded-2xl w-full flex flex-col gap-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase block">Codice Stanza:</span>
               <strong className="text-3xl font-black text-amber-400 tracking-widest">{roomCode}</strong>
+              <button 
+                onClick={handleCopyRoomCode} 
+                className="py-1.5 bg-[#0B132B] hover:bg-slate-800 text-slate-200 border border-slate-700 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer mx-auto px-4"
+              >
+                <Copy size={13} /> {codeCopied ? 'Copiato! ✅' : 'Copia Codice'}
+              </button>
             </div>
+
             <button onClick={handleShareWhatsAppInvite} className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-2 cursor-pointer shadow-lg">
               <Share2 size={16} /> Invia Link nel Gruppo WhatsApp
             </button>
