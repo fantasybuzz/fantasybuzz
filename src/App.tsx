@@ -24,17 +24,30 @@ export interface Player {
   overall?: number;
 }
 
-interface Coach {
+export interface Coach {
+  id: string;
   name: string;
   teamName: string;
   budget: number;
   playersCount: number;
+  isPresident?: boolean;
   isOnline?: boolean;
 }
 
-interface PurchasedItem {
+export interface PurchasedItem {
   player: Player;
   price: number;
+}
+
+interface UndoSnapshot {
+  player: Player;
+  winnerId: string;
+  winnerName: string;
+  price: number;
+  hadActiveBid: boolean;
+  previousBid: number;
+  previousHighestBidderId: string | null;
+  previousBidHistory: { bidder: string; amount: number; time: string }[];
 }
 
 const ROLE_LIMITS: Record<Role, number> = { P: 3, D: 8, C: 8, A: 6 };
@@ -42,15 +55,22 @@ const TOTAL_SLOTS = 25;
 
 const generateDynamicRoomCode = () => `BUZZ${Math.floor(1000 + Math.random() * 9000)}`;
 
+export const ensureSinglePresident = (list: Coach[]): Coach[] => {
+  if (!Array.isArray(list) || list.length === 0) return [];
+  const presIndices = list.map((c, i) => (c.isPresident ? i : -1)).filter(i => i !== -1);
+  if (presIndices.length === 1) return list;
+  return list.map((c, i) => ({ ...c, isPresident: i === 0 }));
+};
+
 const DEFAULT_DEMO_COACHES: Coach[] = [
-  { name: 'Mario P.', teamName: 'Sempre Ultimi F.C.', budget: 500, playersCount: 0, isOnline: true },
-  { name: 'Pasquale R.', teamName: 'Real Madrink', budget: 500, playersCount: 0, isOnline: true },
-  { name: 'Gianni L.', teamName: 'Atletico Ma Non Troppo', budget: 500, playersCount: 0, isOnline: false },
-  { name: 'Marco T.', teamName: 'AC Tua', budget: 500, playersCount: 0, isOnline: true },
-  { name: 'Davide B.', teamName: 'Dinamo Losca', budget: 500, playersCount: 0, isOnline: false },
-  { name: 'Simone V.', teamName: 'Borussia Porkmund', budget: 500, playersCount: 0, isOnline: false },
-  { name: 'Luca F.', teamName: 'Paris San Gennaro', budget: 500, playersCount: 0, isOnline: false },
-  { name: 'Andrea M.', teamName: 'F.C. Birrareal', budget: 500, playersCount: 0, isOnline: false },
+  { id: 'c_1', name: 'Mario P.', teamName: 'Sempre Ultimi F.C.', budget: 500, playersCount: 0, isPresident: true, isOnline: true },
+  { id: 'c_2', name: 'Pasquale R.', teamName: 'Real Madrink', budget: 500, playersCount: 0, isPresident: false, isOnline: true },
+  { id: 'c_3', name: 'Gianni L.', teamName: 'Atletico Ma Non Troppo', budget: 500, playersCount: 0, isPresident: false, isOnline: false },
+  { id: 'c_4', name: 'Marco T.', teamName: 'AC Tua', budget: 500, playersCount: 0, isPresident: false, isOnline: true },
+  { id: 'c_5', name: 'Davide B.', teamName: 'Dinamo Losca', budget: 500, playersCount: 0, isPresident: false, isOnline: false },
+  { id: 'c_6', name: 'Simone V.', teamName: 'Borussia Porkmund', budget: 500, playersCount: 0, isPresident: false, isOnline: false },
+  { id: 'c_7', name: 'Luca F.', teamName: 'Paris San Gennaro', budget: 500, playersCount: 0, isPresident: false, isOnline: false },
+  { id: 'c_8', name: 'Andrea M.', teamName: 'F.C. Birrareal', budget: 500, playersCount: 0, isPresident: false, isOnline: false },
 ];
 
 const EMOJI_CHOICES = [
@@ -241,16 +261,15 @@ const getRoleBadge = (r: string) => r === 'P' ? 'bg-amber-500 text-slate-950 fon
 export default function App() {
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
   const [currentBid, setCurrentBid] = useState<number>(0);
-  const [highestBidder, setHighestBidder] = useState<string | null>(null);
+  const [highestBidderId, setHighestBidderId] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<'ALL' | Role>('ALL');
   const [hidePurchased, setHidePurchased] = useState(true);
-  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_v30_startFromOne') !== 'false');
-  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_v30_voiceEnabled') !== 'false');
+  const [startFromOne, setStartFromOne] = useState<boolean>(() => (localStorage.getItem('fb_v31_startFromOne') ?? localStorage.getItem('fb_v30_startFromOne')) !== 'false');
+  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => (localStorage.getItem('fb_v31_voiceEnabled') ?? localStorage.getItem('fb_v30_voiceEnabled')) !== 'false');
   const [activeLegalSection, setActiveLegalSection] = useState<LegalSection>(null);
 
-  const [activeLeaguesCount, setActiveLeaguesCount] = useState<number>(42);
   const [activeLeagueTab, setActiveLeagueTab] = useState<'REGULAR' | 'REPAIR'>('REPAIR');
 
   // Mini-Simulatore Hero
@@ -272,7 +291,7 @@ export default function App() {
   const [customAlertMessage, setCustomAlertMessage] = useState<string | null>(null);
   const [liveReaction, setLiveReaction] = useState<{ sender: string; emoji: string; label: string } | null>(null);
 
-  const [selectedWinnerManual, setSelectedWinnerManual] = useState<string>('');
+  const [selectedWinnerManualId, setSelectedWinnerManualId] = useState<string>('');
   const [customBidInput, setCustomBidInput] = useState<string>('');
 
   const [showCustomLeagueModal, setShowCustomLeagueModal] = useState(false);
@@ -295,47 +314,66 @@ export default function App() {
   const [mobilePlayerTab, setMobilePlayerTab] = useState<'BUZZER' | 'MY_ROSTER'>('BUZZER');
 
   const [userRole, setUserRole] = useState<'PRESIDENT' | 'PLAYER' | null>(null);
-  const [playerName, setPlayerName] = useState<string>('');
+  const [playerCoachId, setPlayerCoachId] = useState<string>('');
   const [inputLeagueName, setInputLeagueName] = useState('');
   
-  // Codice stanza dinamico generato a ogni nuova sessione
   const [roomCode, setRoomCode] = useState(() => {
-    return localStorage.getItem('fb_v30_roomCode') || generateDynamicRoomCode();
+    return localStorage.getItem('fb_v31_roomCode') || localStorage.getItem('fb_v30_roomCode') || generateDynamicRoomCode();
   });
 
   const [isSearchingRoom, setIsSearchingRoom] = useState(false);
   const [isRoomCodeConfirmed, setIsRoomCodeConfirmed] = useState(false);
   const [availableRemoteCoaches, setAvailableRemoteCoaches] = useState<Coach[]>([]);
-  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v30_initialBudget')) || 500);
-  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v30_leagueName') || 'FantaLega 2026');
+  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v31_initialBudget') || localStorage.getItem('fb_v30_initialBudget')) || 500);
+  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v31_leagueName') || localStorage.getItem('fb_v30_leagueName') || 'FantaLega 2026');
 
+  // Caricamento sicuro garantito da ensureSinglePresident
   const [coaches, setCoaches] = useState<Coach[]>(() => {
-    const saved = localStorage.getItem('fb_v30_coaches');
+    const saved = localStorage.getItem('fb_v31_coaches') || localStorage.getItem('fb_v30_coaches');
     if (saved) {
       try {
-        return JSON.parse(saved);
-      } catch {
-        /* ignore */
-      }
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const raw = parsed.map((c: any, idx: number) => ({
+            id: c.id || `c_${idx + 1}`,
+            name: c.name,
+            teamName: c.teamName,
+            budget: c.budget,
+            playersCount: c.playersCount ?? 0,
+            isPresident: Boolean(c.isPresident),
+            isOnline: Boolean(c.isOnline)
+          }));
+          return ensureSinglePresident(raw);
+        }
+      } catch { /* ignore */ }
     }
-    return DEFAULT_DEMO_COACHES;
+    return ensureSinglePresident(DEFAULT_DEMO_COACHES);
   });
 
+  // Rose indicizzate tramite coach.id
   const [purchasedPlayers, setPurchasedPlayers] = useState<Record<string, PurchasedItem[]>>(() => {
-    const saved = localStorage.getItem('fb_v30_purchasedPlayers');
+    const saved = localStorage.getItem('fb_v31_purchasedPlayers') || localStorage.getItem('fb_v30_purchasedPlayers');
     if (saved) {
       try {
-        return JSON.parse(saved);
-      } catch {
-        /* ignore */
-      }
+        const raw = JSON.parse(saved);
+        const migrated: Record<string, PurchasedItem[]> = {};
+        Object.entries(raw).forEach(([key, items]) => {
+          const match = coaches.find(c => c.name === key || c.id === key);
+          const targetId = match ? match.id : key;
+          migrated[targetId] = Array.isArray(items) ? items : [];
+        });
+        return migrated;
+      } catch { /* ignore */ }
     }
     return {};
   });
 
-  const [selectedRosterCoach, setSelectedRosterCoach] = useState<string>(coaches[0]?.name || 'Mario P.');
-  const [awardModal, setAwardModal] = useState<{ show: boolean; player: Player; winner: string; price: number } | null>(null);
-  const [lastAwardHistory, setLastAwardHistory] = useState<{ player: Player; winner: string; price: number } | null>(null);
+  const [selectedRosterCoachId, setSelectedRosterCoachId] = useState<string>(coaches[0]?.id || 'c_1');
+  const [awardModal, setAwardModal] = useState<{ show: boolean; player: Player; winnerId: string; winnerName: string; price: number } | null>(null);
+  
+  // Snapshot Undo completo
+  const [lastAwardSnapshot, setLastAwardSnapshot] = useState<UndoSnapshot | null>(null);
+  
   const [activeChannel, setActiveChannel] = useState<any>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
 
@@ -361,14 +399,6 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (userRole) return;
-    const interval = setInterval(() => {
-      setActiveLeaguesCount(prev => Math.min(54, Math.max(32, prev + (Math.random() > 0.5 ? 1 : -1))));
-    }, 6000);
-    return () => clearInterval(interval);
-  }, [userRole]);
-
-  useEffect(() => {
     isGlobalSoundMuted = !voiceEnabled;
     if (!voiceEnabled && typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
@@ -376,23 +406,23 @@ export default function App() {
   }, [voiceEnabled]);
 
   useEffect(() => {
-    if (!selectedWinnerManual && coaches.length > 0) setSelectedWinnerManual(coaches[0].name);
-  }, [coaches, selectedWinnerManual]);
+    if (!selectedWinnerManualId && coaches.length > 0) setSelectedWinnerManualId(coaches[0].id);
+  }, [coaches, selectedWinnerManualId]);
 
   useEffect(() => {
-    localStorage.setItem('fb_v30_coaches', JSON.stringify(coaches));
-    localStorage.setItem('fb_v30_purchasedPlayers', JSON.stringify(purchasedPlayers));
-    localStorage.setItem('fb_v30_leagueName', leagueName);
-    localStorage.setItem('fb_v30_roomCode', roomCode);
-    localStorage.setItem('fb_v30_initialBudget', String(initialBudget));
-    localStorage.setItem('fb_v30_startFromOne', String(startFromOne));
-    localStorage.setItem('fb_v30_voiceEnabled', String(voiceEnabled));
+    localStorage.setItem('fb_v31_coaches', JSON.stringify(coaches));
+    localStorage.setItem('fb_v31_purchasedPlayers', JSON.stringify(purchasedPlayers));
+    localStorage.setItem('fb_v31_leagueName', leagueName);
+    localStorage.setItem('fb_v31_roomCode', roomCode);
+    localStorage.setItem('fb_v31_initialBudget', String(initialBudget));
+    localStorage.setItem('fb_v31_startFromOne', String(startFromOne));
+    localStorage.setItem('fb_v31_voiceEnabled', String(voiceEnabled));
   }, [coaches, purchasedPlayers, leagueName, roomCode, initialBudget, startFromOne, voiceEnabled]);
 
-  const getCoachDisplay = useCallback((coachName: string | null) => {
-    if (!coachName) return '';
-    const c = coaches.find(x => x.name === coachName);
-    return c ? `${c.teamName} (${c.name})` : coachName;
+  const getCoachDisplayById = useCallback((coachId: string | null) => {
+    if (!coachId) return '';
+    const c = coaches.find(x => x.id === coachId);
+    return c ? `${c.teamName} (${c.name})` : coachId;
   }, [coaches]);
 
   const purchasedPlayerIds = useMemo(() => {
@@ -402,22 +432,22 @@ export default function App() {
   }, [purchasedPlayers]);
 
   const allPurchasesFeed = useMemo(() => {
-    const feed: { coachName: string; teamName: string; player: Player; price: number }[] = [];
-    Object.entries(purchasedPlayers).forEach(([cName, l]) => {
-      const cObj = coaches.find(x => x.name === cName);
-      l.forEach(i => feed.push({ coachName: cName, teamName: cObj?.teamName || `FC ${cName}`, player: i.player, price: i.price }));
+    const feed: { coachId: string; coachName: string; teamName: string; player: Player; price: number }[] = [];
+    Object.entries(purchasedPlayers).forEach(([cId, l]) => {
+      const cObj = coaches.find(x => x.id === cId);
+      l.forEach(i => feed.push({ coachId: cId, coachName: cObj?.name || 'Mister', teamName: cObj?.teamName || 'F.C.', player: i.player, price: i.price }));
     });
     return feed.reverse();
   }, [purchasedPlayers, coaches]);
 
   const totalPurchasesCount = purchasedPlayerIds.size;
 
-  const getCoachMaxBid = useCallback((name: string) => {
-    const c = coaches.find(x => x.name === name);
+  const getCoachMaxBidById = useCallback((id: string) => {
+    const c = coaches.find(x => x.id === id);
     return c ? Math.max(0, c.budget - Math.max(0, TOTAL_SLOTS - c.playersCount - 1)) : 0;
   }, [coaches]);
 
-  const getCoachRoleCount = useCallback((name: string, role: Role) => (purchasedPlayers[name] || []).filter(i => i.player.role === role).length, [purchasedPlayers]);
+  const getCoachRoleCountById = useCallback((id: string, role: Role) => (purchasedPlayers[id] || []).filter(i => i.player.role === role).length, [purchasedPlayers]);
 
   const filteredList = useMemo(() => listoneUfficiale.filter(p => {
     if (activeLeagueTab === 'REPAIR') {
@@ -437,32 +467,52 @@ export default function App() {
     return u.length === 2 ? `${u[0]} ⚔️ ${u[1]}` : null;
   }, [bidHistory]);
 
-  const registerBidLocally = useCallback((bidder: string, amount: number) => {
+  const registerBidLocally = useCallback((bidderCoachId: string, amount: number) => {
+    setLastAwardSnapshot(null); // Nuova puntata invalida l'undo precedente
     playBuzzSound(); setIsBlinking(true); setCountdown(null); setAwardModal(null);
     setTimeout(() => setIsBlinking(false), 300);
-    setHighestBidder(bidder); setCurrentBid(amount);
-    setCoaches(prev => prev.map(c => c.name === bidder ? { ...c, isOnline: true } : c));
-    setLatestBidAlert({ bidder, amount }); setTimeout(() => setLatestBidAlert(null), 2200);
-    setBidHistory(prev => [{ bidder, amount, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }, ...prev]);
-  }, []);
+    setHighestBidderId(bidderCoachId); setCurrentBid(amount);
+    setCoaches(prev => prev.map(c => c.id === bidderCoachId ? { ...c, isOnline: true } : c));
+    
+    const bidderLabel = getCoachDisplayById(bidderCoachId);
+    setLatestBidAlert({ bidder: bidderLabel, amount }); 
+    setTimeout(() => setLatestBidAlert(null), 2200);
+    setBidHistory(prev => [{ bidder: bidderLabel, amount, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }, ...prev]);
+  }, [getCoachDisplayById]);
 
-  const applyAwardState = useCallback((player: Player, winner: string, price: number, speak = false) => {
+  const applyAwardState = useCallback((player: Player, winnerCoachId: string, price: number, speak = false) => {
     playContractShowSound();
     try { confetti({ particleCount: 110, spread: 75, origin: { y: 0.6 } }); } catch { /* ignore */ }
-    const winnerObj = coaches.find(x => x.name === winner);
-    const clubLabel = winnerObj?.teamName || winner;
+    const winnerObj = coaches.find(x => x.id === winnerCoachId);
+    const clubLabel = winnerObj?.teamName || winnerCoachId;
+    const coachLabel = winnerObj?.name || 'Mister';
+    
     if (speak) {
       speakTelecronista(`Colpo di mercato! ${player.name} firma con ${clubLabel} per ${price} fantamilioni!`, voiceEnabled);
     }
-    setCoaches(prev => prev.map(c => c.name === winner ? { ...c, budget: c.budget - price, playersCount: c.playersCount + 1 } : c));
-    setPurchasedPlayers(prev => ({ ...prev, [winner]: [...(prev[winner] || []), { player, price }] }));
-    setLastAwardHistory({ player, winner, price });
-    setAwardModal({ show: true, player, winner, price });
-    setCurrentBid(0); setHighestBidder(null); setCountdown(null);
-  }, [coaches, voiceEnabled]);
+    
+    // Distinzione accurata per l'undo: c'era un'offerta o battuta a freddo?
+    setLastAwardSnapshot({
+      player,
+      winnerId: winnerCoachId,
+      winnerName: coachLabel,
+      price,
+      hadActiveBid: currentBid > 0 && highestBidderId !== null,
+      previousBid: currentBid,
+      previousHighestBidderId: highestBidderId,
+      previousBidHistory: [...bidHistory]
+    });
 
-  const stateRef = useRef({ coaches, purchasedPlayers, activePlayer, currentBid, highestBidder, userRole, leagueName, startFromOne });
-  useEffect(() => { stateRef.current = { coaches, purchasedPlayers, activePlayer, currentBid, highestBidder, userRole, leagueName, startFromOne }; }, [coaches, purchasedPlayers, activePlayer, currentBid, highestBidder, userRole, leagueName, startFromOne]);
+    setCoaches(prev => prev.map(c => c.id === winnerCoachId ? { ...c, budget: c.budget - price, playersCount: c.playersCount + 1 } : c));
+    setPurchasedPlayers(prev => ({ ...prev, [winnerCoachId]: [...(prev[winnerCoachId] || []), { player, price }] }));
+    setAwardModal({ show: true, player, winnerId: winnerCoachId, winnerName: coachLabel, price });
+    setCurrentBid(0); setHighestBidderId(null); setCountdown(null);
+  }, [coaches, voiceEnabled, currentBid, highestBidderId, bidHistory]);
+
+  const stateRef = useRef({ coaches, purchasedPlayers, activePlayer, currentBid, highestBidderId, userRole, leagueName, startFromOne, bidHistory });
+  useEffect(() => { 
+    stateRef.current = { coaches, purchasedPlayers, activePlayer, currentBid, highestBidderId, userRole, leagueName, startFromOne, bidHistory }; 
+  }, [coaches, purchasedPlayers, activePlayer, currentBid, highestBidderId, userRole, leagueName, startFromOne, bidHistory]);
 
   const registerBidRef = useRef(registerBidLocally);
   const applyAwardRef = useRef(applyAwardState);
@@ -476,18 +526,26 @@ export default function App() {
     let isMounted = true;
     const ch = supabase.channel(`room_${roomCode}`)
       .on('broadcast', { event: 'quick_bid' }, ({ payload }: any) => {
-        payload?.bidder && registerBidRef.current(payload.bidder, payload.amount);
+        payload?.bidderCoachId && registerBidRef.current(payload.bidderCoachId, payload.amount);
       })
       .on('broadcast', { event: 'player_online' }, ({ payload }: any) => {
-        if (payload?.name && isMounted) setCoaches(prev => prev.map(c => c.name === payload.name ? { ...c, isOnline: true } : c));
+        if (payload?.coachId && isMounted) setCoaches(prev => prev.map(c => c.id === payload.coachId ? { ...c, isOnline: true } : c));
       })
       .on('broadcast', { event: 'start_countdown' }, ({ payload }: any) => isMounted && setCountdown(payload?.seconds || 3))
       .on('broadcast', { event: 'change_player' }, ({ payload }: any) => {
-        if (payload?.player && isMounted) { setCurrentPlayer(payload.player); setCurrentBid(0); setHighestBidder(null); setBidHistory([]); setCountdown(null); setAwardModal(null); }
+        if (payload?.player && isMounted) { 
+          setCurrentPlayer(payload.player); 
+          setCurrentBid(0); 
+          setHighestBidderId(null); 
+          setBidHistory([]); 
+          setCountdown(null); 
+          setAwardModal(null); 
+          setLastAwardSnapshot(null);
+        }
       })
-      .on('broadcast', { event: 'close_award_modal' }, () => { if (isMounted) { setAwardModal(null); setCurrentBid(0); setHighestBidder(null); } })
+      .on('broadcast', { event: 'close_award_modal' }, () => { if (isMounted) { setAwardModal(null); setCurrentBid(0); setHighestBidderId(null); } })
       .on('broadcast', { event: 'player_awarded' }, ({ payload }: any) => {
-        payload?.player && applyAwardRef.current(payload.player, payload.winner, payload.price, false);
+        payload?.player && applyAwardRef.current(payload.player, payload.winnerId, payload.price, false);
       })
       .on('broadcast', { event: 'bell_alert' }, () => {
         if (isMounted) {
@@ -498,8 +556,9 @@ export default function App() {
       .on('broadcast', { event: 'sync_league_state' }, ({ payload }: any) => {
         if (!isMounted) return;
         if (payload?.coaches && Array.isArray(payload.coaches)) {
-          setCoaches(payload.coaches);
-          setAvailableRemoteCoaches(payload.coaches);
+          const syncedCoaches = ensureSinglePresident(payload.coaches);
+          setCoaches(syncedCoaches);
+          setAvailableRemoteCoaches(syncedCoaches);
           setIsRoomCodeConfirmed(true);
           setIsSearchingRoom(false);
         }
@@ -507,7 +566,9 @@ export default function App() {
         if (payload?.leagueName) setLeagueName(payload.leagueName);
         if (payload?.activePlayer) setCurrentPlayer(payload.activePlayer);
         if (typeof payload?.currentBid === 'number') setCurrentBid(payload.currentBid);
-        if (payload?.highestBidder !== undefined) setHighestBidder(payload.highestBidder);
+        if (payload?.highestBidderId !== undefined) setHighestBidderId(payload.highestBidderId);
+        if (payload?.bidHistory && Array.isArray(payload.bidHistory)) setBidHistory(payload.bidHistory);
+        if (payload?.invalidateUndo) setLastAwardSnapshot(null);
       })
       .on('broadcast', { event: 'live_reaction' }, ({ payload }: any) => {
         if (payload?.sender && isMounted) { playCountdownBell(false); setLiveReaction(payload); setTimeout(() => setLiveReaction(null), 3800); }
@@ -521,15 +582,15 @@ export default function App() {
           setIsConnected(true);
           setActiveChannel(ch);
           ch.send({ type: 'broadcast', event: 'request_sync', payload: {} });
-          if (userRole === 'PLAYER' && playerName) {
-            ch.send({ type: 'broadcast', event: 'player_online', payload: { name: playerName } });
+          if (userRole === 'PLAYER' && playerCoachId) {
+            ch.send({ type: 'broadcast', event: 'player_online', payload: { coachId: playerCoachId } });
           }
         } else if (s === 'CLOSED' || s === 'CHANNEL_ERROR') {
           setTimeout(() => { if (isMounted) setIsConnected(false); }, 3000);
         }
       });
     return () => { isMounted = false; supabase.removeChannel(ch); setActiveChannel(null); setIsConnected(false); };
-  }, [roomCode, userRole, playerName, isRoomCodeConfirmed]);
+  }, [roomCode, userRole, playerCoachId, isRoomCodeConfirmed]);
 
   const handleConnectToRoom = () => {
     const clean = inputLeagueName.trim().toUpperCase().replace(/\s+/g, '');
@@ -554,8 +615,9 @@ export default function App() {
     testCh.on('broadcast', { event: 'sync_league_state' }, ({ payload }: any) => {
       if (payload?.coaches && Array.isArray(payload.coaches) && payload.coaches.length > 0) {
         resolved = true;
-        setCoaches(payload.coaches);
-        setAvailableRemoteCoaches(payload.coaches);
+        const normalized = ensureSinglePresident(payload.coaches);
+        setCoaches(normalized);
+        setAvailableRemoteCoaches(normalized);
         setIsRoomCodeConfirmed(true);
         setIsSearchingRoom(false);
       }
@@ -569,13 +631,15 @@ export default function App() {
       if (!resolved) {
         setIsSearchingRoom(false);
         setIsRoomCodeConfirmed(false);
+        supabase.removeChannel(testCh);
         setCustomAlertMessage(`❌ Nessuna sala d'asta attiva con il codice "${clean}". Verifica che il Presidente abbia avviato la stanza!`);
       }
     }, 2800);
   };
 
   const handleSelectPlayer = useCallback(async (player: Player) => {
-    setCurrentPlayer(player); setCurrentBid(0); setHighestBidder(null); setBidHistory([]); setCustomBidInput(''); setCountdown(null); setAwardModal(null);
+    setCurrentPlayer(player); setCurrentBid(0); setHighestBidderId(null); setBidHistory([]); setCustomBidInput(''); setCountdown(null); setAwardModal(null);
+    setLastAwardSnapshot(null); // Cambio calciatore invalida l'undo
     if (userRole === 'PRESIDENT') speakTelecronista(`In campo ${player.name}, ${player.team}.`, voiceEnabled);
     if (activeChannel) await activeChannel.send({ type: 'broadcast', event: 'change_player', payload: { player } });
   }, [activeChannel, userRole, voiceEnabled]);
@@ -618,39 +682,57 @@ export default function App() {
     if (userRole === 'PRESIDENT') handleNextPlayer();
   }, [activeChannel, userRole, handleNextPlayer]);
 
-  const handleRaise = useCallback(async (step: number, customBidder?: string) => {
+  const handleRaise = useCallback(async (step: number, customBidderId?: string) => {
     if (purchasedPlayerIds.has(activePlayer.id)) { if (userRole === 'PRESIDENT') handleNextPlayer(); return; }
-    const bidder = customBidder || (userRole === 'PRESIDENT' ? (selectedWinnerManual || coaches[0]?.name) : playerName);
-    if (!bidder) return;
-    if (userRole === 'PLAYER' && highestBidder === bidder) { setCustomAlertMessage('La tua squadra è già in testa!'); return; }
-    const nextBid = highestBidder ? currentBid + step : (startFromOne ? step : Math.max(activePlayer.basePrice, step));
+    const bidderId = customBidderId || (userRole === 'PRESIDENT' ? (selectedWinnerManualId || coaches[0]?.id) : playerCoachId);
+    if (!bidderId) return;
+    if (userRole === 'PLAYER' && highestBidderId === bidderId) { setCustomAlertMessage('La tua squadra è già in testa!'); return; }
+    const nextBid = highestBidderId ? currentBid + step : (startFromOne ? step : Math.max(activePlayer.basePrice, step));
     
-    if (nextBid > getCoachMaxBid(bidder)) { setCustomAlertMessage(`Puntata max superata per ${bidder} (${getCoachMaxBid(bidder)} FM)!`); return; }
-    if (getCoachRoleCount(bidder, activePlayer.role) >= ROLE_LIMITS[activePlayer.role]) { setCustomAlertMessage(`Ruolo ${activePlayer.role} pieno per ${bidder}!`); return; }
+    if (nextBid > getCoachMaxBidById(bidderId)) { setCustomAlertMessage(`Puntata max superata per ${getCoachDisplayById(bidderId)} (${getCoachMaxBidById(bidderId)} FM)!`); return; }
+    if (getCoachRoleCountById(bidderId, activePlayer.role) >= ROLE_LIMITS[activePlayer.role]) { setCustomAlertMessage(`Ruolo ${activePlayer.role} pieno per ${getCoachDisplayById(bidderId)}!`); return; }
 
     if (navigator.vibrate) navigator.vibrate([30, 20, 30]);
-    if (userRole === 'PRESIDENT' && step >= 10) speakTelecronista(`Rilancio di ${bidder}: ${nextBid}!`, voiceEnabled);
+    if (userRole === 'PRESIDENT' && step >= 10) speakTelecronista(`Rilancio di ${getCoachDisplayById(bidderId)}: ${nextBid}!`, voiceEnabled);
 
-    registerBidLocally(bidder, nextBid);
-    if (activeChannel) await activeChannel.send({ type: 'broadcast', event: 'quick_bid', payload: { bidder, amount: nextBid } });
-  }, [purchasedPlayerIds, activePlayer, userRole, handleNextPlayer, selectedWinnerManual, coaches, playerName, highestBidder, currentBid, startFromOne, getCoachMaxBid, getCoachRoleCount, voiceEnabled, registerBidLocally, activeChannel]);
+    registerBidLocally(bidderId, nextBid);
+    if (activeChannel) await activeChannel.send({ type: 'broadcast', event: 'quick_bid', payload: { bidderCoachId: bidderId, amount: nextBid } });
+  }, [purchasedPlayerIds, activePlayer, userRole, handleNextPlayer, selectedWinnerManualId, coaches, playerCoachId, highestBidderId, currentBid, startFromOne, getCoachMaxBidById, getCoachRoleCountById, getCoachDisplayById, voiceEnabled, registerBidLocally, activeChannel]);
 
   const handleCustomExactBid = useCallback(() => {
+    if (purchasedPlayerIds.has(activePlayer.id)) {
+      setCustomAlertMessage('Questo calciatore è già stato acquistato!');
+      return;
+    }
+
     const val = Number(customBidInput);
     if (isNaN(val) || val <= (currentBid || 0)) {
       setCustomAlertMessage(`Inserisci un importo superiore all'offerta corrente (${currentBid || startingPrice} FM)!`);
       return;
     }
-    const bidder = userRole === 'PRESIDENT' ? (selectedWinnerManual || coaches[0]?.name) : playerName;
-    if (!bidder) return;
-    if (val > getCoachMaxBid(bidder)) {
-      setCustomAlertMessage(`Puntata max superata per ${bidder} (Max: ${getCoachMaxBid(bidder)} FM)!`);
+
+    const bidderId = userRole === 'PRESIDENT' ? (selectedWinnerManualId || coaches[0]?.id) : playerCoachId;
+    if (!bidderId) return;
+
+    if (userRole === 'PLAYER' && highestBidderId === bidderId) {
+      setCustomAlertMessage('La tua squadra è già in testa!');
       return;
     }
-    registerBidLocally(bidder, val);
-    if (activeChannel) activeChannel.send({ type: 'broadcast', event: 'quick_bid', payload: { bidder, amount: val } });
+
+    if (val > getCoachMaxBidById(bidderId)) {
+      setCustomAlertMessage(`Puntata max superata per ${getCoachDisplayById(bidderId)} (Max: ${getCoachMaxBidById(bidderId)} FM)!`);
+      return;
+    }
+
+    if (getCoachRoleCountById(bidderId, activePlayer.role) >= ROLE_LIMITS[activePlayer.role]) {
+      setCustomAlertMessage(`Ruolo ${activePlayer.role} già al completo per ${getCoachDisplayById(bidderId)}!`);
+      return;
+    }
+
+    registerBidLocally(bidderId, val);
+    if (activeChannel) activeChannel.send({ type: 'broadcast', event: 'quick_bid', payload: { bidderCoachId: bidderId, amount: val } });
     setCustomBidInput('');
-  }, [customBidInput, currentBid, startingPrice, userRole, selectedWinnerManual, coaches, playerName, getCoachMaxBid, registerBidLocally, activeChannel]);
+  }, [purchasedPlayerIds, activePlayer, customBidInput, currentBid, startingPrice, userRole, selectedWinnerManualId, coaches, playerCoachId, highestBidderId, getCoachMaxBidById, getCoachRoleCountById, getCoachDisplayById, registerBidLocally, activeChannel]);
 
   const handleRingBroadcastBell = async () => {
     playMarketBellSound();
@@ -663,56 +745,88 @@ export default function App() {
     if (purchasedPlayerIds.has(activePlayer.id)) { handleNextPlayer(); return; }
 
     let price = currentBid > 0 ? currentBid : startingPrice;
-    const winner = highestBidder || selectedWinnerManual || coaches[0]?.name;
+    const winnerId = highestBidderId || selectedWinnerManualId || coaches[0]?.id;
     
-    if (getCoachRoleCount(winner, activePlayer.role) >= ROLE_LIMITS[activePlayer.role]) { 
-      setCustomAlertMessage(`Ruolo ${activePlayer.role} già completato per ${winner}!`); 
+    if (getCoachRoleCountById(winnerId, activePlayer.role) >= ROLE_LIMITS[activePlayer.role]) { 
+      setCustomAlertMessage(`Ruolo ${activePlayer.role} già completato per ${getCoachDisplayById(winnerId)}!`); 
       return; 
     }
-    if (price > getCoachMaxBid(winner)) { 
-      setCustomAlertMessage(`Budget insufficiente per ${winner}!`); 
+    if (price > getCoachMaxBidById(winnerId)) { 
+      setCustomAlertMessage(`Budget insufficiente per ${getCoachDisplayById(winnerId)}!`); 
       return; 
     }
 
-    applyAwardState(activePlayer, winner, price, userRole === 'PRESIDENT');
-    if (activeChannel) await activeChannel.send({ type: 'broadcast', event: 'player_awarded', payload: { player: activePlayer, winner, price } });
-  }, [purchasedPlayerIds, activePlayer, handleNextPlayer, currentBid, startingPrice, highestBidder, selectedWinnerManual, coaches, getCoachRoleCount, getCoachMaxBid, applyAwardState, userRole, activeChannel]);
+    applyAwardState(activePlayer, winnerId, price, userRole === 'PRESIDENT');
+    if (activeChannel) await activeChannel.send({ type: 'broadcast', event: 'player_awarded', payload: { player: activePlayer, winnerId, price } });
+  }, [purchasedPlayerIds, activePlayer, handleNextPlayer, currentBid, startingPrice, highestBidderId, selectedWinnerManualId, coaches, getCoachRoleCountById, getCoachMaxBidById, getCoachDisplayById, applyAwardState, userRole, activeChannel]);
 
   const handleUndoLastAward = async () => {
-    if (!lastAwardHistory) return;
-    const { player, winner, price } = lastAwardHistory;
-    const uCoaches = coaches.map(c => c.name === winner ? { ...c, budget: c.budget + price, playersCount: Math.max(0, c.playersCount - 1) } : c);
-    const uPurchased = { ...purchasedPlayers, [winner]: (purchasedPlayers[winner] || []).filter(i => i.player.id !== player.id) };
-    setCoaches(uCoaches); setPurchasedPlayers(uPurchased); setLastAwardHistory(null); setAwardModal(null); setCurrentPlayer(player); setCurrentBid(0); setHighestBidder(null);
-    if (activeChannel) await activeChannel.send({ type: 'broadcast', event: 'sync_league_state', payload: { coaches: uCoaches, purchasedPlayers: uPurchased, leagueName, activePlayer: player, currentBid: 0, highestBidder: null } });
-  };
+    if (!lastAwardSnapshot) return;
+    const { player, winnerId, price, hadActiveBid, previousBid, previousHighestBidderId, previousBidHistory } = lastAwardSnapshot;
+    
+    const uCoaches = coaches.map(c => c.id === winnerId ? { ...c, budget: c.budget + price, playersCount: Math.max(0, c.playersCount - 1) } : c);
+    const uPurchased = { ...purchasedPlayers, [winnerId]: (purchasedPlayers[winnerId] || []).filter(i => i.player.id !== player.id) };
+    
+    const restoredBid = hadActiveBid ? previousBid : 0;
+    const restoredBidderId = hadActiveBid ? previousHighestBidderId : null;
+    const restoredHistory = hadActiveBid ? previousBidHistory : [];
 
-  const handleResetRostersForRealAuction = async () => {
-    setPurchasedPlayers({});
-    setCoaches(prev => prev.map(c => ({ ...c, playersCount: 0 })));
-    setLastAwardHistory(null);
+    setCoaches(uCoaches);
+    setPurchasedPlayers(uPurchased);
+    setLastAwardSnapshot(null);
     setAwardModal(null);
-    setCurrentBid(0);
-    setHighestBidder(null);
-    setShowLeagueSettingsModal(false);
-    setCustomAlertMessage('🧹 Rose azzerate con successo! I crediti personalizzati e le squadre rimangono invariati.');
+    setCurrentPlayer(player);
+    setCurrentBid(restoredBid);
+    setHighestBidderId(restoredBidderId);
+    setBidHistory(restoredHistory);
+
     if (activeChannel) {
       await activeChannel.send({
         type: 'broadcast',
         event: 'sync_league_state',
-        payload: { coaches, purchasedPlayers: {}, leagueName, activePlayer, currentBid: 0, highestBidder: null }
+        payload: {
+          coaches: uCoaches,
+          purchasedPlayers: uPurchased,
+          leagueName,
+          activePlayer: player,
+          currentBid: restoredBid,
+          highestBidderId: restoredBidderId,
+          bidHistory: restoredHistory,
+          invalidateUndo: true
+        }
+      });
+    }
+  };
+
+  const handleResetRostersForRealAuction = async () => {
+    const updatedCoaches = coaches.map(c => ({ ...c, playersCount: 0 }));
+    setPurchasedPlayers({});
+    setCoaches(updatedCoaches);
+    setLastAwardSnapshot(null);
+    setAwardModal(null);
+    setCurrentBid(0);
+    setHighestBidderId(null);
+    setShowLeagueSettingsModal(false);
+    setCustomAlertMessage('🧹 Rose azzerate con successo! I crediti e le squadre sono pronti per l’asta ufficiale.');
+    
+    if (activeChannel) {
+      await activeChannel.send({
+        type: 'broadcast',
+        event: 'sync_league_state',
+        payload: { coaches: updatedCoaches, purchasedPlayers: {}, leagueName, activePlayer, currentBid: 0, highestBidderId: null, bidHistory: [] }
       });
     }
   };
 
   const handleLoadDemo8Teams = () => {
-    setCoaches(DEFAULT_DEMO_COACHES);
-    setSelectedWinnerManual(DEFAULT_DEMO_COACHES[0].name);
+    const normalized = ensureSinglePresident(DEFAULT_DEMO_COACHES);
+    setCoaches(normalized);
+    setSelectedWinnerManualId(normalized[0].id);
   };
 
   const sendLiveReaction = async (emoji: string, label: string) => {
-    const senderObj = coaches.find(x => x.name === playerName);
-    const senderLabel = userRole === 'PRESIDENT' ? 'Il Presidente' : (senderObj ? `${senderObj.teamName} (${senderObj.name})` : playerName);
+    const senderObj = coaches.find(x => x.id === playerCoachId);
+    const senderLabel = userRole === 'PRESIDENT' ? 'Il Presidente' : (senderObj ? `${senderObj.teamName} (${senderObj.name})` : 'Partecipante');
     const payload = { sender: senderLabel, emoji, label };
     playCountdownBell(true); setLiveReaction(payload); setTimeout(() => setLiveReaction(null), 3800);
     if (activeChannel) await activeChannel.send({ type: 'broadcast', event: 'live_reaction', payload });
@@ -739,17 +853,17 @@ export default function App() {
 
   const handleShareViralDealWhatsApp = () => {
     if (!awardModal) return;
-    const winnerObj = coaches.find(x => x.name === awardModal.winner);
-    const club = winnerObj?.teamName || awardModal.winner;
+    const winnerObj = coaches.find(x => x.id === awardModal.winnerId);
+    const club = winnerObj?.teamName || awardModal.winnerName;
     const stamp = getViralStampInfo(awardModal.price, awardModal.player.basePrice, initialBudget);
-    const viralText = `🔥 *${stamp.label}* 🔥\n✍️ *${awardModal.player.name}* (${awardModal.player.team}) firma con *${club.toUpperCase()}* (${awardModal.winner}) per *${awardModal.price} FM*!\n\n📺 Asta del Fantacalcio trasformata in uno Show TV con *FantasyBuzz*!\n👉 Provalo gratis con la tua lega su ${window.location.origin}`;
+    const viralText = `🔥 *${stamp.label}* 🔥\n✍️ *${awardModal.player.name}* (${awardModal.player.team}) firma con *${club.toUpperCase()}* (${awardModal.winnerName}) per *${awardModal.price} FM*!\n\n📺 Asta del Fantacalcio trasformata in uno Show TV con *FantasyBuzz*!\n👉 Provalo gratis con la tua lega su ${window.location.origin}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(viralText)}`, '_blank');
   };
 
   const handleDownloadSocialCard = async () => {
     if (!awardModal) return;
-    const winnerObj = coaches.find(x => x.name === awardModal.winner);
-    const club = winnerObj?.teamName || `FC ${awardModal.winner}`;
+    const winnerObj = coaches.find(x => x.id === awardModal.winnerId);
+    const club = winnerObj?.teamName || `FC ${awardModal.winnerName}`;
     const stamp = getViralStampInfo(awardModal.price, awardModal.player.basePrice, initialBudget);
     const roleColors: Record<string, string> = { P: '#f59e0b', D: '#10b981', C: '#38bdf8', A: '#f43f5e' };
 
@@ -857,7 +971,7 @@ export default function App() {
     ctx.fillText(club.toUpperCase(), 540, 1460);
     ctx.fillStyle = '#cbd5e1'; 
     ctx.font = '700 30px system-ui, sans-serif';
-    ctx.fillText(`Fantallenatore: ${awardModal.winner}`, 540, 1515);
+    ctx.fillText(`Fantallenatore: ${awardModal.winnerName}`, 540, 1515);
 
     ctx.fillStyle = '#ffffff'; 
     ctx.font = '28px system-ui, sans-serif';
@@ -885,7 +999,7 @@ export default function App() {
 
   const handleExportCSV = () => {
     let csv = 'data:text/csv;charset=utf-8,Squadra Fantacalcio,Allenatore,Calciatore,Ruolo,Club Serie A,Prezzo\n';
-    coaches.forEach(c => (purchasedPlayers[c.name] || []).forEach(i => { csv += `"${c.teamName}","${c.name}","${i.player.name}","${i.player.role}","${i.player.team}",${i.price}\n`; }));
+    coaches.forEach(c => (purchasedPlayers[c.id] || []).forEach(i => { csv += `"${c.teamName}","${c.name}","${i.player.name}","${i.player.role}","${i.player.team}",${i.price}\n`; }));
     const a = document.createElement('a'); a.href = encodeURI(csv); a.download = `Rose_${leagueName}.csv`; a.click();
   };
 
@@ -931,13 +1045,7 @@ export default function App() {
               <div className="inline-flex items-center gap-1.5 bg-[#060D1E]/95 border border-amber-400/70 px-3 py-0.5 rounded-full shadow-lg">
                 <BuzzMark size={15} />
                 <span className="text-[11px] font-black uppercase tracking-widest text-amber-400">
-                  🔥 PROMO RIPARAZIONE 2027: LICENZA UFFICIALE 0€
-                </span>
-              </div>
-              <div className="inline-flex items-center gap-1.5 bg-emerald-950/90 border border-emerald-400/60 px-3 py-0.5 rounded-full shadow-lg">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-                <span className="text-[11px] font-black text-emerald-300 uppercase tracking-wide">
-                  🔥 {activeLeaguesCount} Leghe in asta adesso
+                  🔥 PROMO RIPARAZIONE 2027: ACCESSO COMPLETO 0€
                 </span>
               </div>
             </div>
@@ -951,7 +1059,7 @@ export default function App() {
             </p>
           </div>
 
-          {/* SIMULATORE */}
+          {/* SIMULATORE HERO */}
           <div className="max-w-2xl w-full my-1.5 bg-gradient-to-b from-[#0B1528] to-[#040C1A] border-2 border-amber-400/80 rounded-2xl p-3 md:p-3.5 shadow-[0_0_40px_rgba(245,158,11,0.22)] relative z-10">
             <div className="text-center mb-1.5 flex items-center justify-center gap-2">
               <span className="bg-amber-400/20 text-amber-300 border border-amber-400/50 px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-widest inline-flex items-center gap-1.5 shadow-sm">
@@ -1033,7 +1141,7 @@ export default function App() {
                 }}
                 className="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 hover:from-emerald-400 text-slate-950 font-black rounded-xl text-xs md:text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-lg transition-transform active:scale-98"
               >
-                <Zap size={16} className="fill-slate-950" /> 🚀 AVVIA SHOW D'ASTA (100% GRATIS)
+                <Zap size={16} className="fill-slate-950" /> 🚀 CONFIGURA & AVVIA LEGA (0€)
               </button>
             </div>
 
@@ -1076,12 +1184,12 @@ export default function App() {
                 <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto">
                   {availableRemoteCoaches.map(c => (
                     <button
-                      key={c.name}
+                      key={c.id}
                       onClick={() => {
-                        setPlayerName(c.name);
-                        setSelectedRosterCoach(c.name);
-                        setCoaches(prev => prev.map(x => x.name === c.name ? { ...x, isOnline: true } : x));
-                        if (activeChannel) activeChannel.send({ type: 'broadcast', event: 'player_online', payload: { name: c.name } });
+                        setPlayerCoachId(c.id);
+                        setSelectedRosterCoachId(c.id);
+                        setCoaches(prev => prev.map(x => x.id === c.id ? { ...x, isOnline: true } : x));
+                        if (activeChannel) activeChannel.send({ type: 'broadcast', event: 'player_online', payload: { coachId: c.id } });
                         setUserRole('PLAYER');
                       }}
                       className="p-2 bg-[#0B132B] border border-slate-800 rounded-lg text-left cursor-pointer hover:border-cyan-400"
@@ -1097,15 +1205,13 @@ export default function App() {
 
           <footer className="max-w-2xl w-full text-center space-y-0.5 py-1.5 border-t border-slate-800 text-[10px] text-slate-400 relative z-10">
             <div className="flex flex-wrap justify-center gap-3 font-bold text-slate-300">
-              <button onClick={() => setActiveLegalSection('TERMS')} className="hover:text-amber-400 cursor-pointer">Termini & Condizioni</button>
+              <button onClick={() => setActiveLegalSection('TERMS')} className="hover:text-amber-400 cursor-pointer">Termini del Servizio</button>
               <span>•</span>
-              <button onClick={() => setActiveLegalSection('PRIVACY')} className="hover:text-amber-400 cursor-pointer">Privacy (GDPR)</button>
+              <button onClick={() => setActiveLegalSection('PRIVACY')} className="hover:text-amber-400 cursor-pointer">Privacy Policy</button>
               <span>•</span>
-              <button onClick={() => setActiveLegalSection('REFUND')} className="hover:text-amber-400 cursor-pointer">Garanzia 24h</button>
-              <span>•</span>
-              <button onClick={() => setActiveLegalSection('SUPPORT')} className="hover:text-amber-400 cursor-pointer">Assistenza</button>
+              <button onClick={() => setActiveLegalSection('SUPPORT')} className="hover:text-amber-400 cursor-pointer">Supporto Tecnico</button>
             </div>
-            <p>FantasyBuzz Live Arena © 2026/2027 • L'Asta del Fantacalcio diventa uno Show TV • Speciale Mercato di Riparazione 0€.</p>
+            <p>FantasyBuzz Live Arena © 2026/2027 • Gestione Asta Fantacalcio per TV e Smartphone • Mercato di Riparazione.</p>
           </footer>
         </div>
       ) : (
@@ -1114,7 +1220,7 @@ export default function App() {
           {userRole === 'PRESIDENT' && (
             <div className="bg-[#051C12]/90 border border-emerald-500/40 rounded-xl px-3 py-1 mb-1 flex items-center justify-between text-xs shrink-0 backdrop-blur-md">
               <div className="flex items-center gap-2">
-                <span>🎁 <strong className="text-emerald-400">Speciale Riparazione:</strong> Stanza ufficiale sbloccata a <strong>0€</strong> per tutta la lega.</span>
+                <span>🎁 <strong className="text-emerald-400">Asta Ufficiale:</strong> Stanza live attiva per tutta la fanta-lega.</span>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -1145,7 +1251,7 @@ export default function App() {
                 <h1 className="text-xs font-black text-white uppercase flex items-center gap-1.5 tracking-wider">
                   FantasyBuzz
                   <span className="bg-amber-500 text-slate-950 px-2 py-0.5 rounded text-[9px] font-black">
-                    {userRole === 'PRESIDENT' ? 'REGIA TV' : getCoachDisplay(playerName)}
+                    {userRole === 'PRESIDENT' ? 'REGIA TV' : getCoachDisplayById(playerCoachId)}
                   </span>
                 </h1>
               </div>
@@ -1163,7 +1269,6 @@ export default function App() {
                     <span className="text-xs font-black text-white">MOSTRA QR CODE ({roomCode})</span>
                   </button>
 
-                  {/* FUMETTO SALTELLANTE RIPOSIZIONATO CON Z-INDEX ELEVATO */}
                   {showRoomCodeArrow && (
                     <div
                       onClick={() => setShowRoomCodeArrow(false)}
@@ -1218,11 +1323,17 @@ export default function App() {
                     {voiceEnabled ? '🔊 Speaker ON' : '🔇 Muto'}
                   </button>
                   <button onClick={handleShareWhatsAppInvite} className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500 text-slate-950 flex items-center gap-1 cursor-pointer"><Share2 size={12} /> WhatsApp</button>
-                  {lastAwardHistory && <button onClick={handleUndoLastAward} className="px-2 py-1.5 rounded-xl text-xs font-bold bg-rose-500/20 text-rose-300 flex items-center gap-1 cursor-pointer"><RotateCcw size={12} /> Annulla</button>}
+                  
+                  {lastAwardSnapshot && (
+                    <button onClick={handleUndoLastAward} className="px-2 py-1.5 rounded-xl text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1 cursor-pointer shadow-sm">
+                      <RotateCcw size={12} /> Annulla ({lastAwardSnapshot.price} FM)
+                    </button>
+                  )}
+                  
                   <button onClick={() => setIsPureTvDisplay(!isPureTvDisplay)} className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-200 cursor-pointer"><Monitor size={12} /></button>
                 </>
               )}
-              <button onClick={() => { setUserRole(null); setPlayerName(''); setActiveTab('AUCTION'); }} className="text-xs bg-slate-800 text-slate-400 font-bold px-2.5 py-1.5 rounded-xl cursor-pointer"><LogOut size={12} /></button>
+              <button onClick={() => { setUserRole(null); setPlayerCoachId(''); setActiveTab('AUCTION'); }} className="text-xs bg-slate-800 text-slate-400 font-bold px-2.5 py-1.5 rounded-xl cursor-pointer"><LogOut size={12} /></button>
             </div>
           </header>
 
@@ -1242,7 +1353,7 @@ export default function App() {
                   onClick={() => setMobilePlayerTab('MY_ROSTER')}
                   className={`py-2 rounded-xl font-black text-xs uppercase cursor-pointer flex items-center justify-center gap-1 ${mobilePlayerTab === 'MY_ROSTER' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-300'}`}
                 >
-                  <Shirt size={13} /> La Mia Rosa ({(purchasedPlayers[playerName] || []).length}/25)
+                  <Shirt size={13} /> La Mia Rosa ({(purchasedPlayers[playerCoachId] || []).length}/25)
                 </button>
               </div>
 
@@ -1251,7 +1362,7 @@ export default function App() {
                   <div className="text-center w-full bg-[#060D1E]/95 p-3 rounded-2xl border border-slate-700">
                     <div className="flex justify-between text-xs font-black mb-1">
                       <span className={`px-2 py-0.5 rounded-full ${getRoleBadge(activePlayer.role)}`}>{activePlayer.role} • {activePlayer.team}</span>
-                      <span className="text-amber-400">Budget: {coaches.find(c => c.name === playerName)?.budget || 0} FM (Max: {getCoachMaxBid(playerName)})</span>
+                      <span className="text-amber-400">Budget: {coaches.find(c => c.id === playerCoachId)?.budget || 0} FM (Max: {getCoachMaxBidById(playerCoachId)})</span>
                     </div>
                     <h2 className="text-2xl font-black text-white uppercase truncate">{activePlayer.name}</h2>
                     <p className="text-xs text-slate-300 mt-0.5">Quotazione Base: <strong className="text-amber-400">{activePlayer.basePrice} FM</strong></p>
@@ -1260,13 +1371,13 @@ export default function App() {
                   <div className="w-full bg-[#060D1E]/90 border border-amber-500/40 p-2.5 rounded-2xl text-center">
                     <span className="text-xs font-bold uppercase text-amber-400 block">Stato Offerta Corrente</span>
                     <span className="text-sm font-black text-white uppercase">
-                      {highestBidder ? `${getCoachDisplay(highestBidder)} → ${currentBid} FM` : `Nessuna offerta (Si parte da ${startingPrice} FM)`}
+                      {highestBidderId ? `${getCoachDisplayById(highestBidderId)} → ${currentBid} FM` : `Nessuna offerta (Si parte da ${startingPrice} FM)`}
                     </span>
                   </div>
 
                   <div className="w-full bg-[#060D1E]/95 border border-slate-700 rounded-3xl p-3 flex flex-col items-center gap-2">
-                    <button disabled={highestBidder === playerName} onClick={() => handleRaise(selectedStep)} className={`w-32 h-32 rounded-full flex flex-col items-center justify-center gap-1 select-none ${highestBidder === playerName ? 'bg-emerald-900/60 border-4 border-emerald-400 text-emerald-300 cursor-not-allowed' : 'bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 text-slate-950 font-black border-4 border-amber-200 shadow-xl active:translate-y-2 cursor-pointer'}`}>
-                      <Zap size={24} /> <span className="text-sm font-black uppercase">{highestBidder === playerName ? 'SEI IN TESTA' : `BUZZ +${selectedStep}`}</span>
+                    <button disabled={highestBidderId === playerCoachId} onClick={() => handleRaise(selectedStep)} className={`w-32 h-32 rounded-full flex flex-col items-center justify-center gap-1 select-none ${highestBidderId === playerCoachId ? 'bg-emerald-900/60 border-4 border-emerald-400 text-emerald-300 cursor-not-allowed' : 'bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 text-slate-950 font-black border-4 border-amber-200 shadow-xl active:translate-y-2 cursor-pointer'}`}>
+                      <Zap size={24} /> <span className="text-sm font-black uppercase">{highestBidderId === playerCoachId ? 'SEI IN TESTA' : `BUZZ +${selectedStep}`}</span>
                     </button>
 
                     <div className="w-full grid grid-cols-4 gap-1">
@@ -1310,12 +1421,12 @@ export default function App() {
                 <div className="w-full flex-1 bg-[#060D1E]/95 border border-slate-700 rounded-3xl p-3 flex flex-col gap-2.5 overflow-y-auto text-left">
                   <div className="flex justify-between items-center border-b border-slate-800 pb-2">
                     <div>
-                      <span className="text-xs font-black text-amber-400 uppercase block">{coaches.find(c => c.name === playerName)?.teamName}</span>
-                      <span className="text-xs text-slate-300">Crediti Residui: <strong>{coaches.find(c => c.name === playerName)?.budget} FM</strong> (Max Bid: {getCoachMaxBid(playerName)})</span>
+                      <span className="text-xs font-black text-amber-400 uppercase block">{coaches.find(c => c.id === playerCoachId)?.teamName}</span>
+                      <span className="text-xs text-slate-300">Crediti Residui: <strong>{coaches.find(c => c.id === playerCoachId)?.budget} FM</strong> (Max Bid: {getCoachMaxBidById(playerCoachId)})</span>
                     </div>
                   </div>
                   {(['P', 'D', 'C', 'A'] as const).map(role => {
-                    const items = (purchasedPlayers[playerName] || []).filter(i => i.player.role === role);
+                    const items = (purchasedPlayers[playerCoachId] || []).filter(i => i.player.role === role);
                     const max = ROLE_LIMITS[role];
                     return (
                       <div key={role} className="space-y-1">
@@ -1340,7 +1451,7 @@ export default function App() {
                 <main className="flex-1 flex flex-col lg:flex-row gap-2.5 items-stretch my-1 overflow-y-auto lg:overflow-hidden w-full relative min-h-0">
                   {latestBidAlert && (
                     <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 bg-amber-500 text-slate-950 font-black px-6 py-2 rounded-2xl shadow-2xl border-2 border-white animate-bounce flex items-center gap-2">
-                      <Zap size={18} className="fill-slate-950" /> <span className="text-xs uppercase">{getCoachDisplay(latestBidAlert.bidder)}: {latestBidAlert.amount} FM!</span>
+                      <Zap size={18} className="fill-slate-950" /> <span className="text-xs uppercase">{latestBidAlert.bidder}: {latestBidAlert.amount} FM!</span>
                     </div>
                   )}
 
@@ -1351,36 +1462,35 @@ export default function App() {
                     </div>
 
                     <div className="space-y-1.5 overflow-y-auto flex-1">
-                      {coaches.map((c, idx) => {
+                      {coaches.map(c => {
                         const isOnline = c.isOnline !== false;
-                        const isHighest = highestBidder === c.name;
-                        const isPresident = idx === 0;
+                        const isHighest = highestBidderId === c.id;
                         return (
                           <div
-                            key={c.name}
-                            onClick={() => { setSelectedWinnerManual(c.name); handleRaise(1, c.name); }}
-                            className={`p-2.5 rounded-xl transition-all cursor-pointer ${isHighest ? 'bg-emerald-500/30 border-2 border-emerald-400 shadow-[0_0_18px_rgba(16,185,129,0.5)]' : selectedWinnerManual === c.name ? 'bg-amber-500/15 border border-amber-400/60' : 'bg-[#020A06] border border-emerald-950'}`}
+                            key={c.id}
+                            onClick={() => { setSelectedWinnerManualId(c.id); handleRaise(1, c.id); }}
+                            className={`p-2.5 rounded-xl transition-all cursor-pointer ${isHighest ? 'bg-emerald-500/30 border-2 border-emerald-400 shadow-[0_0_18px_rgba(16,185,129,0.5)]' : selectedWinnerManualId === c.id ? 'bg-amber-500/15 border border-amber-400/60' : 'bg-[#020A06] border border-emerald-950'}`}
                           >
                             <div className="flex justify-between items-start">
                               <div className="truncate pr-1">
                                 <div className="flex items-center gap-1.5">
                                   <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${isOnline ? 'bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.9)]' : 'bg-slate-600 opacity-60'}`} title={isOnline ? 'Smartphone Connesso' : 'Offline / In Standby'} />
                                   <span className="font-black text-xs text-white uppercase truncate flex items-center gap-1">
-                                    {isPresident && <Crown size={12} className="text-amber-400 shrink-0" />} {c.teamName}
+                                    {c.isPresident && <Crown size={12} className="text-amber-400 shrink-0" />} {c.teamName}
                                   </span>
                                 </div>
                                 <span className="text-xs text-slate-400 font-semibold block truncate ml-4">Mister: {c.name}</span>
                               </div>
                               <div className="text-right shrink-0">
                                 <span className="font-black text-amber-400 text-xs block">{c.budget} FM</span>
-                                <span className="text-xs text-emerald-400 font-bold">Max {getCoachMaxBid(c.name)}</span>
+                                <span className="text-xs text-emerald-400 font-bold">Max {getCoachMaxBidById(c.id)}</span>
                               </div>
                             </div>
                             <div className="grid grid-cols-4 gap-1 mt-1.5 pt-1 border-t border-emerald-950 text-xs font-bold text-center text-slate-300 ml-4">
-                              <span>P:{getCoachRoleCount(c.name, 'P')}/3</span>
-                              <span>D:{getCoachRoleCount(c.name, 'D')}/8</span>
-                              <span>C:{getCoachRoleCount(c.name, 'C')}/8</span>
-                              <span>A:{getCoachRoleCount(c.name, 'A')}/6</span>
+                              <span>P:{getCoachRoleCountById(c.id, 'P')}/3</span>
+                              <span>D:{getCoachRoleCountById(c.id, 'D')}/8</span>
+                              <span>C:{getCoachRoleCountById(c.id, 'C')}/8</span>
+                              <span>A:{getCoachRoleCountById(c.id, 'A')}/6</span>
                             </div>
                           </div>
                         );
@@ -1388,7 +1498,7 @@ export default function App() {
                     </div>
                   </aside>
 
-                  {/* === PALCO CENTRALE CAMPO DA CALCIO AVANZATO CON LUCI STADIO === */}
+                  {/* === PALCO CENTRALE CAMPO DA CALCIO CON LUCI STADIO === */}
                   <section
                     className={`w-full lg:flex-1 shrink-0 min-h-[440px] lg:min-h-0 rounded-2xl p-3 flex flex-col items-center justify-between relative overflow-hidden border-2 shadow-2xl transition-all duration-300 ${
                       isBlinking ? 'border-amber-400 shadow-[0_0_40px_rgba(245,158,11,0.6)]' : 'border-emerald-500/50'
@@ -1400,11 +1510,9 @@ export default function App() {
                       `
                     }}
                   >
-                    {/* FASCI DI LUCE VOLUMETRICA RIFLETTORI STADIO */}
                     <div className="absolute -top-16 left-1/4 w-80 h-96 bg-gradient-to-b from-emerald-300/25 via-emerald-400/5 to-transparent blur-3xl pointer-events-none" style={{ animation: 'pitchLightGlow 5s ease-in-out infinite' }} />
                     <div className="absolute -top-16 right-1/4 w-80 h-96 bg-gradient-to-b from-amber-300/20 via-emerald-400/5 to-transparent blur-3xl pointer-events-none" style={{ animation: 'pitchLightGlow 5s ease-in-out infinite reverse' }} />
 
-                    {/* LINEE DEL CAMPO DA CALCIO CON LUMINOSITÀ */}
                     <div className="absolute inset-0 pointer-events-none opacity-30">
                       <div className="absolute inset-3 border-2 border-emerald-100/70 rounded-xl drop-shadow-[0_0_8px_rgba(209,250,229,0.3)]" />
                       <div className="absolute top-1/2 left-3 right-3 h-0.5 bg-emerald-100/70 -translate-y-1/2 drop-shadow-[0_0_6px_rgba(209,250,229,0.3)]" />
@@ -1421,7 +1529,6 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* BARRA SUPERIORE LISTONE */}
                     <div className="w-full bg-[#04160E]/95 rounded-xl p-2 flex flex-col gap-2 z-10 border border-emerald-500/30 shadow-md backdrop-blur-md">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <div className="relative flex-1 min-w-[130px]">
@@ -1461,7 +1568,6 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* CARD MODERNA RIFINITA AL CENTRO DEL CAMPO */}
                     <div className="flex flex-col items-center justify-center my-auto z-10 text-center space-y-2 py-2">
                       {activeDuel && <div className="bg-rose-600/40 border border-rose-400 px-4 py-1 rounded-full text-xs font-black uppercase text-rose-100 animate-pulse tracking-wider">🔥 SFIDA: {activeDuel} 🔥</div>}
                       
@@ -1497,14 +1603,13 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* PLANCIA REGIA CON PULSANTI SEMPRE ATTIVI E RILANCIO ESATTO */}
                     <div className="w-full max-w-3xl bg-[#04160E]/95 p-3.5 rounded-2xl flex flex-col gap-2 z-10 border border-emerald-500/30 shadow-2xl backdrop-blur-md">
                       <div className="flex flex-wrap justify-between items-center gap-2">
                         <div>
                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">SOCIETÀ IN TESTA</span>
                           <p className="text-base text-emerald-400 font-black uppercase flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                            {highestBidder ? getCoachDisplay(highestBidder) : `Si parte da ${startingPrice} FM`}
+                            {highestBidderId ? getCoachDisplayById(highestBidderId) : `Si parte da ${startingPrice} FM`}
                           </p>
                         </div>
 
@@ -1519,14 +1624,13 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* BARRA DEI COMANDI SEMPRE VISIBILE */}
                       <div className="pt-2 border-t border-emerald-950 flex flex-wrap items-center justify-between gap-2">
                         <select 
-                          value={selectedWinnerManual} 
-                          onChange={e => setSelectedWinnerManual(e.target.value)} 
+                          value={selectedWinnerManualId} 
+                          onChange={e => setSelectedWinnerManualId(e.target.value)} 
                           className="bg-[#020A06] border border-emerald-900 rounded-lg px-2.5 py-1.5 text-xs font-bold text-amber-400 focus:outline-none"
                         >
-                          {coaches.map(c => <option key={c.name} value={c.name}>{c.teamName} - {c.name} ({c.budget} FM)</option>)}
+                          {coaches.map(c => <option key={c.id} value={c.id}>{c.teamName} - {c.name} ({c.budget} FM)</option>)}
                         </select>
                         
                         <div className="flex flex-wrap items-center gap-1.5 flex-1 justify-end">
@@ -1534,7 +1638,6 @@ export default function App() {
                             <button key={s} onClick={() => { setSelectedStep(s); handleRaise(s); }} className="px-3 py-1.5 rounded-xl text-xs font-black bg-[#020A06] text-white border border-emerald-900 hover:border-amber-400 hover:text-amber-300 transition-colors cursor-pointer">+{s} FM</button>
                           ))}
                           
-                          {/* INPUT RILANCIO ESATTO */}
                           <div className="flex items-center gap-1 bg-[#020A06] border border-emerald-900 rounded-xl px-1.5 py-1">
                             <input 
                               type="number" 
@@ -1562,7 +1665,7 @@ export default function App() {
                     <div className="space-y-1.5 overflow-y-auto flex-1">
                       {bidHistory.map((item, idx) => (
                         <div key={idx} className="bg-[#020A06] p-2 rounded-xl flex justify-between text-xs border border-emerald-950 shadow-sm">
-                          <span className="font-bold truncate max-w-[105px] text-slate-200">{getCoachDisplay(item.bidder)}</span>
+                          <span className="font-bold truncate max-w-[105px] text-slate-200">{item.bidder}</span>
                           <span className="font-black text-emerald-400">{item.amount} FM</span>
                         </div>
                       ))}
@@ -1586,7 +1689,7 @@ export default function App() {
 
                     <div className="space-y-1.5 overflow-y-auto flex-1">
                       {coaches.map(c => (
-                        <button key={c.name} onClick={() => setSelectedRosterCoach(c.name)} className={`w-full flex justify-between items-center p-2 rounded-xl border text-left cursor-pointer transition-all ${selectedRosterCoach === c.name ? 'bg-amber-500/15 border-amber-400 text-amber-300 shadow-md' : 'bg-[#020A06] border-emerald-950 text-white hover:border-emerald-700'}`}>
+                        <button key={c.id} onClick={() => setSelectedRosterCoachId(c.id)} className={`w-full flex justify-between items-center p-2 rounded-xl border text-left cursor-pointer transition-all ${selectedRosterCoachId === c.id ? 'bg-amber-500/15 border-amber-400 text-amber-300 shadow-md' : 'bg-[#020A06] border-emerald-950 text-white hover:border-emerald-700'}`}>
                           <div className="truncate pr-1">
                             <span className="font-black text-xs block truncate uppercase">{c.teamName}</span>
                             <span className="text-xs text-slate-400 block truncate">{c.name}</span>
@@ -1603,19 +1706,19 @@ export default function App() {
                         <div className="flex flex-wrap justify-between items-center bg-[#020A06] p-3 rounded-2xl border border-emerald-900 gap-2">
                           <div>
                             <h2 className="text-xl font-black text-white uppercase flex items-center gap-2">
-                              {coaches.find(x => x.name === selectedRosterCoach)?.teamName}
+                              {coaches.find(x => x.id === selectedRosterCoachId)?.teamName}
                             </h2>
                             <p className="text-xs text-slate-300 mt-0.5">
-                              Mister: <strong className="text-white">{selectedRosterCoach}</strong> • Offerta Max Bid: <strong className="text-emerald-400">{getCoachMaxBid(selectedRosterCoach)} FM</strong> • Residui: <strong className="text-amber-400">{coaches.find(x => x.name === selectedRosterCoach)?.budget} FM</strong>
+                              Mister: <strong className="text-white">{coaches.find(x => x.id === selectedRosterCoachId)?.name}</strong> • Offerta Max Bid: <strong className="text-emerald-400">{getCoachMaxBidById(selectedRosterCoachId)} FM</strong> • Residui: <strong className="text-amber-400">{coaches.find(x => x.id === selectedRosterCoachId)?.budget} FM</strong>
                             </p>
                           </div>
                           <span className="text-xs font-black bg-amber-400 text-slate-950 px-3 py-1.5 rounded-xl uppercase shadow-md">
-                            {(purchasedPlayers[selectedRosterCoach] || []).length} / {TOTAL_SLOTS} Calciatori
+                            {(purchasedPlayers[selectedRosterCoachId] || []).length} / {TOTAL_SLOTS} Calciatori
                           </span>
                         </div>
 
                         {(['P', 'D', 'C', 'A'] as const).map(role => {
-                          const items = (purchasedPlayers[selectedRosterCoach] || []).filter(i => i.player.role === role);
+                          const items = (purchasedPlayers[selectedRosterCoachId] || []).filter(i => i.player.role === role);
                           const max = ROLE_LIMITS[role];
                           const roleLabel = role === 'P' ? 'Portieri' : role === 'D' ? 'Difensori' : role === 'C' ? 'Centrocampisti' : 'Attaccanti';
                           return (
@@ -1665,11 +1768,11 @@ export default function App() {
                         </div>
 
                         <div className="text-center z-10 bg-slate-950/80 px-4 py-1.5 rounded-full border border-emerald-500/40">
-                          <h3 className="text-sm font-black text-white uppercase tracking-wider">{coaches.find(x => x.name === selectedRosterCoach)?.teamName} • Top 11 in Campo (4-3-3)</h3>
+                          <h3 className="text-sm font-black text-white uppercase tracking-wider">{coaches.find(x => x.id === selectedRosterCoachId)?.teamName} • Top 11 in Campo (4-3-3)</h3>
                         </div>
 
                         <div className="z-10 flex gap-2">
-                          {((purchasedPlayers[selectedRosterCoach] || []).filter(i => i.player.role === 'P').slice(0, 1)).map((item, i) => (
+                          {((purchasedPlayers[selectedRosterCoachId] || []).filter(i => i.player.role === 'P').slice(0, 1)).map((item, i) => (
                             <div key={i} className="bg-amber-500 text-slate-950 px-3 py-1.5 rounded-xl font-black text-xs shadow-lg border border-white text-center">
                               🧤 {item.player.name} <span className="opacity-75">({item.price} FM)</span>
                             </div>
@@ -1677,7 +1780,7 @@ export default function App() {
                         </div>
 
                         <div className="z-10 flex flex-wrap justify-center gap-2">
-                          {((purchasedPlayers[selectedRosterCoach] || []).filter(i => i.player.role === 'D').slice(0, 4)).map((item, i) => (
+                          {((purchasedPlayers[selectedRosterCoachId] || []).filter(i => i.player.role === 'D').slice(0, 4)).map((item, i) => (
                             <div key={i} className="bg-emerald-500 text-slate-950 px-3 py-1.5 rounded-xl font-black text-xs shadow-lg border border-white text-center">
                               🛡️ {item.player.name} <span className="opacity-75">({item.price} FM)</span>
                             </div>
@@ -1685,7 +1788,7 @@ export default function App() {
                         </div>
 
                         <div className="z-10 flex flex-wrap justify-center gap-2">
-                          {((purchasedPlayers[selectedRosterCoach] || []).filter(i => i.player.role === 'C').slice(0, 3)).map((item, i) => (
+                          {((purchasedPlayers[selectedRosterCoachId] || []).filter(i => i.player.role === 'C').slice(0, 3)).map((item, i) => (
                             <div key={i} className="bg-sky-500 text-slate-950 px-3 py-1.5 rounded-xl font-black text-xs shadow-lg border border-white text-center">
                               ⚡ {item.player.name} <span className="opacity-75">({item.price} FM)</span>
                             </div>
@@ -1693,7 +1796,7 @@ export default function App() {
                         </div>
 
                         <div className="z-10 flex flex-wrap justify-center gap-2">
-                          {((purchasedPlayers[selectedRosterCoach] || []).filter(i => i.player.role === 'A').slice(0, 3)).map((item, i) => (
+                          {((purchasedPlayers[selectedRosterCoachId] || []).filter(i => i.player.role === 'A').slice(0, 3)).map((item, i) => (
                             <div key={i} className="bg-rose-600 text-white px-3 py-1.5 rounded-xl font-black text-xs shadow-lg border border-white text-center">
                               ⚽ {item.player.name} <span className="opacity-75">({item.price} FM)</span>
                             </div>
@@ -1782,7 +1885,7 @@ export default function App() {
                       activeChannel.send({
                         type: 'broadcast',
                         event: 'sync_league_state',
-                        payload: { coaches, purchasedPlayers, leagueName, activePlayer, currentBid: 0, highestBidder: null }
+                        payload: { coaches, purchasedPlayers, leagueName, activePlayer, currentBid, highestBidderId, bidHistory }
                       });
                     }
                   }}
@@ -1822,7 +1925,7 @@ export default function App() {
 
                   if (isEditing) {
                     return (
-                      <div key={i} className="p-2 bg-[#0B132B] border border-cyan-400 rounded-xl space-y-1.5">
+                      <div key={c.id} className="p-2 bg-[#0B132B] border border-cyan-400 rounded-xl space-y-1.5">
                         <div className="grid grid-cols-2 gap-1.5">
                           <input type="text" value={editTeamName} onChange={e => setEditTeamName(e.target.value)} placeholder="Squadra" className="bg-[#060D1E] border border-slate-700 rounded p-1 text-xs text-amber-300" />
                           <input type="text" value={editCoachName} onChange={e => setEditCoachName(e.target.value)} placeholder="Mister" className="bg-[#060D1E] border border-slate-700 rounded p-1 text-xs text-white" />
@@ -1833,14 +1936,18 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => {
-                              const updated = coaches.map((item, idx) => idx === i ? { ...item, name: editCoachName.trim() || item.name, teamName: editTeamName.trim() || item.teamName, budget: editBudgetVal } : item);
+                              const newName = editCoachName.trim() || c.name;
+                              const newTeam = editTeamName.trim() || c.teamName;
+
+                              const updated = coaches.map((item, idx) => idx === i ? { ...item, name: newName, teamName: newTeam, budget: editBudgetVal } : item);
                               setCoaches(updated);
                               setEditingCoachIdx(null);
+                              
                               if (activeChannel) {
                                 activeChannel.send({
                                   type: 'broadcast',
                                   event: 'sync_league_state',
-                                  payload: { coaches: updated, purchasedPlayers, leagueName, activePlayer, currentBid: 0, highestBidder: null }
+                                  payload: { coaches: updated, purchasedPlayers, leagueName, activePlayer, currentBid, highestBidderId, bidHistory }
                                 });
                               }
                             }}
@@ -1854,11 +1961,11 @@ export default function App() {
                   }
 
                   return (
-                    <div key={i} className="flex items-center justify-between p-2 bg-[#0B132B] rounded-xl border border-slate-800 text-xs">
+                    <div key={c.id} className="flex items-center justify-between p-2 bg-[#0B132B] rounded-xl border border-slate-800 text-xs">
                       <div className="truncate pr-1 flex-1">
                         <span className="font-extrabold text-white">{i + 1}. {c.teamName}</span>
                         <span className="text-slate-400 text-[10px] ml-1">({c.name})</span>
-                        {i === 0 && <span className="ml-1 text-[9px] bg-amber-400 text-slate-950 px-1 py-0.2 rounded font-black uppercase">👑 Tu</span>}
+                        {c.isPresident && <span className="ml-1 text-[9px] bg-amber-400 text-slate-950 px-1 py-0.2 rounded font-black uppercase">👑 Presidente</span>}
                       </div>
                       
                       <div className="flex items-center gap-1.5 shrink-0">
@@ -1874,7 +1981,7 @@ export default function App() {
                                 activeChannel.send({
                                   type: 'broadcast',
                                   event: 'sync_league_state',
-                                  payload: { coaches: updated, purchasedPlayers, leagueName, activePlayer, currentBid: 0, highestBidder: null }
+                                  payload: { coaches: updated, purchasedPlayers, leagueName, activePlayer, currentBid, highestBidderId, bidHistory }
                                 });
                               }
                             }}
@@ -1898,17 +2005,30 @@ export default function App() {
                           <Edit2 size={13} />
                         </button>
 
-                        {coaches.length > 2 && (
+                        {!c.isPresident && coaches.length > 2 && (
                           <button
                             type="button"
                             onClick={() => {
+                              const coachToRemove = coaches[i];
+                              const count = (purchasedPlayers[coachToRemove.id] || []).length;
+                              const confirmMsg = count > 0 
+                                ? `Sei sicuro di voler eliminare "${coachToRemove.teamName}"? I suoi ${count} calciatori acquistati verranno svincolati!` 
+                                : `Rimuovere "${coachToRemove.teamName}" dalla lega?`;
+
+                              if (!window.confirm(confirmMsg)) return;
+
                               const updated = coaches.filter((_, idx) => idx !== i);
+                              const updatedPurchased = { ...purchasedPlayers };
+                              delete updatedPurchased[coachToRemove.id];
+
                               setCoaches(updated);
+                              setPurchasedPlayers(updatedPurchased);
+
                               if (activeChannel) {
                                 activeChannel.send({
                                   type: 'broadcast',
                                   event: 'sync_league_state',
-                                  payload: { coaches: updated, purchasedPlayers, leagueName, activePlayer, currentBid: 0, highestBidder: null }
+                                  payload: { coaches: updated, purchasedPlayers: updatedPurchased, leagueName, activePlayer, currentBid, highestBidderId, bidHistory }
                                 });
                               }
                             }}
@@ -1955,7 +2075,16 @@ export default function App() {
                         if (!manageAddCoachName.trim()) return;
                         const cName = manageAddCoachName.trim();
                         const tName = manageAddTeamName.trim() || `FC ${cName}`;
-                        const updated = [...coaches, { name: cName, teamName: tName, budget: manageAddBudget, playersCount: 0, isOnline: true }];
+                        const newCoach: Coach = { 
+                          id: `c_${Date.now()}`, 
+                          name: cName, 
+                          teamName: tName, 
+                          budget: manageAddBudget, 
+                          playersCount: 0, 
+                          isPresident: false,
+                          isOnline: true 
+                        };
+                        const updated = [...coaches, newCoach];
                         setCoaches(updated);
                         setManageAddCoachName('');
                         setManageAddTeamName('');
@@ -1963,7 +2092,7 @@ export default function App() {
                           activeChannel.send({
                             type: 'broadcast',
                             event: 'sync_league_state',
-                            payload: { coaches: updated, purchasedPlayers, leagueName, activePlayer, currentBid: 0, highestBidder: null }
+                            payload: { coaches: updated, purchasedPlayers, leagueName, activePlayer, currentBid, highestBidderId, bidHistory }
                           });
                         }
                       }}
@@ -2039,7 +2168,7 @@ export default function App() {
                   if (!newCoachInput.trim()) return;
                   const cName = newCoachInput.trim();
                   const tName = newTeamNameInput.trim() || `FC ${cName}`;
-                  setCoaches(prev => [...prev, { name: cName, teamName: tName, budget: initialBudget, playersCount: 0, isOnline: true }]);
+                  setCoaches(prev => [...prev, { id: `c_${Date.now()}`, name: cName, teamName: tName, budget: initialBudget, playersCount: 0, isPresident: false, isOnline: true }]);
                   setNewCoachInput(''); setNewTeamNameInput('');
                 }}
                 className="w-full py-1.5 bg-emerald-500 text-slate-950 font-black rounded-lg text-xs flex items-center justify-center gap-1 cursor-pointer"
@@ -2050,12 +2179,11 @@ export default function App() {
 
             <div className="max-h-40 overflow-y-auto space-y-1.5 text-left">
               {coaches.map((c, i) => {
-                const isPresident = i === 0;
                 const isEditing = editingCoachIdx === i;
 
                 if (isEditing) {
                   return (
-                    <div key={i} className="p-2 bg-[#060D1E] border border-cyan-400/70 rounded-xl space-y-1.5">
+                    <div key={c.id} className="p-2 bg-[#060D1E] border border-cyan-400/70 rounded-xl space-y-1.5">
                       <div className="grid grid-cols-2 gap-1">
                         <input type="text" value={editTeamName} onChange={e => setEditTeamName(e.target.value)} placeholder="Nome Squadra" className="bg-[#0B132B] border border-slate-700 rounded p-1 text-xs text-amber-300" />
                         <input type="text" value={editCoachName} onChange={e => setEditCoachName(e.target.value)} placeholder="Nome Mister" className="bg-[#0B132B] border border-slate-700 rounded p-1 text-xs text-white" />
@@ -2079,25 +2207,21 @@ export default function App() {
                 }
 
                 return (
-                  <div key={c.name} className={`flex justify-between items-center px-2.5 py-1.5 rounded-xl text-xs border ${isPresident ? 'bg-amber-500/15 border-amber-400/50' : 'bg-[#060D1E] border-slate-800'}`}>
+                  <div key={c.id} className={`flex justify-between items-center px-2.5 py-1.5 rounded-xl text-xs border ${c.isPresident ? 'bg-amber-500/15 border-amber-400/50' : 'bg-[#060D1E] border-slate-800'}`}>
                     <div className="truncate pr-1">
                       <strong>{i + 1}. {c.teamName}</strong> <span className="text-slate-400">({c.name})</span>
-                      {isPresident && <span className="ml-1 text-[9px] bg-amber-400 text-slate-950 px-1 py-0.2 rounded font-black uppercase">👑 Tua Squadra</span>}
+                      {c.isPresident && <span className="ml-1 text-[9px] bg-amber-400 text-slate-950 px-1 py-0.2 rounded font-black uppercase">👑 Presidente</span>}
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      {!isPresident && (
+                      {!c.isPresident && (
                         <button
                           type="button"
                           onClick={() => {
-                            setCoaches(prev => {
-                              const selected = prev[i];
-                              const rest = prev.filter((_, idx) => idx !== i);
-                              return [selected, ...rest];
-                            });
-                            setSelectedWinnerManual(c.name);
+                            setCoaches(prev => prev.map((item, idx) => ({ ...item, isPresident: idx === i })));
+                            setSelectedWinnerManualId(c.id);
                           }}
                           className="text-amber-400 hover:text-amber-300 px-1 text-[10px] font-bold border border-amber-400/40 rounded cursor-pointer"
-                          title="Scegli come squadra del Presidente"
+                          title="Designa come squadra del Presidente"
                         >
                           👑 Scegli
                         </button>
@@ -2115,14 +2239,22 @@ export default function App() {
                       >
                         <Edit2 size={12} />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setCoaches(prev => prev.filter((_, idx) => idx !== i))}
-                        className="text-rose-400 hover:text-rose-300 p-1 cursor-pointer"
-                        title="Rimuovi"
-                      >
-                        <Trash2 size={12} />
-                      </button>
+                      {!c.isPresident && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const coachToRemove = coaches[i];
+                            const updatedPurchased = { ...purchasedPlayers };
+                            delete updatedPurchased[coachToRemove.id];
+                            setPurchasedPlayers(updatedPurchased);
+                            setCoaches(prev => prev.filter((_, idx) => idx !== i));
+                          }}
+                          className="text-rose-400 hover:text-rose-300 p-1 cursor-pointer"
+                          title="Rimuovi"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -2131,7 +2263,7 @@ export default function App() {
 
             <div className="p-2 rounded-xl text-xs font-bold text-center border bg-[#060D1E]">
               <span className="text-emerald-400 flex items-center justify-center gap-1.5">
-                <Sparkles size={13} /> <strong>Promo Mercato di Riparazione:</strong> Tutte le leghe sbloccate gratis a 0€
+                <Sparkles size={13} /> <strong>Asta Ufficiale Gratuita:</strong> Tutte le leghe sbloccate a 0€
               </span>
             </div>
 
@@ -2146,6 +2278,10 @@ export default function App() {
                   ? customLeagueInput.trim().toUpperCase().replace(/[^A-Z0-9]/g, '') 
                   : generateDynamicRoomCode();
                 
+                // Normalizzatore rigoroso: garantisce esattamente 1 Presidente all'avvio
+                const finalCoaches = ensureSinglePresident(coaches);
+
+                setCoaches(finalCoaches);
                 setLeagueName(n); 
                 setRoomCode(newCode);
                 setShowCustomLeagueModal(false); 
@@ -2157,13 +2293,13 @@ export default function App() {
               }}
               className="w-full py-3 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs md:text-sm uppercase cursor-pointer shadow-lg"
             >
-              Avvia Lega Ufficiale a 0€ 🚀
+              Avvia Lega Ufficiale 🚀
             </button>
           </div>
         </div>
       )}
 
-      {/* MODALE QR CODE IN PRIMISSIMO PIANO (z-[9999]) CON COPIA CODICE RAPIDA */}
+      {/* MODALE QR CODE IN PRIMISSIMO PIANO (z-[9999]) */}
       {showQrModal && (
         <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-xl flex items-center justify-center p-4 z-[9999]">
           <div className="bg-[#04160E] border-2 border-emerald-400 rounded-3xl p-6 md:p-8 max-w-lg w-full flex flex-col items-center gap-4 text-center relative shadow-[0_0_60px_rgba(16,185,129,0.35)]">
@@ -2202,8 +2338,8 @@ export default function App() {
             <div className="bg-[#060D1E] border border-slate-700 rounded-2xl p-4 space-y-2">
               <h2 className="text-3xl font-black text-white uppercase">{awardModal.player.name}</h2>
               <p className="text-xs text-slate-400">Tesserato ufficialmente dalla fanta-società</p>
-              <p className="text-xl font-black text-emerald-400 uppercase">{coaches.find(x => x.name === awardModal.winner)?.teamName || awardModal.winner}</p>
-              <p className="text-xs text-slate-300">Mister: <strong>{awardModal.winner}</strong> • Prezzo: <strong className="text-amber-400">{awardModal.price} FM</strong></p>
+              <p className="text-xl font-black text-emerald-400 uppercase">{coaches.find(x => x.id === awardModal.winnerId)?.teamName || awardModal.winnerName}</p>
+              <p className="text-xs text-slate-300">Mister: <strong>{awardModal.winnerName}</strong> • Prezzo: <strong className="text-amber-400">{awardModal.price} FM</strong></p>
               <div className="pt-2 border-t border-slate-800">
                 <span className="text-[9px] uppercase text-slate-500 font-bold block">Firma del Calciatore</span>
                 <div className="text-2xl text-amber-300 italic font-serif py-1" style={{ animation: 'signContractReveal 0.85s ease-out forwards' }}>{awardModal.player.name}</div>
@@ -2238,20 +2374,19 @@ export default function App() {
 
             {activeLegalSection === 'TERMS' && (
               <>
-                <h3 className="text-lg font-black text-amber-400 uppercase">Termini & Condizioni</h3>
+                <h3 className="text-lg font-black text-amber-400 uppercase">Termini del Servizio</h3>
                 <div className="space-y-2.5 text-xs text-slate-300 leading-relaxed">
-                  <p><strong>1. Servizio:</strong> Web-app per la gestione live delle aste del Fantacalcio con regia su schermo TV e buzzer su dispositivi mobili.</p>
-                  <p><strong>2. Promo Riparazione:</strong> Utilizzo completo gratuito a 0€ durante la sessione di mercato.</p>
-                  <p><strong>3. Licenza:</strong> Valida per l'intera stagione d'asta 2026/2027.</p>
+                  <p><strong>1. Scopo:</strong> FantasyBuzz è una web-app studiata per la gestione live delle aste del Fantacalcio con regia su schermo e buzzer su dispositivi mobili.</p>
+                  <p><strong>2. Accesso:</strong> L'utilizzo del software per le stanze d'asta private è attualmente ad accesso libero e gratuito.</p>
                 </div>
               </>
             )}
 
             {activeLegalSection === 'PRIVACY' && (
               <>
-                <h3 className="text-lg font-black text-emerald-400 uppercase">Privacy (GDPR UE 2016/679)</h3>
+                <h3 className="text-lg font-black text-emerald-400 uppercase">Privacy Policy</h3>
                 <div className="space-y-2.5 text-xs text-slate-300 leading-relaxed">
-                  <p>Non raccogliamo email né password dai partecipanti invitati. I dati dell'asta sono memorizzati sul dispositivo del Presidente e sincronizzati temporaneamente tramite canali crittografati.</p>
+                  <p>Non vengono richieste email personali né password di registrazione per gli invitati. I dati dell'asta sono memorizzati sul dispositivo locale del creatore della stanza e sincronizzati via canali WebSocket crittografati.</p>
                   <button
                     onClick={() => {
                       localStorage.clear();
@@ -2266,21 +2401,12 @@ export default function App() {
               </>
             )}
 
-            {activeLegalSection === 'REFUND' && (
-              <>
-                <h3 className="text-lg font-black text-cyan-400 uppercase">Garanzia Rimborso Entro 24h</h3>
-                <div className="space-y-2.5 text-xs text-slate-300 leading-relaxed">
-                  <p>Per qualsiasi richiesta o anomalia riscontrata, scrivici a <strong>rimborsi@fantasybuzz.app</strong> per assistenza immediata.</p>
-                </div>
-              </>
-            )}
-
             {activeLegalSection === 'SUPPORT' && (
               <>
-                <h3 className="text-lg font-black text-amber-400 uppercase">Assistenza & Supporto</h3>
+                <h3 className="text-lg font-black text-amber-400 uppercase">Supporto Tecnico</h3>
                 <div className="space-y-2.5 text-xs text-slate-300 leading-relaxed">
                   <p>Email: <strong>supporto@fantasybuzz.app</strong></p>
-                  {userRole && <p>Codice Stanza: <strong className="text-amber-400">{roomCode}</strong></p>}
+                  {userRole && <p>Codice Stanza Corrente: <strong className="text-amber-400">{roomCode}</strong></p>}
                 </div>
               </>
             )}
