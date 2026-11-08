@@ -4,7 +4,8 @@ import {
   Share2, Search, Download, Shirt, Edit2, Check,
   Monitor, Timer, Flame, Award, PieChart, AlertCircle, TrendingUp, Gavel,
   RotateCcw, Shuffle, UserPlus, Trash2, Sparkles, QrCode, Volume2, VolumeX,
-  FileSignature, ArrowUp, Info, Copy, Bell, Crown, Settings, RefreshCw
+  FileSignature, Info, Copy, Bell, Crown, Settings, RefreshCw,
+  ChevronRight
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import rawListone from './data/listone.json';
@@ -221,6 +222,33 @@ const BuzzMark = ({ size = 26 }: { size?: number }) => (
   </svg>
 );
 
+// Icona Robot / Pallone da Calcio Futuristico per FantaBot (tag SVG corretti)
+const FantaBotAvatar = ({ size = 32 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 64 64" className="shrink-0 drop-shadow-[0_0_10px_rgba(56,189,248,0.7)]">
+    <defs>
+      <radialGradient id="fbBallGrad" cx="40%" cy="40%" r="60%">
+        <stop offset="0%" stopColor="#ffffff" />
+        <stop offset="70%" stopColor="#cbd5e1" />
+        <stop offset="100%" stopColor="#64748b" />
+      </radialGradient>
+      <linearGradient id="fbVisorGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#0284c7" />
+        <stop offset="100%" stopColor="#06b6d4" />
+      </linearGradient>
+    </defs>
+    <circle cx="32" cy="32" r="30" fill="url(#fbBallGrad)" stroke="#0f172a" strokeWidth="2.5" />
+    <path d="M20 8 L32 16 L44 8" stroke="#1e293b" strokeWidth="2.5" fill="none" />
+    <path d="M10 24 L20 32 L14 44" stroke="#1e293b" strokeWidth="2.5" fill="none" />
+    <path d="M54 24 L44 32 L50 44" stroke="#1e293b" strokeWidth="2.5" fill="none" />
+    <path d="M24 56 L32 48 L40 56" stroke="#1e293b" strokeWidth="2.5" fill="none" />
+    <rect x="14" y="24" width="36" height="15" rx="7.5" fill="#030712" stroke="#38bdf8" strokeWidth="2" />
+    <circle cx="25" cy="31.5" r="3.2" fill="#38bdf8" className="animate-pulse" />
+    <circle cx="39" cy="31.5" r="3.2" fill="#38bdf8" className="animate-pulse" />
+    <line x1="32" y1="2" x2="32" y2="7" stroke="#38bdf8" strokeWidth="3" />
+    <circle cx="32" cy="3" r="2.5" fill="#f59e0b" />
+  </svg>
+);
+
 const TeamBadge = ({ team, size = 18 }: { team: string; size?: number }) => {
   const b = getTeamBadgeStyle(team);
   return (
@@ -271,6 +299,11 @@ export default function App() {
   const [activeLegalSection, setActiveLegalSection] = useState<LegalSection>(null);
 
   const [activeLeagueTab, setActiveLeagueTab] = useState<'REGULAR' | 'REPAIR'>('REPAIR');
+
+  // Assistente Interattivo FantaBot
+  const [isFantaBotOpen, setIsFantaBotOpen] = useState(false);
+  const [fantaBotSpeech, setFantaBotSpeech] = useState<string>('Ciao! Sono FantaBot ⚽🤖. Come posso aiutarti a gestire al meglio la tua asta?');
+  const [spotlightTarget, setSpotlightTarget] = useState<'TV' | 'LISTONE' | 'SQUADRE' | null>(null);
 
   // Mini-Simulatore Hero
   const [heroBid, setHeroBid] = useState<number>(85);
@@ -327,7 +360,7 @@ export default function App() {
   const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v31_initialBudget') || localStorage.getItem('fb_v30_initialBudget')) || 500);
   const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v31_leagueName') || localStorage.getItem('fb_v30_leagueName') || 'FantaLega 2026');
 
-  // Caricamento sicuro garantito da ensureSinglePresident
+  // Inizializzazione protetta con un unico Presidente garantito
   const [coaches, setCoaches] = useState<Coach[]>(() => {
     const saved = localStorage.getItem('fb_v31_coaches') || localStorage.getItem('fb_v30_coaches');
     if (saved) {
@@ -350,7 +383,7 @@ export default function App() {
     return ensureSinglePresident(DEFAULT_DEMO_COACHES);
   });
 
-  // Rose indicizzate tramite coach.id
+  // Rose indicizzate con coach.id
   const [purchasedPlayers, setPurchasedPlayers] = useState<Record<string, PurchasedItem[]>>(() => {
     const saved = localStorage.getItem('fb_v31_purchasedPlayers') || localStorage.getItem('fb_v30_purchasedPlayers');
     if (saved) {
@@ -370,8 +403,6 @@ export default function App() {
 
   const [selectedRosterCoachId, setSelectedRosterCoachId] = useState<string>(coaches[0]?.id || 'c_1');
   const [awardModal, setAwardModal] = useState<{ show: boolean; player: Player; winnerId: string; winnerName: string; price: number } | null>(null);
-  
-  // Snapshot Undo completo
   const [lastAwardSnapshot, setLastAwardSnapshot] = useState<UndoSnapshot | null>(null);
   
   const [activeChannel, setActiveChannel] = useState<any>(null);
@@ -468,7 +499,7 @@ export default function App() {
   }, [bidHistory]);
 
   const registerBidLocally = useCallback((bidderCoachId: string, amount: number) => {
-    setLastAwardSnapshot(null); // Nuova puntata invalida l'undo precedente
+    setLastAwardSnapshot(null);
     playBuzzSound(); setIsBlinking(true); setCountdown(null); setAwardModal(null);
     setTimeout(() => setIsBlinking(false), 300);
     setHighestBidderId(bidderCoachId); setCurrentBid(amount);
@@ -491,7 +522,6 @@ export default function App() {
       speakTelecronista(`Colpo di mercato! ${player.name} firma con ${clubLabel} per ${price} fantamilioni!`, voiceEnabled);
     }
     
-    // Distinzione accurata per l'undo: c'era un'offerta o battuta a freddo?
     setLastAwardSnapshot({
       player,
       winnerId: winnerCoachId,
@@ -639,7 +669,7 @@ export default function App() {
 
   const handleSelectPlayer = useCallback(async (player: Player) => {
     setCurrentPlayer(player); setCurrentBid(0); setHighestBidderId(null); setBidHistory([]); setCustomBidInput(''); setCountdown(null); setAwardModal(null);
-    setLastAwardSnapshot(null); // Cambio calciatore invalida l'undo
+    setLastAwardSnapshot(null);
     if (userRole === 'PRESIDENT') speakTelecronista(`In campo ${player.name}, ${player.team}.`, voiceEnabled);
     if (activeChannel) await activeChannel.send({ type: 'broadcast', event: 'change_player', payload: { player } });
   }, [activeChannel, userRole, voiceEnabled]);
@@ -1027,7 +1057,24 @@ export default function App() {
           0%, 100% { opacity: 0.55; transform: scale(1); }
           50% { opacity: 0.85; transform: scale(1.05); }
         }
+        @keyframes floatBotAvatar {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-7px); }
+        }
       `}</style>
+
+      {/* OVERLAY SPOTLIGHT GUIDATO DI FANTABOT */}
+      {spotlightTarget && (
+        <div 
+          onClick={() => setSpotlightTarget(null)}
+          className="fixed inset-0 bg-slate-950/80 z-40 transition-opacity flex items-center justify-center p-4 cursor-pointer backdrop-blur-[2px]"
+        >
+          <div className="bg-[#0B1528] border-2 border-amber-400 p-4 rounded-2xl max-w-sm text-center shadow-[0_0_40px_rgba(245,158,11,0.5)] animate-bounce text-white">
+            <span className="text-xs font-black uppercase text-amber-400 block mb-1">🔍 ZONA EVIDENZIATA: {spotlightTarget}</span>
+            <p className="text-xs text-slate-200">Guarda la sezione contornata in oro brillante sullo schermo! Tocca ovunque per chiudere la guida.</p>
+          </div>
+        </div>
+      )}
 
       {/* === HERO SECTION === */}
       {!userRole ? (
@@ -1217,11 +1264,34 @@ export default function App() {
       ) : (
         <div className="h-screen w-screen font-sans flex flex-col justify-between p-2 select-none overflow-hidden relative z-10 bg-[#020D08] text-slate-200">
           
+          {/* BARRA SUPERIORE CON INVITO QR CODE INSERITO NEL PUNTO VUOTO */}
           {userRole === 'PRESIDENT' && (
             <div className="bg-[#051C12]/90 border border-emerald-500/40 rounded-xl px-3 py-1 mb-1 flex items-center justify-between text-xs shrink-0 backdrop-blur-md">
-              <div className="flex items-center gap-2">
-                <span>🎁 <strong className="text-emerald-400">Asta Ufficiale:</strong> Stanza live attiva per tutta la fanta-lega.</span>
+              <div className="flex items-center gap-3">
+                <span className="text-slate-200">🎁 <strong className="text-emerald-400">Asta Ufficiale:</strong> Stanza live attiva per tutta la fanta-lega.</span>
+                
+                {showRoomCodeArrow && (
+                  <button
+                    onClick={() => {
+                      setShowQrModal(true);
+                      setShowRoomCodeArrow(false);
+                    }}
+                    className="hidden sm:inline-flex items-center gap-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[10px] uppercase px-2.5 py-0.5 rounded-full shadow-md cursor-pointer transition-transform active:scale-95 animate-pulse"
+                    title="Clicca per aprire il QR Code per i tuoi amici"
+                  >
+                    <QrCode size={12} className="text-slate-950" />
+                    <span>📱 Fai inquadrare il QR Code agli amici</span>
+                    <span 
+                      className="text-slate-700 hover:text-black ml-1 text-xs" 
+                      onClick={(e) => { e.stopPropagation(); setShowRoomCodeArrow(false); }}
+                      title="Nascondi suggerimento"
+                    >
+                      ✕
+                    </span>
+                  </button>
+                )}
               </div>
+
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowLeagueSettingsModal(true)}
@@ -1244,7 +1314,7 @@ export default function App() {
             </div>
           )}
 
-          <header className="flex flex-wrap justify-between items-center p-2 px-3 rounded-2xl bg-[#04160E]/95 border border-emerald-500/30 shrink-0 gap-2 relative shadow-lg backdrop-blur-md">
+          <header className={`flex flex-wrap justify-between items-center p-2 px-3 rounded-2xl bg-[#04160E]/95 border shrink-0 gap-2 relative shadow-lg backdrop-blur-md transition-all ${spotlightTarget === 'TV' ? 'border-amber-400 ring-4 ring-amber-400/40 shadow-[0_0_25px_rgba(245,158,11,0.6)] z-50' : 'border-emerald-500/30'}`}>
             <div className="flex items-center gap-3">
               <BuzzMark size={26} />
               <div>
@@ -1257,30 +1327,16 @@ export default function App() {
               </div>
 
               {userRole === 'PRESIDENT' && (
-                <div className="relative">
-                  <button
-                    onClick={() => {
-                      setShowQrModal(true);
-                      setShowRoomCodeArrow(false);
-                    }}
-                    className="bg-amber-500/20 border-2 border-amber-400 px-3 py-1 rounded-xl flex items-center gap-2 cursor-pointer hover:bg-amber-500/30 transition-all shadow-md"
-                  >
-                    <QrCode size={15} className="text-amber-400" />
-                    <span className="text-xs font-black text-white">MOSTRA QR CODE ({roomCode})</span>
-                  </button>
-
-                  {showRoomCodeArrow && (
-                    <div
-                      onClick={() => setShowRoomCodeArrow(false)}
-                      className="absolute top-12 left-0 z-40 bg-amber-400 text-slate-950 px-3 py-1.5 rounded-xl shadow-[0_5px_20px_rgba(0,0,0,0.6)] border-2 border-white w-60 animate-bounce cursor-pointer"
-                    >
-                      <div className="flex items-center gap-1.5 font-black text-[10px] uppercase">
-                        <ArrowUp size={13} className="shrink-0" />
-                        <span>Clicca per il QR a tutto schermo!</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <button
+                  onClick={() => {
+                    setShowQrModal(true);
+                    setShowRoomCodeArrow(false);
+                  }}
+                  className="bg-amber-500/20 border-2 border-amber-400 px-3 py-1 rounded-xl flex items-center gap-2 cursor-pointer hover:bg-amber-500/30 transition-all shadow-md"
+                >
+                  <QrCode size={15} className="text-amber-400" />
+                  <span className="text-xs font-black text-white">MOSTRA QR CODE ({roomCode})</span>
+                </button>
               )}
 
               {userRole === 'PRESIDENT' && (
@@ -1455,7 +1511,7 @@ export default function App() {
                     </div>
                   )}
 
-                  <aside className="w-full lg:w-[275px] shrink-0 bg-[#04160E]/95 rounded-2xl p-3 flex flex-col gap-2 overflow-hidden border border-emerald-500/30 shadow-xl backdrop-blur-md">
+                  <aside className={`w-full lg:w-[275px] shrink-0 bg-[#04160E]/95 rounded-2xl p-3 flex flex-col gap-2 overflow-hidden border shadow-xl backdrop-blur-md transition-all ${spotlightTarget === 'SQUADRE' ? 'border-amber-400 ring-4 ring-amber-400/40 shadow-[0_0_25px_rgba(245,158,11,0.6)] z-50' : 'border-emerald-500/30'}`}>
                     <div className="flex justify-between pb-1.5 border-b border-emerald-500/20 text-xs font-black text-emerald-400">
                       <span className="flex items-center gap-1"><Trophy size={13} className="text-amber-400" /> Club in Sala</span>
                       <span className="text-[10px] text-amber-300">👆 Clicca = +1 FM</span>
@@ -1529,7 +1585,7 @@ export default function App() {
                       </div>
                     )}
 
-                    <div className="w-full bg-[#04160E]/95 rounded-xl p-2 flex flex-col gap-2 z-10 border border-emerald-500/30 shadow-md backdrop-blur-md">
+                    <div className={`w-full bg-[#04160E]/95 rounded-xl p-2 flex flex-col gap-2 z-10 border shadow-md backdrop-blur-md transition-all ${spotlightTarget === 'LISTONE' ? 'border-amber-400 ring-4 ring-amber-400/40 shadow-[0_0_25px_rgba(245,158,11,0.6)]' : 'border-emerald-500/30'}`}>
                       <div className="flex flex-wrap items-center gap-1.5">
                         <div className="relative flex-1 min-w-[130px]">
                           <Search size={13} className="absolute left-2.5 top-2 text-slate-400" />
@@ -1822,6 +1878,7 @@ export default function App() {
             </>
           )}
 
+          {/* TICKER IN FONDO ALLO SCHERMO */}
           <div className="w-full bg-[#04160E] border border-emerald-500/30 rounded-xl h-8 flex items-center overflow-hidden shrink-0 shadow-lg mt-0.5">
             <div className="bg-amber-500 text-slate-950 font-black text-[10px] uppercase px-3 h-full flex items-center gap-1 shrink-0 z-10"><Zap size={12} className="fill-slate-950" /> ULTIM'ORA FANTAMERCATO</div>
             <div className="flex-1 overflow-hidden relative h-full flex items-center">
@@ -1832,6 +1889,109 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* === FANTABOT ASSISTENTE FLOTTANTE IN BASSO A DESTRA === */}
+      <div className="fixed bottom-10 right-4 z-50 flex flex-col items-end">
+        {isFantaBotOpen && (
+          <div className="mb-2 w-80 max-w-[90vw] bg-[#091526]/95 border-2 border-cyan-400/80 rounded-2xl p-3.5 shadow-[0_0_30px_rgba(56,189,248,0.35)] backdrop-blur-xl text-left text-xs animate-in fade-in slide-in-from-bottom-3 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-700/80 pb-2 mb-2">
+              <div className="flex items-center gap-2">
+                <FantaBotAvatar size={24} />
+                <div>
+                  <span className="font-black text-cyan-300 block text-xs">FANTABOT LIVE</span>
+                  <span className="text-[9px] text-slate-400">Guida & Assistenza Asta</span>
+                </div>
+              </div>
+              <button 
+                onClick={() => { setIsFantaBotOpen(false); setSpotlightTarget(null); }}
+                className="text-slate-400 hover:text-white p-1 cursor-pointer"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            <div className="bg-[#030A14] border border-cyan-500/30 p-2.5 rounded-xl text-slate-200 text-xs leading-relaxed mb-3">
+              {fantaBotSpeech}
+            </div>
+
+            <span className="text-[10px] font-black uppercase text-amber-400 block mb-1.5">💡 Domande frequenti:</span>
+            <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
+              <button
+                onClick={() => {
+                  setFantaBotSpeech('📺 Puoi collegare la TV in 2 modi:\n1. Con un comune cavo HDMI dal portatile alla TV.\n2. Se hai una Smart TV, apri il browser della TV e digita direttamente il sito fantasybuzz.vercel.app aprendo la regia!');
+                  setSpotlightTarget('TV');
+                }}
+                className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
+              >
+                <span>📺 Come collego l'app alla TV?</span>
+                <ChevronRight size={12} className="text-cyan-400" />
+              </button>
+
+              <button
+                onClick={() => {
+                  setFantaBotSpeech('📱 Gli amici devono solo inquadrare il pulsante "MOSTRA QR CODE" in alto col proprio telefono, oppure digitare il Codice Stanza dalla schermata iniziale per avere il Buzzer!');
+                  setSpotlightTarget('TV');
+                }}
+                className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
+              >
+                <span>📱 Come collego gli smartphone?</span>
+                <ChevronRight size={12} className="text-cyan-400" />
+              </button>
+
+              <button
+                onClick={() => {
+                  setFantaBotSpeech('🔄 L\'Undo (tasto Annulla in alto) ripristina all\'istante sia i crediti del vincitore che il calciatore sul banco, sincronizzando in diretta tutti gli smartphone collegati!');
+                  setSpotlightTarget('TV');
+                }}
+                className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
+              >
+                <span>🔄 Come funziona l'Undo / Annulla?</span>
+                <ChevronRight size={12} className="text-cyan-400" />
+              </button>
+
+              <button
+                onClick={() => {
+                  setFantaBotSpeech('🧹 In alto a destra premi "⚙️ Gestisci Lega" e clicca sul tasto rosso "Azzera Contratti": le rose tornano a 0 pronte per l\'asta ufficiale, senza perdere le squadre connesse!');
+                  setSpotlightTarget('TV');
+                }}
+                className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
+              >
+                <span>🧹 Come azzero le rose per l'asta vera?</span>
+                <ChevronRight size={12} className="text-cyan-400" />
+              </button>
+
+              <button
+                onClick={() => {
+                  setFantaBotSpeech('🔍 In alto al centro trovi la barra di ricerca e i filtri per ruolo (P, D, C, A) o svincolati. Puoi anche cliccare "🎲 Pesca a Sorte" per chiamare casualmente!');
+                  setSpotlightTarget('LISTONE');
+                }}
+                className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
+              >
+                <span>⚽ Come cerco o chiamo un calciatore?</span>
+                <ChevronRight size={12} className="text-cyan-400" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        <button
+          onClick={() => {
+            setIsFantaBotOpen(!isFantaBotOpen);
+            if (!isFantaBotOpen) {
+              setFantaBotSpeech('Ciao! Sono FantaBot ⚽🤖. Clicca su una delle domande qui sotto per scoprire ogni dettaglio della regia o della TV!');
+            } else {
+              setSpotlightTarget(null);
+            }
+          }}
+          className="flex items-center gap-2 bg-[#091526]/95 hover:bg-[#0c1d36] border-2 border-cyan-400 px-3 py-1.5 rounded-full shadow-[0_0_20px_rgba(56,189,248,0.5)] cursor-pointer transition-transform active:scale-95"
+          style={{ animation: 'floatBotAvatar 3.5s ease-in-out infinite' }}
+          title="Apri l'Assistente FantaBot"
+        >
+          <FantaBotAvatar size={28} />
+          <span className="text-xs font-black text-cyan-300 uppercase tracking-wider hidden sm:inline">FantaBot</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+        </button>
+      </div>
 
       {showWelcomeGuide && userRole === 'PRESIDENT' && (
         <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
@@ -2278,7 +2438,6 @@ export default function App() {
                   ? customLeagueInput.trim().toUpperCase().replace(/[^A-Z0-9]/g, '') 
                   : generateDynamicRoomCode();
                 
-                // Normalizzatore rigoroso: garantisce esattamente 1 Presidente all'avvio
                 const finalCoaches = ensureSinglePresident(coaches);
 
                 setCoaches(finalCoaches);
