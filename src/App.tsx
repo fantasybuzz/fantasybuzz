@@ -301,8 +301,18 @@ export default function App() {
 
   // Assistente FantaBot
   const [isFantaBotOpen, setIsFantaBotOpen] = useState(false);
-  const [fantaBotSpeech, setFantaBotSpeech] = useState<string>('Ciao! Sono FantaBot ⚽🤖. Clicca su una delle domande per vedere le risposte ed evidenziare la funzione!');
+  const [fantaBotSpeech, setFantaBotSpeech] = useState<string>('Ciao! Sono FantaBot ⚽🤖. Clicca su una delle domande per vedere le spiegazioni ed evidenziare la funzione!');
   const [spotlightTarget, setSpotlightTarget] = useState<'HERO_START' | 'HERO_CONNECT' | 'HERO_SIM' | 'QR' | 'UNDO' | 'SETTINGS' | 'LISTONE' | 'BELL' | 'BUZZER_BIG' | 'BUZZER_EXACT' | 'MY_ROSTER_TAB' | 'REACTIONS' | null>(null);
+
+  // Helper spotlight a tempo (disattiva la pulsazione dopo 6 secondi)
+  const triggerSpotlight = (target: typeof spotlightTarget) => {
+    setSpotlightTarget(target);
+    if (target) {
+      setTimeout(() => {
+        setSpotlightTarget(prev => (prev === target ? null : prev));
+      }, 6000);
+    }
+  };
 
   // Mini-Simulatore Hero
   const [heroBid, setHeroBid] = useState<number>(85);
@@ -359,7 +369,7 @@ export default function App() {
   const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v31_initialBudget') || localStorage.getItem('fb_v30_initialBudget')) || 500);
   const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v31_leagueName') || localStorage.getItem('fb_v30_leagueName') || 'FantaLega 2026');
 
-  // Inizializzazione sicura con unico Presidente garantito
+  // Inizializzazione protetta con un unico Presidente garantito
   const [coaches, setCoaches] = useState<Coach[]>(() => {
     const saved = localStorage.getItem('fb_v31_coaches') || localStorage.getItem('fb_v30_coaches');
     if (saved) {
@@ -1062,15 +1072,6 @@ export default function App() {
         }
       `}</style>
 
-      {/* OVERLAY DI OSCURAMENTO SELETTIVO (z-40) */}
-      {spotlightTarget && (
-        <div 
-          onClick={() => setSpotlightTarget(null)}
-          className="fixed inset-0 bg-slate-950/75 z-40 transition-opacity cursor-pointer backdrop-blur-[1.5px]"
-          title="Tocca per ripristinare la schermata normale"
-        />
-      )}
-
       {/* ======================================================== */}
       {/* 1. SCHERMATA INIZIALE: HERO / CONFIGURAZIONE LEGA       */}
       {/* ======================================================== */}
@@ -1113,7 +1114,7 @@ export default function App() {
 
             <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 items-center bg-[#060D1E]/95 p-3 rounded-xl border transition-all ${
               spotlightTarget === 'HERO_SIM' 
-                ? 'relative z-50 border-amber-400 ring-4 ring-amber-400/90 shadow-[0_0_40px_rgba(245,158,11,1)]' 
+                ? 'border-amber-400 ring-4 ring-amber-400 shadow-[0_0_40px_rgba(245,158,11,1)] scale-[1.02] animate-pulse' 
                 : 'border-slate-700'
             }`}>
               
@@ -1189,7 +1190,7 @@ export default function App() {
                 }}
                 className={`w-full py-2.5 px-4 rounded-xl text-xs md:text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer font-black transition-all ${
                   spotlightTarget === 'HERO_START'
-                    ? 'relative z-50 bg-emerald-400 text-slate-950 ring-4 ring-emerald-300 shadow-[0_0_40px_rgba(16,185,129,1)] scale-105 animate-pulse'
+                    ? 'bg-emerald-400 text-slate-950 ring-4 ring-amber-400 shadow-[0_0_35px_rgba(245,158,11,1)] scale-105 animate-pulse'
                     : 'bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 hover:from-emerald-400 text-slate-950 shadow-lg active:scale-98'
                 }`}
               >
@@ -1199,7 +1200,7 @@ export default function App() {
 
             <div className={`mt-2 bg-[#020712] p-2 rounded-xl border flex flex-col sm:flex-row items-center gap-2 transition-all ${
               spotlightTarget === 'HERO_CONNECT'
-                ? 'relative z-50 border-cyan-400 ring-4 ring-cyan-300 shadow-[0_0_35px_rgba(6,182,212,1)] scale-105 animate-pulse'
+                ? 'border-amber-400 ring-4 ring-amber-400 shadow-[0_0_35px_rgba(245,158,11,1)] scale-[1.02] animate-pulse'
                 : 'border-cyan-500/30'
             }`}>
               <span className="text-[11px] font-black uppercase text-cyan-300 shrink-0 flex items-center gap-1">
@@ -1308,7 +1309,7 @@ export default function App() {
                   onClick={() => setShowLeagueSettingsModal(true)}
                   className={`border font-black px-2.5 py-0.5 rounded-lg text-[10px] uppercase cursor-pointer flex items-center gap-1 shadow-sm transition-all ${
                     spotlightTarget === 'SETTINGS'
-                      ? 'relative z-50 bg-purple-500 text-white border-white ring-4 ring-purple-300 shadow-[0_0_40px_rgba(168,85,247,1)] scale-105 animate-pulse'
+                      ? 'bg-purple-600 text-white border-white ring-4 ring-amber-400 shadow-[0_0_35px_rgba(245,158,11,1)] scale-105 animate-pulse'
                       : 'bg-purple-600/30 border-purple-400/50 text-purple-200 hover:bg-purple-600/40'
                   }`}
                 >
@@ -1349,7 +1350,7 @@ export default function App() {
                   }}
                   className={`border-2 px-3 py-1 rounded-xl flex items-center gap-2 cursor-pointer transition-all shadow-md ${
                     spotlightTarget === 'QR' 
-                      ? 'relative z-50 bg-amber-400 text-slate-950 border-white ring-4 ring-amber-300 shadow-[0_0_40px_rgba(245,158,11,1)] scale-105 animate-pulse' 
+                      ? 'bg-amber-400 text-slate-950 border-white ring-4 ring-amber-300 shadow-[0_0_35px_rgba(245,158,11,1)] scale-105 animate-pulse' 
                       : 'bg-amber-500/20 border-amber-400 text-white hover:bg-amber-500/30'
                   }`}
                 >
@@ -1387,7 +1388,7 @@ export default function App() {
                     onClick={handleRingBroadcastBell}
                     className={`px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 cursor-pointer shadow-md transition-all active:scale-95 ${
                       spotlightTarget === 'BELL'
-                        ? 'relative z-50 bg-amber-400 text-slate-950 border-2 border-white ring-4 ring-amber-300 shadow-[0_0_40px_rgba(245,158,11,1)] scale-105 animate-pulse'
+                        ? 'bg-amber-400 text-slate-950 ring-4 ring-amber-300 shadow-[0_0_35px_rgba(245,158,11,1)] scale-105 animate-pulse'
                         : 'bg-gradient-to-r from-amber-400 to-amber-500 hover:brightness-110 text-slate-950'
                     }`}
                     title="Suona la Campanella in diretta su tutti gli smartphone"
@@ -1408,7 +1409,7 @@ export default function App() {
                       onClick={handleUndoLastAward} 
                       className={`px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 cursor-pointer shadow-sm transition-all ${
                         spotlightTarget === 'UNDO'
-                          ? 'relative z-50 bg-rose-500 text-white border-2 border-white ring-4 ring-rose-400 shadow-[0_0_40px_rgba(244,63,94,1)] scale-105 animate-pulse'
+                          ? 'bg-rose-500 text-white border-2 border-white ring-4 ring-amber-300 shadow-[0_0_35px_rgba(245,158,11,1)] scale-105 animate-pulse'
                           : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                       }`}
                     >
@@ -1442,7 +1443,7 @@ export default function App() {
                   onClick={() => setMobilePlayerTab('MY_ROSTER')}
                   className={`py-2 rounded-xl font-black text-xs uppercase cursor-pointer flex items-center justify-center gap-1 transition-all ${
                     spotlightTarget === 'MY_ROSTER_TAB'
-                      ? 'relative z-50 bg-amber-400 text-slate-950 ring-4 ring-amber-300 shadow-[0_0_35px_rgba(245,158,11,1)] scale-105 animate-pulse'
+                      ? 'bg-amber-400 text-slate-950 ring-4 ring-amber-300 shadow-[0_0_35px_rgba(245,158,11,1)] scale-105 animate-pulse'
                       : mobilePlayerTab === 'MY_ROSTER' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-300'
                   }`}
                 >
@@ -1474,7 +1475,7 @@ export default function App() {
                       onClick={() => handleRaise(selectedStep)} 
                       className={`w-32 h-32 rounded-full flex flex-col items-center justify-center gap-1 select-none transition-all ${
                         spotlightTarget === 'BUZZER_BIG'
-                          ? 'relative z-50 bg-amber-300 text-slate-950 border-4 border-white ring-8 ring-amber-400 shadow-[0_0_50px_rgba(245,158,11,1)] scale-110 animate-bounce'
+                          ? 'bg-amber-300 text-slate-950 border-4 border-white ring-8 ring-amber-400 shadow-[0_0_50px_rgba(245,158,11,1)] scale-110 animate-bounce'
                           : highestBidderId === playerCoachId 
                             ? 'bg-emerald-900/60 border-4 border-emerald-400 text-emerald-300 cursor-not-allowed' 
                             : 'bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 text-slate-950 font-black border-4 border-amber-200 shadow-xl active:translate-y-2 cursor-pointer'
@@ -1491,7 +1492,7 @@ export default function App() {
 
                     <div className={`w-full flex gap-1.5 pt-1 border-t border-slate-800 transition-all ${
                       spotlightTarget === 'BUZZER_EXACT'
-                        ? 'relative z-50 bg-[#060D1E] p-1.5 rounded-xl border border-emerald-400 ring-4 ring-emerald-300 shadow-[0_0_35px_rgba(16,185,129,1)]'
+                        ? 'bg-[#060D1E] p-1.5 rounded-xl border border-emerald-400 ring-4 ring-emerald-300 shadow-[0_0_35px_rgba(16,185,129,1)] scale-[1.02] animate-pulse'
                         : ''
                     }`}>
                       <input
@@ -1513,7 +1514,7 @@ export default function App() {
 
                     <div className={`w-full pt-1 border-t border-slate-800 space-y-1 transition-all ${
                       spotlightTarget === 'REACTIONS'
-                        ? 'relative z-50 bg-[#060D1E] p-1.5 rounded-xl border border-cyan-400 ring-4 ring-cyan-300 shadow-[0_0_35px_rgba(6,182,212,1)]'
+                        ? 'bg-[#060D1E] p-1.5 rounded-xl border border-cyan-400 ring-4 ring-cyan-300 shadow-[0_0_35px_rgba(6,182,212,1)] scale-[1.02] animate-pulse'
                         : ''
                     }`}>
                       <span className="text-[10px] font-black uppercase text-amber-400 block text-center">📣 Sfottò in tempo reale:</span>
@@ -1642,7 +1643,7 @@ export default function App() {
 
                     <div className={`w-full bg-[#04160E]/95 rounded-xl p-2 flex flex-col gap-2 z-10 border shadow-md backdrop-blur-md transition-all ${
                       spotlightTarget === 'LISTONE' 
-                        ? 'relative z-50 border-amber-400 ring-4 ring-amber-300 shadow-[0_0_40px_rgba(245,158,11,1)] scale-[1.02] animate-pulse' 
+                        ? 'border-amber-400 ring-4 ring-amber-300 shadow-[0_0_35px_rgba(245,158,11,1)] scale-[1.01] animate-pulse' 
                         : 'border-emerald-500/30'
                     }`}>
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -1984,8 +1985,8 @@ export default function App() {
                 <>
                   <button
                     onClick={() => {
-                      setFantaBotSpeech('🚀 Per avviare la tua asta, clicca sul tasto verde evidenziato: potrai scegliere il nome della lega, impostare il budget standard (es. 500 FM) e caricare subito le 8 squadre d\'esempio!');
-                      setSpotlightTarget('HERO_START');
+                      setFantaBotSpeech('🚀 Clicca sul pulsante verde evidenziato: imposti il nome della lega, i crediti iniziali (es. 500 FM) e carichi le squadre!');
+                      triggerSpotlight('HERO_START');
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
                   >
@@ -1995,8 +1996,8 @@ export default function App() {
 
                   <button
                     onClick={() => {
-                      setFantaBotSpeech('🔑 Se il tuo Presidente ha già creato la stanza, inserisci il Codice Stanza nel riquadro evidenziato (es. BUZZ1234) e tocca "Entra nella Stanza" per selezionare la tua squadra!');
-                      setSpotlightTarget('HERO_CONNECT');
+                      setFantaBotSpeech('🔑 Se il tuo Presidente ha già creato la stanza, inserisci il codice nel box evidenziato e premi "Entra nella Stanza"!');
+                      triggerSpotlight('HERO_CONNECT');
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
                   >
@@ -2007,7 +2008,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       setFantaBotSpeech('🎮 Questo è il simulatore interattivo: tocca il pulsante circolare dorato BUZZ per testare come funziona il rilancio istantaneo con suoni reali!');
-                      setSpotlightTarget('HERO_SIM');
+                      triggerSpotlight('HERO_SIM');
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
                   >
@@ -2018,7 +2019,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       setFantaBotSpeech('📺 Puoi collegare la TV in 2 modi:\n1. Con un cavo HDMI dal PC/portatile alla TV (consigliato per zero ritardo).\n2. Aprendo il browser della tua Smart TV e digitando direttamente il sito fantasybuzz.vercel.app!');
-                      setSpotlightTarget(null);
+                      triggerSpotlight(null);
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
                   >
@@ -2034,7 +2035,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       setFantaBotSpeech('📱 Clicca sul pulsante dorato "MOSTRA QR CODE" in alto: apparirà il QR a schermo intero pronto per essere inquadrato da tutti gli amici in sala col proprio smartphone!');
-                      setSpotlightTarget('QR');
+                      triggerSpotlight('QR');
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
                   >
@@ -2045,7 +2046,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       setFantaBotSpeech('🔄 Se hai battuto per errore o al mister sbagliato, guarda in alto: il tasto "Annulla Assegnazione" ti permette di annullare all\'istante, ripristinando sia i crediti che il calciatore in asta!');
-                      setSpotlightTarget('UNDO');
+                      triggerSpotlight('UNDO');
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
                   >
@@ -2056,7 +2057,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       setFantaBotSpeech('🧹 In alto a destra premi "⚙️ Gestisci Lega": troverai il tasto per azzerare i contratti di prova e partire puliti per l\'asta ufficiale, conservando squadre e crediti!');
-                      setSpotlightTarget('SETTINGS');
+                      triggerSpotlight('SETTINGS');
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
                   >
@@ -2067,7 +2068,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       setFantaBotSpeech('🔍 In alto al centro trovi la ricerca per nome e i filtri di ruolo (Por, Dif, Cen, Att). Puoi anche usare "🎲 Pesca a Sorte" per chiamare un giocatore casuale!');
-                      setSpotlightTarget('LISTONE');
+                      triggerSpotlight('LISTONE');
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
                   >
@@ -2078,7 +2079,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       setFantaBotSpeech('🔔 Il tasto "Campanella" in alto fa squillare una vibrazione e un rintocco sonoro sincronizzato su tutti i telefoni, ideale per richiamare subito l\'attenzione in sala!');
-                      setSpotlightTarget('BELL');
+                      triggerSpotlight('BELL');
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
                   >
@@ -2094,7 +2095,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       setFantaBotSpeech('⚡ Il pulsante circolare BUZZ alza istantaneamente la tua offerta del valore selezionato (+1, +5, +10 o +20 FM). Se sei già in testa, il buzzer si blocca per evitare auto-rilanci!');
-                      setSpotlightTarget('BUZZER_BIG');
+                      triggerSpotlight('BUZZER_BIG');
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
                   >
@@ -2105,7 +2106,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       setFantaBotSpeech('💰 Sotto i pulsanti rapidi puoi digitare una cifra esatta (es. 45 FM) e premere "Rilancia". Ricorda che non puoi mai superare il tuo Max Bid calcolato automaticamente!');
-                      setSpotlightTarget('BUZZER_EXACT');
+                      triggerSpotlight('BUZZER_EXACT');
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
                   >
@@ -2116,7 +2117,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       setFantaBotSpeech('👕 In alto sul tuo telefono tocca la scheda "La Mia Rosa": puoi consultare in ogni momento i tuoi acquisti suddivisi per ruolo e quanti crediti ti restano!');
-                      setSpotlightTarget('MY_ROSTER_TAB');
+                      triggerSpotlight('MY_ROSTER_TAB');
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
                   >
@@ -2127,7 +2128,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       setFantaBotSpeech('📣 I tasti emoji in basso inviano reazioni visive e sonore che appaiono dal vivo sulla TV principale della sala!');
-                      setSpotlightTarget('REACTIONS');
+                      triggerSpotlight('REACTIONS');
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
                   >
