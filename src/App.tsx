@@ -5,7 +5,7 @@ import {
   Monitor, Timer, Flame, Award, PieChart, AlertCircle, TrendingUp, Gavel,
   RotateCcw, Shuffle, UserPlus, Trash2, Sparkles, QrCode, Volume2, VolumeX,
   FileSignature, ArrowLeft, Info, Copy, Bell, Crown, Settings, RefreshCw,
-  ChevronRight
+  ChevronRight, Menu
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import rawListone from './data/listone.json';
@@ -63,6 +63,7 @@ export const ensureSinglePresident = (list: Coach[]): Coach[] => {
   return list.map((c, i) => ({ ...c, isPresident: i === 0 }));
 };
 
+// 8 Squadre demo standard invariabili di default
 const DEFAULT_DEMO_COACHES: Coach[] = [
   { id: 'c_1', name: 'Mario P.', teamName: 'Sempre Ultimi F.C.', budget: 500, playersCount: 0, isPresident: true, isOnline: true },
   { id: 'c_2', name: 'Pasquale R.', teamName: 'Real Madrink', budget: 500, playersCount: 0, isPresident: false, isOnline: true },
@@ -293,18 +294,20 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<'ALL' | Role>('ALL');
   const [hidePurchased, setHidePurchased] = useState(true);
-  const [startFromOne, setStartFromOne] = useState<boolean>(() => (localStorage.getItem('fb_v31_startFromOne') ?? localStorage.getItem('fb_v30_startFromOne')) !== 'false');
-  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => (localStorage.getItem('fb_v31_voiceEnabled') ?? localStorage.getItem('fb_v30_voiceEnabled')) !== 'false');
+  const [startFromOne, setStartFromOne] = useState<boolean>(() => localStorage.getItem('fb_startFromOne') !== 'false');
+  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => localStorage.getItem('fb_voiceEnabled') !== 'false');
   const [activeLegalSection, setActiveLegalSection] = useState<LegalSection>(null);
 
   const [activeLeagueTab, setActiveLeagueTab] = useState<'REGULAR' | 'REPAIR'>('REPAIR');
 
+  // Gestione drawer mobile per la regia del Presidente
+  const [isMobilePresidentDrawerOpen, setIsMobilePresidentDrawerOpen] = useState(false);
+
   // Assistente FantaBot
   const [isFantaBotOpen, setIsFantaBotOpen] = useState(false);
-  const [fantaBotSpeech, setFantaBotSpeech] = useState<string>('Ciao! Sono FantaBot ⚽🤖. Clicca su una delle domande per vedere le spiegazioni ed evidenziare la funzione!');
+  const [fantaBotSpeech, setFantaBotSpeech] = useState<string>('Ciao! Sono FantaBot ⚽🤖. Come posso aiutarti a gestire al meglio la tua asta?');
   const [spotlightTarget, setSpotlightTarget] = useState<'HERO_START' | 'HERO_CONNECT' | 'HERO_SIM' | 'QR' | 'UNDO' | 'SETTINGS' | 'LISTONE' | 'BELL' | 'BUZZER_BIG' | 'BUZZER_EXACT' | 'MY_ROSTER_TAB' | 'REACTIONS' | null>(null);
 
-  // Helper spotlight a tempo (disattiva la pulsazione dopo 6 secondi)
   const triggerSpotlight = (target: typeof spotlightTarget) => {
     setSpotlightTarget(target);
     if (target) {
@@ -360,18 +363,18 @@ export default function App() {
   const [inputLeagueName, setInputLeagueName] = useState('');
   
   const [roomCode, setRoomCode] = useState(() => {
-    return localStorage.getItem('fb_v31_roomCode') || localStorage.getItem('fb_v30_roomCode') || generateDynamicRoomCode();
+    return localStorage.getItem('fb_current_roomCode') || generateDynamicRoomCode();
   });
 
   const [isSearchingRoom, setIsSearchingRoom] = useState(false);
   const [isRoomCodeConfirmed, setIsRoomCodeConfirmed] = useState(false);
   const [availableRemoteCoaches, setAvailableRemoteCoaches] = useState<Coach[]>([]);
-  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_v31_initialBudget') || localStorage.getItem('fb_v30_initialBudget')) || 500);
-  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_v31_leagueName') || localStorage.getItem('fb_v30_leagueName') || 'FantaLega 2026');
+  const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_initialBudget')) || 500);
+  const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_leagueName') || 'FantaLega 2026');
 
-  // Inizializzazione protetta con un unico Presidente garantito
+  // Gestione autonoma: carica da LocalStorage se esiste per questa specifica stanza, altrimenti parte sempre con le demo pulite
   const [coaches, setCoaches] = useState<Coach[]>(() => {
-    const saved = localStorage.getItem('fb_v31_coaches') || localStorage.getItem('fb_v30_coaches');
+    const saved = localStorage.getItem(`fb_coaches_${roomCode}`);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -392,19 +395,17 @@ export default function App() {
     return ensureSinglePresident(DEFAULT_DEMO_COACHES);
   });
 
-  // Rose indicizzate tramite coach.id
+  // Isolamento delle rose per singola stanza
   const [purchasedPlayers, setPurchasedPlayers] = useState<Record<string, PurchasedItem[]>>(() => {
-    const saved = localStorage.getItem('fb_v31_purchasedPlayers') || localStorage.getItem('fb_v30_purchasedPlayers');
+    const saved = localStorage.getItem(`fb_purchasedPlayers_${roomCode}`);
     if (saved) {
       try {
         const raw = JSON.parse(saved);
-        const migrated: Record<string, PurchasedItem[]> = {};
+        const res: Record<string, PurchasedItem[]> = {};
         Object.entries(raw).forEach(([key, items]) => {
-          const match = coaches.find(c => c.name === key || c.id === key);
-          const targetId = match ? match.id : key;
-          migrated[targetId] = Array.isArray(items) ? items : [];
+          res[key] = Array.isArray(items) ? items : [];
         });
-        return migrated;
+        return res;
       } catch { /* ignore */ }
     }
     return {};
@@ -416,6 +417,20 @@ export default function App() {
   
   const [activeChannel, setActiveChannel] = useState<any>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
+
+  // AUTO-COMPILAZIONE CODICE STANZA DA LINK WHATSAPP / QR CODE (?room=BUZZxxxx)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const paramRoom = params.get('room');
+    if (paramRoom) {
+      const clean = paramRoom.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (clean) {
+        setInputLeagueName(clean);
+        setRoomCode(clean);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (userRole) return;
@@ -449,14 +464,16 @@ export default function App() {
     if (!selectedWinnerManualId && coaches.length > 0) setSelectedWinnerManualId(coaches[0].id);
   }, [coaches, selectedWinnerManualId]);
 
+  // Salvataggio LocalStorage isolato per Room Code
   useEffect(() => {
-    localStorage.setItem('fb_v31_coaches', JSON.stringify(coaches));
-    localStorage.setItem('fb_v31_purchasedPlayers', JSON.stringify(purchasedPlayers));
-    localStorage.setItem('fb_v31_leagueName', leagueName);
-    localStorage.setItem('fb_v31_roomCode', roomCode);
-    localStorage.setItem('fb_v31_initialBudget', String(initialBudget));
-    localStorage.setItem('fb_v31_startFromOne', String(startFromOne));
-    localStorage.setItem('fb_v31_voiceEnabled', String(voiceEnabled));
+    if (!roomCode) return;
+    localStorage.setItem(`fb_coaches_${roomCode}`, JSON.stringify(coaches));
+    localStorage.setItem(`fb_purchasedPlayers_${roomCode}`, JSON.stringify(purchasedPlayers));
+    localStorage.setItem('fb_current_roomCode', roomCode);
+    localStorage.setItem('fb_leagueName', leagueName);
+    localStorage.setItem('fb_initialBudget', String(initialBudget));
+    localStorage.setItem('fb_startFromOne', String(startFromOne));
+    localStorage.setItem('fb_voiceEnabled', String(voiceEnabled));
   }, [coaches, purchasedPlayers, leagueName, roomCode, initialBudget, startFromOne, voiceEnabled]);
 
   const getCoachDisplayById = useCallback((coachId: string | null) => {
@@ -895,7 +912,7 @@ export default function App() {
     const winnerObj = coaches.find(x => x.id === awardModal.winnerId);
     const club = winnerObj?.teamName || awardModal.winnerName;
     const stamp = getViralStampInfo(awardModal.price, awardModal.player.basePrice, initialBudget);
-    const viralText = `🔥 *${stamp.label}* 🔥\n✍️ *${awardModal.player.name}* (${awardModal.player.team}) firma con *${club.toUpperCase()}* (${awardModal.winnerName}) per *${awardModal.price} FM*!\n\n📺 Asta del Fantacalcio trasformata in uno Show TV con *FantasyBuzz*!\n👉 Provalo gratis con la tua lega su ${window.location.origin}`;
+    const viralText = `🔥 *${stamp.label}* 🔥\n✍️ *${awardModal.player.name}* (${awardModal.player.team}) firma con *${club.toUpperCase()}* (${awardModal.winnerName}) per *${awardModal.price} FM*!\n\n📺 Asta del Fantacalcio trasformata in uno Show TV con *FantasyBuzz*!\n👉 Provalo gratis con la tua lega su https://${window.location.host}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(viralText)}`, '_blank');
   };
 
@@ -1306,6 +1323,13 @@ export default function App() {
 
               <div className="flex items-center gap-2">
                 <button
+                  onClick={() => setIsMobilePresidentDrawerOpen(!isMobilePresidentDrawerOpen)}
+                  className="lg:hidden bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 font-black px-2.5 py-0.5 rounded-lg text-[10px] uppercase cursor-pointer flex items-center gap-1 shadow-sm"
+                >
+                  <Menu size={11} /> Squadre & Comandi
+                </button>
+
+                <button
                   onClick={() => setShowLeagueSettingsModal(true)}
                   className={`border font-black px-2.5 py-0.5 rounded-lg text-[10px] uppercase cursor-pointer flex items-center gap-1 shadow-sm transition-all ${
                     spotlightTarget === 'SETTINGS'
@@ -1315,7 +1339,7 @@ export default function App() {
                 >
                   <Settings size={11} /> ⚙️ Gestisci Lega / Azzera per Asta Vera
                 </button>
-                <button onClick={() => setShowWelcomeGuide(true)} className="bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 font-black px-2 py-0.5 rounded-lg text-[10px] uppercase cursor-pointer flex items-center gap-1"><Info size={11} /> Invita Amici</button>
+                <button onClick={() => setShowWelcomeGuide(true)} className="hidden sm:flex bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 font-black px-2 py-0.5 rounded-lg text-[10px] uppercase cursor-pointer items-center gap-1"><Info size={11} /> Invita Amici</button>
               </div>
             </div>
           )}
@@ -1360,7 +1384,7 @@ export default function App() {
               )}
 
               {userRole === 'PRESIDENT' && (
-                <div className="flex gap-1 bg-[#020A06] p-1 rounded-xl border border-emerald-900/50">
+                <div className="hidden sm:flex gap-1 bg-[#020A06] p-1 rounded-xl border border-emerald-900/50">
                   <button onClick={() => setActiveTab('AUCTION')} className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-all ${activeTab === 'AUCTION' ? 'bg-amber-500 text-slate-950 font-black shadow-md' : 'text-slate-400 hover:text-white'}`}><Zap size={12} /> Campo Asta</button>
                   <button onClick={() => setActiveTab('ROSTERS')} className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-all ${activeTab === 'ROSTERS' ? 'bg-amber-500 text-slate-950 font-black shadow-md' : 'text-slate-400 hover:text-white'}`}><Shirt size={12} /> Rose ({totalPurchasesCount})</button>
                   <button onClick={() => setActiveTab('HIGHLIGHTS')} className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-all ${activeTab === 'HIGHLIGHTS' ? 'bg-emerald-500 text-slate-950 font-black shadow-md' : 'text-slate-400 hover:text-white'}`}><Award size={12} /> Classifiche</button>
@@ -1393,16 +1417,16 @@ export default function App() {
                     }`}
                     title="Suona la Campanella in diretta su tutti gli smartphone"
                   >
-                    <Bell size={13} /> 🔔 Campanella
+                    <Bell size={13} /> <span className="hidden sm:inline">🔔 Campanella</span>
                   </button>
                   <button
                     onClick={() => setVoiceEnabled(!voiceEnabled)}
-                    className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border cursor-pointer flex items-center gap-1 transition-colors ${voiceEnabled ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-rose-500/20 text-rose-300 border-rose-500/40'}`}
+                    className={`hidden sm:flex px-2.5 py-1.5 rounded-xl text-xs font-bold border cursor-pointer items-center gap-1 transition-colors ${voiceEnabled ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-rose-500/20 text-rose-300 border-rose-500/40'}`}
                   >
                     {voiceEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
-                    {voiceEnabled ? '🔊 Speaker ON' : '🔇 Muto'}
+                    {voiceEnabled ? '🔊 ON' : '🔇 Muto'}
                   </button>
-                  <button onClick={handleShareWhatsAppInvite} className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500 text-slate-950 flex items-center gap-1 cursor-pointer"><Share2 size={12} /> WhatsApp</button>
+                  <button onClick={handleShareWhatsAppInvite} className="hidden sm:flex px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500 text-slate-950 items-center gap-1 cursor-pointer"><Share2 size={12} /> WhatsApp</button>
                   
                   {lastAwardSnapshot && (
                     <button 
@@ -1413,11 +1437,11 @@ export default function App() {
                           : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                       }`}
                     >
-                      <RotateCcw size={12} /> Annulla Assegnazione ({lastAwardSnapshot.price} FM)
+                      <RotateCcw size={12} /> Annulla ({lastAwardSnapshot.price} FM)
                     </button>
                   )}
                   
-                  <button onClick={() => setIsPureTvDisplay(!isPureTvDisplay)} className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-200 cursor-pointer"><Monitor size={12} /></button>
+                  <button onClick={() => setIsPureTvDisplay(!isPureTvDisplay)} className="hidden sm:flex px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-200 cursor-pointer"><Monitor size={12} /></button>
                 </>
               )}
               <button onClick={() => { setUserRole(null); setPlayerCoachId(''); setActiveTab('AUCTION'); }} className="text-xs bg-slate-800 text-slate-400 font-bold px-2.5 py-1.5 rounded-xl cursor-pointer"><LogOut size={12} /></button>
@@ -1567,7 +1591,8 @@ export default function App() {
                     </div>
                   )}
 
-                  <aside className="w-full lg:w-[275px] shrink-0 bg-[#04160E]/95 rounded-2xl p-3 flex flex-col gap-2 overflow-hidden border border-emerald-500/30 shadow-xl backdrop-blur-md">
+                  {/* ASIDE SQUADRE: Nascosto su smartphone, visibile sul grande schermo desktop o nel Drawer */}
+                  <aside className="hidden lg:flex w-[275px] shrink-0 bg-[#04160E]/95 rounded-2xl p-3 flex-col gap-2 overflow-hidden border border-emerald-500/30 shadow-xl backdrop-blur-md">
                     <div className="flex justify-between pb-1.5 border-b border-emerald-500/20 text-xs font-black text-emerald-400">
                       <span className="flex items-center gap-1"><Trophy size={13} className="text-amber-400" /> Club in Sala</span>
                       <span className="text-[10px] text-amber-300">👆 Clicca = +1 FM</span>
@@ -1612,7 +1637,7 @@ export default function App() {
 
                   {/* === PALCO CENTRALE CAMPO DA CALCIO CON LUCI STADIO === */}
                   <section
-                    className={`w-full lg:flex-1 shrink-0 min-h-[440px] lg:min-h-0 rounded-2xl p-3 flex flex-col items-center justify-between relative overflow-hidden border-2 shadow-2xl transition-all duration-300 ${
+                    className={`w-full lg:flex-1 shrink-0 min-h-[440px] lg:min-h-0 rounded-2xl p-2.5 sm:p-3 flex flex-col items-center justify-between relative overflow-hidden border-2 shadow-2xl transition-all duration-300 ${
                       isBlinking ? 'border-amber-400 shadow-[0_0_40px_rgba(245,158,11,0.6)]' : 'border-emerald-500/50'
                     }`}
                     style={{
@@ -1672,7 +1697,7 @@ export default function App() {
                           className={`px-2.5 py-1 rounded-lg text-xs font-black cursor-pointer border transition-colors ${activeLeagueTab === 'REPAIR' ? 'bg-emerald-500 text-slate-950 border-emerald-300 shadow' : 'bg-[#020A06] text-emerald-400 border-emerald-800'}`}
                           title="Filtra solo i calciatori svincolati per Aste di Riparazione"
                         >
-                          {activeLeagueTab === 'REPAIR' ? '🔄 Solo Svincolati (Riparazione)' : '📋 Listone Completo'}
+                          {activeLeagueTab === 'REPAIR' ? '🔄 Solo Svincolati' : '📋 Listone'}
                         </button>
                         <button onClick={() => setStartFromOne(!startFromOne)} className="px-2 py-1 bg-[#020A06] border border-emerald-950 rounded-lg text-xs font-bold text-amber-400 cursor-pointer">Base: {startFromOne ? '1 FM' : 'Quotazione'}</button>
                         <label className="flex items-center gap-1 text-xs text-slate-300 cursor-pointer font-bold"><input type="checkbox" checked={hidePurchased} onChange={e => setHidePurchased(e.target.checked)} /> Solo Liberi</label>
@@ -1687,7 +1712,7 @@ export default function App() {
                     <div className="flex flex-col items-center justify-center my-auto z-10 text-center space-y-2 py-2">
                       {activeDuel && <div className="bg-rose-600/40 border border-rose-400 px-4 py-1 rounded-full text-xs font-black uppercase text-rose-100 animate-pulse tracking-wider">🔥 SFIDA: {activeDuel} 🔥</div>}
                       
-                      <div className="bg-[#051C12]/95 border-2 border-amber-400/90 rounded-3xl p-4 md:p-5 shadow-[0_12px_45px_rgba(0,0,0,0.85)] max-w-md w-full relative overflow-hidden backdrop-blur-md">
+                      <div className="bg-[#051C12]/95 border-2 border-amber-400/90 rounded-3xl p-3 sm:p-5 shadow-[0_12px_45px_rgba(0,0,0,0.85)] max-w-md w-full relative overflow-hidden backdrop-blur-md">
                         <div className="flex items-center justify-between gap-2 pb-2 border-b border-emerald-900/60">
                           <span className={`text-xs px-2.5 py-0.5 rounded-full ${getRoleBadge(activePlayer.role)} shadow-sm`}>{activePlayer.role}</span>
                           <div className="flex items-center gap-1.5 text-xs font-bold text-white bg-[#020A06] px-3 py-1 rounded-full border border-emerald-900/80">
@@ -1700,16 +1725,16 @@ export default function App() {
                         </div>
 
                         <div className="my-2 flex justify-center">
-                          <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-[#020A06] border-2 border-amber-400 flex items-center justify-center shadow-[0_0_22px_rgba(245,158,11,0.35)]">
-                            <span className="text-3xl md:text-4xl font-black text-amber-400 uppercase">{activePlayer.name.charAt(0)}</span>
+                          <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-[#020A06] border-2 border-amber-400 flex items-center justify-center shadow-[0_0_22px_rgba(245,158,11,0.35)]">
+                            <span className="text-2xl sm:text-4xl font-black text-amber-400 uppercase">{activePlayer.name.charAt(0)}</span>
                           </div>
                         </div>
 
-                        <h2 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tight drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] truncate max-w-sm">
+                        <h2 className="text-2xl sm:text-5xl font-black text-white uppercase tracking-tight drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] truncate max-w-sm">
                           {activePlayer.name}
                         </h2>
 
-                        <div className="flex justify-center items-center gap-3 text-xs font-bold text-slate-200 bg-[#020A06] px-4 py-1.5 rounded-2xl border border-emerald-900/80 mt-2">
+                        <div className="flex justify-center items-center gap-2 sm:gap-3 text-xs font-bold text-slate-200 bg-[#020A06] px-3 sm:px-4 py-1.5 rounded-2xl border border-emerald-900/80 mt-2">
                           <span>Base: <strong className="text-amber-400 font-black">{activePlayer.basePrice} FM</strong></span>
                           <span className="text-slate-600">•</span>
                           <span>MV: <strong className="text-emerald-400 font-black">{activePlayer.mv || '6.00'}</strong></span>
@@ -1719,24 +1744,24 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="w-full max-w-3xl bg-[#04160E]/95 p-3.5 rounded-2xl flex flex-col gap-2 z-10 border border-emerald-500/30 shadow-2xl backdrop-blur-md">
+                    <div className="w-full max-w-3xl bg-[#04160E]/95 p-3 rounded-2xl flex flex-col gap-2 z-10 border border-emerald-500/30 shadow-2xl backdrop-blur-md">
                       <div className="flex flex-wrap justify-between items-center gap-2">
                         <div>
                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">SOCIETÀ IN TESTA</span>
-                          <p className="text-base text-emerald-400 font-black uppercase flex items-center gap-1.5">
+                          <p className="text-sm sm:text-base text-emerald-400 font-black uppercase flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                             {highestBidderId ? getCoachDisplayById(highestBidderId) : `Si parte da ${startingPrice} FM`}
                           </p>
                         </div>
 
-                        <div className="text-4xl md:text-6xl font-black text-amber-400 drop-shadow-md">
-                          {currentBid || startingPrice} <span className="text-xl md:text-2xl font-bold">FM</span>
+                        <div className="text-3xl sm:text-6xl font-black text-amber-400 drop-shadow-md">
+                          {currentBid || startingPrice} <span className="text-lg sm:text-2xl font-bold">FM</span>
                         </div>
 
                         <div className="flex gap-1.5">
-                          <button onClick={() => { setCountdown(3); if (activeChannel) activeChannel.send({ type: 'broadcast', event: 'start_countdown', payload: { seconds: 3 } }); }} className="px-3.5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center gap-1 cursor-pointer shadow-md transition-all active:scale-95"><Timer size={15} /> 🔔 3s Gong</button>
-                          <button onClick={handleNextPlayer} className="px-3 py-2.5 bg-[#020A06] hover:bg-slate-900 text-slate-200 font-bold rounded-xl text-xs uppercase flex items-center gap-1 cursor-pointer border border-emerald-950"><SkipForward size={14} /> Salta (A→Z)</button>
-                          <button onClick={handleAward} className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center gap-1.5 cursor-pointer shadow-lg transition-all active:scale-95"><Gavel size={16} /> Aggiudica</button>
+                          <button onClick={() => { setCountdown(3); if (activeChannel) activeChannel.send({ type: 'broadcast', event: 'start_countdown', payload: { seconds: 3 } }); }} className="px-3 py-2 sm:px-3.5 sm:py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center gap-1 cursor-pointer shadow-md transition-all active:scale-95"><Timer size={14} /> 3s Gong</button>
+                          <button onClick={handleNextPlayer} className="px-3 py-2 sm:px-3 sm:py-2.5 bg-[#020A06] hover:bg-slate-900 text-slate-200 font-bold rounded-xl text-xs uppercase flex items-center gap-1 cursor-pointer border border-emerald-950"><SkipForward size={14} /> Salta</button>
+                          <button onClick={handleAward} className="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center gap-1.5 cursor-pointer shadow-lg transition-all active:scale-95"><Gavel size={15} /> Aggiudica</button>
                         </div>
                       </div>
 
@@ -1744,24 +1769,24 @@ export default function App() {
                         <select 
                           value={selectedWinnerManualId} 
                           onChange={e => setSelectedWinnerManualId(e.target.value)} 
-                          className="bg-[#020A06] border border-emerald-900 rounded-lg px-2.5 py-1.5 text-xs font-bold text-amber-400 focus:outline-none"
+                          className="bg-[#020A06] border border-emerald-900 rounded-lg px-2 py-1.5 text-xs font-bold text-amber-400 focus:outline-none max-w-[140px] sm:max-w-none truncate"
                         >
                           {coaches.map(c => <option key={c.id} value={c.id}>{c.teamName} - {c.name} ({c.budget} FM)</option>)}
                         </select>
                         
-                        <div className="flex flex-wrap items-center gap-1.5 flex-1 justify-end">
+                        <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 flex-1 justify-end">
                           {[1, 5, 10, 20].map(s => (
-                            <button key={s} onClick={() => { setSelectedStep(s); handleRaise(s); }} className="px-3 py-1.5 rounded-xl text-xs font-black bg-[#020A06] text-white border border-emerald-900 hover:border-amber-400 hover:text-amber-300 transition-colors cursor-pointer">+{s} FM</button>
+                            <button key={s} onClick={() => { setSelectedStep(s); handleRaise(s); }} className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl text-xs font-black bg-[#020A06] text-white border border-emerald-900 hover:border-amber-400 hover:text-amber-300 transition-colors cursor-pointer">+{s}</button>
                           ))}
                           
                           <div className="flex items-center gap-1 bg-[#020A06] border border-emerald-900 rounded-xl px-1.5 py-1">
                             <input 
                               type="number" 
-                              placeholder="FM Esatti..." 
+                              placeholder="FM..." 
                               value={customBidInput} 
                               onChange={e => setCustomBidInput(e.target.value)} 
                               onKeyDown={e => { if (e.key === 'Enter') handleCustomExactBid(); }}
-                              className="w-20 bg-transparent text-xs font-bold text-emerald-400 text-center focus:outline-none placeholder-slate-500" 
+                              className="w-14 sm:w-20 bg-transparent text-xs font-bold text-emerald-400 text-center focus:outline-none placeholder-slate-500" 
                             />
                             <button
                               type="button"
@@ -1950,10 +1975,49 @@ export default function App() {
         </div>
       )}
 
+      {/* DRAWER SQUADRE SU MOBILE PER IL PRESIDENTE */}
+      {isMobilePresidentDrawerOpen && userRole === 'PRESIDENT' && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex justify-end">
+          <div className="w-[85vw] max-w-sm h-full bg-[#061A12] border-l border-emerald-500/40 p-4 flex flex-col gap-3 overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-emerald-500/30 pb-2">
+              <span className="text-sm font-black text-amber-400 uppercase flex items-center gap-1.5"><Trophy size={16} /> Club in Sala</span>
+              <button onClick={() => setIsMobilePresidentDrawerOpen(false)} className="text-slate-400 hover:text-white p-1"><X size={18} /></button>
+            </div>
+
+            <div className="space-y-2 flex-1 overflow-y-auto">
+              {coaches.map(c => (
+                <div
+                  key={c.id}
+                  onClick={() => { setSelectedWinnerManualId(c.id); handleRaise(1, c.id); setIsMobilePresidentDrawerOpen(false); }}
+                  className={`p-2.5 rounded-xl border text-xs cursor-pointer ${highestBidderId === c.id ? 'bg-emerald-500/30 border-emerald-400' : 'bg-[#020A06] border-emerald-950'}`}
+                >
+                  <div className="flex justify-between">
+                    <div>
+                      <strong className="text-white block uppercase">{c.teamName}</strong>
+                      <span className="text-slate-400 text-[10px]">{c.name}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-amber-400 font-black">{c.budget} FM</span>
+                      <span className="text-[10px] text-emerald-400 block">Max: {getCoachMaxBidById(c.id)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 border-t border-emerald-900/60 flex flex-col gap-2">
+              <button onClick={() => { setShowQrModal(true); setIsMobilePresidentDrawerOpen(false); }} className="w-full py-2 bg-amber-500 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-1"><QrCode size={14} /> Mostra QR Code</button>
+              <button onClick={() => { handleRingBroadcastBell(); setIsMobilePresidentDrawerOpen(false); }} className="w-full py-2 bg-amber-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-1"><Bell size={14} /> Campanella</button>
+              <button onClick={() => { handleShareWhatsAppInvite(); setIsMobilePresidentDrawerOpen(false); }} className="w-full py-2 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-1"><Share2 size={14} /> Invita WhatsApp</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ======================================================== */}
       {/* 4. FANTABOT CONTESTUALE PER LE 3 SCHERMATE (z-50)       */}
       {/* ======================================================== */}
-      <div className="fixed bottom-10 right-4 z-50 flex flex-col items-end">
+      <div className="fixed bottom-12 right-3 sm:bottom-10 sm:right-4 z-50 flex flex-col items-end">
         {isFantaBotOpen && (
           <div className="mb-2 w-80 max-w-[90vw] bg-[#091526]/95 border-2 border-cyan-400/80 rounded-2xl p-3.5 shadow-[0_0_35px_rgba(56,189,248,0.45)] backdrop-blur-xl text-left text-xs animate-in fade-in slide-in-from-bottom-3 duration-200 z-50">
             <div className="flex items-center justify-between border-b border-slate-700/80 pb-2 mb-2">
@@ -2018,7 +2082,7 @@ export default function App() {
 
                   <button
                     onClick={() => {
-                      setFantaBotSpeech('📺 Puoi collegare la TV in 2 modi:\n1. Con un cavo HDMI dal PC/portatile alla TV (consigliato per zero ritardo).\n2. Aprendo il browser della tua Smart TV e digitando direttamente il sito fantasybuzz.vercel.app!');
+                      setFantaBotSpeech(`📺 Puoi collegare la TV in 2 modi:\n1. Con un cavo HDMI dal PC/portatile alla TV (consigliato per zero ritardo).\n2. Aprendo il browser della tua Smart TV e digitando direttamente https://${window.location.host}!`);
                       triggerSpotlight(null);
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
@@ -2611,8 +2675,14 @@ export default function App() {
                   ? customLeagueInput.trim().toUpperCase().replace(/[^A-Z0-9]/g, '') 
                   : generateDynamicRoomCode();
                 
-                const finalCoaches = ensureSinglePresident(coaches);
+                // Reset rigoroso dei crediti e delle rose per la nuova stanza creata
+                const finalCoaches = ensureSinglePresident(coaches).map(c => ({
+                  ...c,
+                  budget: initialBudget,
+                  playersCount: 0
+                }));
 
+                setPurchasedPlayers({});
                 setCoaches(finalCoaches);
                 setLeagueName(n); 
                 setRoomCode(newCode);
