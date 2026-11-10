@@ -5,7 +5,7 @@ import {
   Monitor, Timer, Flame, Award, PieChart, AlertCircle, TrendingUp, Gavel,
   RotateCcw, Shuffle, UserPlus, Trash2, Sparkles, QrCode, Volume2, VolumeX,
   FileSignature, ArrowLeft, Info, Copy, Bell, Crown, Settings, RefreshCw,
-  ChevronRight, Menu, Smartphone, PlusSquare
+  ChevronRight, Menu, Smartphone, PlusSquare, Send
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import rawListone from './data/listone.json';
@@ -63,11 +63,12 @@ export const ensureSinglePresident = (list: Coach[]): Coach[] => {
   return list.map((c, i) => ({ ...c, isPresident: i === 0 }));
 };
 
+// Solo il presidente online di default
 const DEFAULT_DEMO_COACHES: Coach[] = [
   { id: 'c_1', name: 'Mario P.', teamName: 'Sempre Ultimi F.C.', budget: 500, playersCount: 0, isPresident: true, isOnline: true },
-  { id: 'c_2', name: 'Pasquale R.', teamName: 'Real Madrink', budget: 500, playersCount: 0, isPresident: false, isOnline: true },
+  { id: 'c_2', name: 'Pasquale R.', teamName: 'Real Madrink', budget: 500, playersCount: 0, isPresident: false, isOnline: false },
   { id: 'c_3', name: 'Gianni L.', teamName: 'Atletico Ma Non Troppo', budget: 500, playersCount: 0, isPresident: false, isOnline: false },
-  { id: 'c_4', name: 'Marco T.', teamName: 'AC Tua', budget: 500, playersCount: 0, isPresident: false, isOnline: true },
+  { id: 'c_4', name: 'Marco T.', teamName: 'AC Tua', budget: 500, playersCount: 0, isPresident: false, isOnline: false },
   { id: 'c_5', name: 'Davide B.', teamName: 'Dinamo Losca', budget: 500, playersCount: 0, isPresident: false, isOnline: false },
   { id: 'c_6', name: 'Simone V.', teamName: 'Borussia Porkmund', budget: 500, playersCount: 0, isPresident: false, isOnline: false },
   { id: 'c_7', name: 'Luca F.', teamName: 'Paris San Gennaro', budget: 500, playersCount: 0, isPresident: false, isOnline: false },
@@ -310,7 +311,7 @@ export default function App() {
   // Assistente FantaBot
   const [isFantaBotOpen, setIsFantaBotOpen] = useState(false);
   const [fantaBotSpeech, setFantaBotSpeech] = useState<string>('Ciao! Sono FantaBot ⚽🤖. Come posso aiutarti a gestire al meglio la tua asta?');
-  const [spotlightTarget, setSpotlightTarget] = useState<'HERO_START' | 'HERO_CONNECT' | 'HERO_SIM' | 'QR' | 'UNDO' | 'SETTINGS' | 'LISTONE' | 'BELL' | 'BUZZER_BIG' | 'BUZZER_EXACT' | 'MY_ROSTER_TAB' | 'REACTIONS' | null>(null);
+  const [spotlightTarget, setSpotlightTarget] = useState<'HERO_START' | 'HERO_CONNECT' | 'HERO_SIM' | 'QR' | 'UNDO' | 'SETTINGS' | 'LISTONE' | 'BELL' | 'BUZZER_BIG' | 'BUZZER_EXACT' | 'MY_ROSTER_TAB' | 'REACTIONS' | 'ROSTERS_TAB' | null>(null);
 
   const triggerSpotlight = (target: typeof spotlightTarget) => {
     setSpotlightTarget(target);
@@ -376,7 +377,7 @@ export default function App() {
   const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_initialBudget')) || 500);
   const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_leagueName') || 'FantaLega 2026');
 
-  // Gestione squadre isolata per singola stanza
+  // Gestione squadre: parte sempre con le demo pulite
   const [coaches, setCoaches] = useState<Coach[]>(() => {
     const saved = localStorage.getItem(`fb_coaches_${roomCode}`);
     if (saved) {
@@ -399,7 +400,7 @@ export default function App() {
     return ensureSinglePresident(DEFAULT_DEMO_COACHES);
   });
 
-  // Isolamento delle rose per singola stanza
+  // Isolamento rose per singola stanza
   const [purchasedPlayers, setPurchasedPlayers] = useState<Record<string, PurchasedItem[]>>(() => {
     const saved = localStorage.getItem(`fb_purchasedPlayers_${roomCode}`);
     if (saved) {
@@ -422,16 +423,13 @@ export default function App() {
   const [activeChannel, setActiveChannel] = useState<any>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
 
-  // RILEVAMENTO PWA (ANDROID & IOS)
+  // Rilevamento installazione PWA (Android / iOS)
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
-    // Rileva iOS Safari
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isIos = /iphone|ipad|ipod/.test(userAgent);
     setIsIosDevice(isIos);
 
-    // Evento Chrome / Android PWA
     const handleBeforeInstall = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -454,7 +452,7 @@ export default function App() {
     }
   };
 
-  // AUTO-COMPILAZIONE CODICE STANZA DA LINK WHATSAPP / QR CODE (?room=BUZZxxxx)
+  // Compilazione automatica stanza da QR o link WhatsApp (?room=BUZZxxxx)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
@@ -500,7 +498,7 @@ export default function App() {
     if (!selectedWinnerManualId && coaches.length > 0) setSelectedWinnerManualId(coaches[0].id);
   }, [coaches, selectedWinnerManualId]);
 
-  // Salvataggio LocalStorage isolato per Room Code
+  // Salvataggio localStorage isolato per Room Code
   useEffect(() => {
     if (!roomCode) return;
     localStorage.setItem(`fb_coaches_${roomCode}`, JSON.stringify(coaches));
@@ -952,6 +950,28 @@ export default function App() {
     window.open(`https://wa.me/?text=${encodeURIComponent(viralText)}`, '_blank');
   };
 
+  const handleShareRosterWhatsApp = (coachId: string) => {
+    const coachObj = coaches.find(x => x.id === coachId);
+    if (!coachObj) return;
+    const items = purchasedPlayers[coachId] || [];
+    let text = `📋 *ROSA UFFICIALE: ${coachObj.teamName.toUpperCase()}* (Mister: ${coachObj.name})\n`;
+    text += `💰 Crediti Residui: *${coachObj.budget} FM* • Calciatori: *${items.length}/25*\n\n`;
+
+    (['P', 'D', 'C', 'A'] as const).forEach(role => {
+      const roleName = role === 'P' ? 'PORTIERI' : role === 'D' ? 'DIFENSORI' : role === 'C' ? 'CENTROCAMPISTI' : 'ATTACCANTI';
+      const roleItems = items.filter(i => i.player.role === role);
+      text += `*${roleName} (${roleItems.length}):*\n`;
+      if (roleItems.length === 0) text += `_Nessun acquisto_\n`;
+      roleItems.forEach(i => {
+        text += `• ${i.player.name} (${i.player.team}) - ${i.price} FM\n`;
+      });
+      text += `\n`;
+    });
+
+    text += `⚡ Generato con FantasyBuzz - https://${window.location.host}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
   const handleDownloadSocialCard = async () => {
     if (!awardModal) return;
     const winnerObj = coaches.find(x => x.id === awardModal.winnerId);
@@ -1338,9 +1358,9 @@ export default function App() {
           {/* 2. REGIA TV (Ruolo: PRESIDENTE)                         */}
           {/* ======================================================== */}
           {userRole === 'PRESIDENT' && (
-            <div className="bg-[#051C12]/90 border border-emerald-500/40 rounded-xl px-3 py-1 mb-1 flex items-center justify-between text-xs shrink-0 backdrop-blur-md">
-              <div className="flex items-center gap-3">
-                <span className="text-slate-200">🎁 <strong className="text-emerald-400">Asta Ufficiale:</strong> Stanza live attiva per tutta la fanta-lega.</span>
+            <div className="bg-[#051C12]/90 border border-emerald-500/40 rounded-xl px-2.5 py-1 mb-1 flex items-center justify-between text-xs shrink-0 backdrop-blur-md">
+              <div className="flex items-center gap-2">
+                <span className="text-slate-200 truncate max-w-[170px] sm:max-w-none">🎁 <strong className="text-emerald-400">Asta Ufficiale:</strong> {roomCode}</span>
                 
                 {showRoomCodeArrow && (
                   <button
@@ -1348,11 +1368,11 @@ export default function App() {
                       setShowQrModal(true);
                       setShowRoomCodeArrow(false);
                     }}
-                    className="hidden sm:inline-flex items-center gap-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[10px] uppercase px-2.5 py-0.5 rounded-full shadow-md cursor-pointer transition-transform active:scale-95 animate-pulse"
+                    className="hidden md:inline-flex items-center gap-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[10px] uppercase px-2 py-0.5 rounded-full shadow-md cursor-pointer transition-transform active:scale-95 animate-pulse"
                     title="Clicca per aprire il QR Code per i tuoi amici"
                   >
-                    <ArrowLeft size={12} className="text-slate-950 shrink-0" />
-                    <span>📱 Fai inquadrare il QR Code a sinistra</span>
+                    <ArrowLeft size={11} className="text-slate-950 shrink-0" />
+                    <span>📱 QR Code</span>
                     <span 
                       className="text-slate-700 hover:text-black ml-1 text-xs" 
                       onClick={(e) => { e.stopPropagation(); setShowRoomCodeArrow(false); }}
@@ -1364,26 +1384,32 @@ export default function App() {
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setIsMobilePresidentDrawerOpen(!isMobilePresidentDrawerOpen)}
-                  className="lg:hidden bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 font-black px-2.5 py-0.5 rounded-lg text-[10px] uppercase cursor-pointer flex items-center gap-1 shadow-sm"
+                  className="lg:hidden bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 font-black px-2 py-1 rounded-lg text-[10px] uppercase cursor-pointer flex items-center gap-1 shadow-sm"
                 >
-                  <Menu size={11} /> Squadre & Comandi
+                  <Menu size={12} /> Squadre & Comandi
                 </button>
 
                 <button
                   onClick={() => setShowLeagueSettingsModal(true)}
-                  className={`border font-black px-2.5 py-0.5 rounded-lg text-[10px] uppercase cursor-pointer flex items-center gap-1 shadow-sm transition-all ${
+                  className={`border font-black px-2 py-1 rounded-lg text-[10px] uppercase cursor-pointer flex items-center gap-1 shadow-sm transition-all ${
                     spotlightTarget === 'SETTINGS'
                       ? 'bg-purple-600 text-white border-white ring-4 ring-amber-400 shadow-[0_0_35px_rgba(245,158,11,1)] scale-105 animate-pulse'
                       : 'bg-purple-600/30 border-purple-400/50 text-purple-200 hover:bg-purple-600/40'
                   }`}
                 >
-                  <Settings size={11} /> ⚙️ Gestisci Lega / Azzera per Asta Vera
+                  <Settings size={11} /> <span className="hidden sm:inline">⚙️ Gestisci Lega</span>
                 </button>
-                <button onClick={() => setShowWelcomeGuide(true)} className="hidden sm:flex bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 font-black px-2 py-0.5 rounded-lg text-[10px] uppercase cursor-pointer items-center gap-1"><Info size={11} /> Invita Amici</button>
-                <button onClick={handleTriggerInstall} className="hidden sm:flex bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 font-black px-2 py-0.5 rounded-lg text-[10px] uppercase cursor-pointer items-center gap-1"><Smartphone size={11} /> Salva App</button>
+
+                <button 
+                  onClick={handleTriggerInstall} 
+                  className="bg-cyan-500/20 border border-cyan-400/60 text-cyan-300 font-black px-2 py-1 rounded-lg text-[10px] uppercase cursor-pointer flex items-center gap-1 shadow-sm"
+                  title="Salva l'app sul telefono"
+                >
+                  <Smartphone size={11} /> <span className="hidden sm:inline">Salva App</span>
+                </button>
               </div>
             </div>
           )}
@@ -1399,8 +1425,8 @@ export default function App() {
           )}
 
           <header className="flex flex-wrap justify-between items-center p-2 px-3 rounded-2xl bg-[#04160E]/95 border border-emerald-500/30 shrink-0 gap-2 relative shadow-lg backdrop-blur-md">
-            <div className="flex items-center gap-3">
-              <BuzzMark size={26} />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <BuzzMark size={24} />
               <div>
                 <h1 className="text-xs font-black text-white uppercase flex items-center gap-1.5 tracking-wider">
                   FantasyBuzz
@@ -1416,36 +1442,36 @@ export default function App() {
                     setShowQrModal(true);
                     setShowRoomCodeArrow(false);
                   }}
-                  className={`border-2 px-3 py-1 rounded-xl flex items-center gap-2 cursor-pointer transition-all shadow-md ${
+                  className={`border-2 px-2.5 py-1 rounded-xl flex items-center gap-1.5 cursor-pointer transition-all shadow-md ${
                     spotlightTarget === 'QR' 
                       ? 'bg-amber-400 text-slate-950 border-white ring-4 ring-amber-300 shadow-[0_0_35px_rgba(245,158,11,1)] scale-105 animate-pulse' 
                       : 'bg-amber-500/20 border-amber-400 text-white hover:bg-amber-500/30'
                   }`}
                 >
-                  <QrCode size={15} className={spotlightTarget === 'QR' ? 'text-slate-950' : 'text-amber-400'} />
-                  <span className="text-xs font-black">MOSTRA QR CODE ({roomCode})</span>
+                  <QrCode size={14} className={spotlightTarget === 'QR' ? 'text-slate-950' : 'text-amber-400'} />
+                  <span className="text-[10px] sm:text-xs font-black">QR ({roomCode})</span>
                 </button>
               )}
 
               {userRole === 'PRESIDENT' && (
                 <div className="hidden sm:flex gap-1 bg-[#020A06] p-1 rounded-xl border border-emerald-900/50">
                   <button onClick={() => setActiveTab('AUCTION')} className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-all ${activeTab === 'AUCTION' ? 'bg-amber-500 text-slate-950 font-black shadow-md' : 'text-slate-400 hover:text-white'}`}><Zap size={12} /> Campo Asta</button>
-                  <button onClick={() => setActiveTab('ROSTERS')} className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-all ${activeTab === 'ROSTERS' ? 'bg-amber-500 text-slate-950 font-black shadow-md' : 'text-slate-400 hover:text-white'}`}><Shirt size={12} /> Rose ({totalPurchasesCount})</button>
+                  <button onClick={() => setActiveTab('ROSTERS')} className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-all ${activeTab === 'ROSTERS' || spotlightTarget === 'ROSTERS_TAB' ? 'bg-amber-500 text-slate-950 font-black shadow-md ring-2 ring-amber-300' : 'text-slate-400 hover:text-white'}`}><Shirt size={12} /> Rose ({totalPurchasesCount})</button>
                   <button onClick={() => setActiveTab('HIGHLIGHTS')} className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-all ${activeTab === 'HIGHLIGHTS' ? 'bg-emerald-500 text-slate-950 font-black shadow-md' : 'text-slate-400 hover:text-white'}`}><Award size={12} /> Classifiche</button>
                 </div>
               )}
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 bg-[#020A06] px-2.5 py-1 rounded-xl border border-emerald-900/50 text-[10px] font-bold">
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 bg-[#020A06] px-2 py-1 rounded-xl border border-emerald-900/50 text-[10px] font-bold">
                 <span className="flex items-center gap-1 text-slate-200">
                   <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.9)]' : 'bg-rose-500'}`} />
-                  Server: <strong className={isConnected ? 'text-emerald-400' : 'text-rose-400'}>{isConnected ? 'Online' : 'Offline'}</strong>
+                  <strong className={isConnected ? 'text-emerald-400' : 'text-rose-400'}>{isConnected ? 'Live' : 'Off'}</strong>
                 </span>
                 {userRole === 'PRESIDENT' && (
                   <>
                     <span className="text-slate-600">|</span>
-                    <span className="text-amber-300">In Sala: <strong>{coaches.filter(c => c.isOnline !== false).length}/{coaches.length}</strong></span>
+                    <span className="text-amber-300">Sala: <strong>{coaches.filter(c => c.isOnline).length}/{coaches.length}</strong></span>
                   </>
                 )}
               </div>
@@ -1454,41 +1480,36 @@ export default function App() {
                 <>
                   <button
                     onClick={handleRingBroadcastBell}
-                    className={`px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 cursor-pointer shadow-md transition-all active:scale-95 ${
+                    className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-black flex items-center gap-1 cursor-pointer shadow-md transition-all active:scale-95 ${
                       spotlightTarget === 'BELL'
                         ? 'bg-amber-400 text-slate-950 ring-4 ring-amber-300 shadow-[0_0_35px_rgba(245,158,11,1)] scale-105 animate-pulse'
                         : 'bg-gradient-to-r from-amber-400 to-amber-500 hover:brightness-110 text-slate-950'
                     }`}
                     title="Suona la Campanella in diretta su tutti gli smartphone"
                   >
-                    <Bell size={13} /> <span className="hidden sm:inline">🔔 Campanella</span>
+                    <Bell size={13} /> <span className="hidden sm:inline">Campanella</span>
                   </button>
-                  <button
-                    onClick={() => setVoiceEnabled(!voiceEnabled)}
-                    className={`hidden sm:flex px-2.5 py-1.5 rounded-xl text-xs font-bold border cursor-pointer items-center gap-1 transition-colors ${voiceEnabled ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-rose-500/20 text-rose-300 border-rose-500/40'}`}
+
+                  <button 
+                    disabled={!lastAwardSnapshot}
+                    onClick={handleUndoLastAward} 
+                    className={`px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl text-[10px] sm:text-xs font-black flex items-center gap-1 transition-all ${
+                      lastAwardSnapshot
+                        ? spotlightTarget === 'UNDO'
+                          ? 'bg-rose-500 text-white border-2 border-white ring-4 ring-amber-300 shadow-[0_0_35px_rgba(245,158,11,1)] scale-105 animate-pulse cursor-pointer'
+                          : 'bg-rose-600 hover:bg-rose-500 text-white shadow-md cursor-pointer animate-pulse'
+                        : 'bg-slate-800/60 text-slate-500 border border-slate-700/50 cursor-not-allowed opacity-50'
+                    }`}
+                    title={lastAwardSnapshot ? `Annulla l'acquisto di ${lastAwardSnapshot.player.name}` : 'Nessuna operazione recente da annullare'}
                   >
-                    {voiceEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
-                    {voiceEnabled ? '🔊 ON' : '🔇 Muto'}
+                    <RotateCcw size={11} /> 
+                    <span>Annulla {lastAwardSnapshot ? `(${lastAwardSnapshot.price} FM)` : ''}</span>
                   </button>
-                  <button onClick={handleShareWhatsAppInvite} className="hidden sm:flex px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500 text-slate-950 items-center gap-1 cursor-pointer"><Share2 size={12} /> WhatsApp</button>
                   
-                  {lastAwardSnapshot && (
-                    <button 
-                      onClick={handleUndoLastAward} 
-                      className={`px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 cursor-pointer shadow-sm transition-all ${
-                        spotlightTarget === 'UNDO'
-                          ? 'bg-rose-500 text-white border-2 border-white ring-4 ring-amber-300 shadow-[0_0_35px_rgba(245,158,11,1)] scale-105 animate-pulse'
-                          : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
-                      }`}
-                    >
-                      <RotateCcw size={12} /> Annulla ({lastAwardSnapshot.price} FM)
-                    </button>
-                  )}
-                  
-                  <button onClick={() => setIsPureTvDisplay(!isPureTvDisplay)} className="hidden sm:flex px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-200 cursor-pointer"><Monitor size={12} /></button>
+                  <button onClick={() => setIsPureTvDisplay(!isPureTvDisplay)} className="hidden sm:flex px-2 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-200 cursor-pointer"><Monitor size={12} /></button>
                 </>
               )}
-              <button onClick={() => { setUserRole(null); setPlayerCoachId(''); setActiveTab('AUCTION'); }} className="text-xs bg-slate-800 text-slate-400 font-bold px-2.5 py-1.5 rounded-xl cursor-pointer"><LogOut size={12} /></button>
+              <button onClick={() => { setUserRole(null); setPlayerCoachId(''); setActiveTab('AUCTION'); }} className="text-xs bg-slate-800 text-slate-400 font-bold p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl cursor-pointer"><LogOut size={12} /></button>
             </div>
           </header>
 
@@ -1613,6 +1634,12 @@ export default function App() {
                       <span className="text-xs font-black text-amber-400 uppercase block">{coaches.find(c => c.id === playerCoachId)?.teamName}</span>
                       <span className="text-xs text-slate-300">Crediti Residui: <strong>{coaches.find(c => c.id === playerCoachId)?.budget} FM</strong> (Max Bid: {getCoachMaxBidById(playerCoachId)})</span>
                     </div>
+                    <button
+                      onClick={() => handleShareRosterWhatsApp(playerCoachId)}
+                      className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-2 py-1 rounded-lg text-[10px] uppercase flex items-center gap-1 cursor-pointer shadow-md"
+                    >
+                      <Send size={11} /> Condividi Rosa
+                    </button>
                   </div>
                   {(['P', 'D', 'C', 'A'] as const).map(role => {
                     const items = (purchasedPlayers[playerCoachId] || []).filter(i => i.player.role === role);
@@ -1644,7 +1671,7 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* ASIDE SQUADRE */}
+                  {/* ASIDE SQUADRE SU DESKTOP */}
                   <aside className="hidden lg:flex w-[275px] shrink-0 bg-[#04160E]/95 rounded-2xl p-3 flex-col gap-2 overflow-hidden border border-emerald-500/30 shadow-xl backdrop-blur-md">
                     <div className="flex justify-between pb-1.5 border-b border-emerald-500/20 text-xs font-black text-emerald-400">
                       <span className="flex items-center gap-1"><Trophy size={13} className="text-amber-400" /> Club in Sala</span>
@@ -1653,7 +1680,6 @@ export default function App() {
 
                     <div className="space-y-1.5 overflow-y-auto flex-1">
                       {coaches.map(c => {
-                        const isOnline = c.isOnline !== false;
                         const isHighest = highestBidderId === c.id;
                         return (
                           <div
@@ -1664,7 +1690,7 @@ export default function App() {
                             <div className="flex justify-between items-start">
                               <div className="truncate pr-1">
                                 <div className="flex items-center gap-1.5">
-                                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${isOnline ? 'bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.9)]' : 'bg-slate-600 opacity-60'}`} title={isOnline ? 'Smartphone Connesso' : 'Offline / In Standby'} />
+                                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${c.isOnline ? 'bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.9)]' : 'bg-slate-600 opacity-60'}`} title={c.isOnline ? 'Smartphone Connesso' : 'Offline / In Standby'} />
                                   <span className="font-black text-xs text-white uppercase truncate flex items-center gap-1">
                                     {c.isPresident && <Crown size={12} className="text-amber-400 shrink-0" />} {c.teamName}
                                   </span>
@@ -1906,9 +1932,17 @@ export default function App() {
                               Mister: <strong className="text-white">{coaches.find(x => x.id === selectedRosterCoachId)?.name}</strong> • Offerta Max Bid: <strong className="text-emerald-400">{getCoachMaxBidById(selectedRosterCoachId)} FM</strong> • Residui: <strong className="text-amber-400">{coaches.find(x => x.id === selectedRosterCoachId)?.budget} FM</strong>
                             </p>
                           </div>
-                          <span className="text-xs font-black bg-amber-400 text-slate-950 px-3 py-1.5 rounded-xl uppercase shadow-md">
-                            {(purchasedPlayers[selectedRosterCoachId] || []).length} / {TOTAL_SLOTS} Calciatori
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleShareRosterWhatsApp(selectedRosterCoachId)}
+                              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-3 py-1.5 rounded-xl text-xs uppercase flex items-center gap-1.5 shadow-md cursor-pointer"
+                            >
+                              <Send size={13} /> Invia Rosa su WhatsApp
+                            </button>
+                            <span className="text-xs font-black bg-amber-400 text-slate-950 px-3 py-1.5 rounded-xl uppercase shadow-md">
+                              {(purchasedPlayers[selectedRosterCoachId] || []).length} / {TOTAL_SLOTS}
+                            </span>
+                          </div>
                         </div>
 
                         {(['P', 'D', 'C', 'A'] as const).map(role => {
@@ -2028,13 +2062,20 @@ export default function App() {
         </div>
       )}
 
-      {/* DRAWER SQUADRE SU MOBILE PER IL PRESIDENTE */}
+      {/* DRAWER SQUADRE E NAVIGAZIONE SU MOBILE PER IL PRESIDENTE */}
       {isMobilePresidentDrawerOpen && userRole === 'PRESIDENT' && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex justify-end">
           <div className="w-[85vw] max-w-sm h-full bg-[#061A12] border-l border-emerald-500/40 p-4 flex flex-col gap-3 overflow-y-auto">
             <div className="flex justify-between items-center border-b border-emerald-500/30 pb-2">
-              <span className="text-sm font-black text-amber-400 uppercase flex items-center gap-1.5"><Trophy size={16} /> Club in Sala</span>
+              <span className="text-sm font-black text-amber-400 uppercase flex items-center gap-1.5"><Trophy size={16} /> Club in Sala ({coaches.filter(c => c.isOnline).length}/{coaches.length})</span>
               <button onClick={() => setIsMobilePresidentDrawerOpen(false)} className="text-slate-400 hover:text-white p-1"><X size={18} /></button>
+            </div>
+
+            {/* Navigazione Schede su Mobile */}
+            <div className="grid grid-cols-3 gap-1 bg-[#020A06] p-1 rounded-xl border border-emerald-900/60">
+              <button onClick={() => { setActiveTab('AUCTION'); setIsMobilePresidentDrawerOpen(false); }} className={`py-1.5 rounded-lg text-xs font-black cursor-pointer ${activeTab === 'AUCTION' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-300'}`}>Campo</button>
+              <button onClick={() => { setActiveTab('ROSTERS'); setIsMobilePresidentDrawerOpen(false); }} className={`py-1.5 rounded-lg text-xs font-black cursor-pointer ${activeTab === 'ROSTERS' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-300'}`}>Rose</button>
+              <button onClick={() => { setActiveTab('HIGHLIGHTS'); setIsMobilePresidentDrawerOpen(false); }} className={`py-1.5 rounded-lg text-xs font-black cursor-pointer ${activeTab === 'HIGHLIGHTS' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-300'}`}>Record</button>
             </div>
 
             <div className="space-y-2 flex-1 overflow-y-auto">
@@ -2044,10 +2085,13 @@ export default function App() {
                   onClick={() => { setSelectedWinnerManualId(c.id); handleRaise(1, c.id); setIsMobilePresidentDrawerOpen(false); }}
                   className={`p-2.5 rounded-xl border text-xs cursor-pointer ${highestBidderId === c.id ? 'bg-emerald-500/30 border-emerald-400' : 'bg-[#020A06] border-emerald-950'}`}
                 >
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <div>
-                      <strong className="text-white block uppercase">{c.teamName}</strong>
-                      <span className="text-slate-400 text-[10px]">{c.name}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${c.isOnline ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+                        <strong className="text-white block uppercase">{c.teamName}</strong>
+                      </div>
+                      <span className="text-slate-400 text-[10px] ml-3.5">{c.name}</span>
                     </div>
                     <div className="text-right">
                       <span className="text-amber-400 font-black">{c.budget} FM</span>
@@ -2062,6 +2106,7 @@ export default function App() {
               <button onClick={() => { setShowQrModal(true); setIsMobilePresidentDrawerOpen(false); }} className="w-full py-2 bg-amber-500 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-1"><QrCode size={14} /> Mostra QR Code</button>
               <button onClick={() => { handleRingBroadcastBell(); setIsMobilePresidentDrawerOpen(false); }} className="w-full py-2 bg-amber-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-1"><Bell size={14} /> Campanella</button>
               <button onClick={() => { handleShareWhatsAppInvite(); setIsMobilePresidentDrawerOpen(false); }} className="w-full py-2 bg-emerald-500 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-1"><Share2 size={14} /> Invita WhatsApp</button>
+              <button onClick={() => { handleTriggerInstall(); setIsMobilePresidentDrawerOpen(false); }} className="w-full py-2 bg-cyan-500 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-1"><Smartphone size={14} /> Salva App sul Telefono</button>
             </div>
           </div>
         </div>
@@ -2097,7 +2142,6 @@ export default function App() {
 
             <span className="text-[10px] font-black uppercase text-amber-400 block mb-1.5">💡 Domande frequenti:</span>
             <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
-              {/* FAQ SCHERMATA 1: HOME PRE-ASTA */}
               {!userRole && (
                 <>
                   <button
@@ -2146,7 +2190,6 @@ export default function App() {
                 </>
               )}
 
-              {/* FAQ SCHERMATA 2: REGIA TV (PRESIDENTE) */}
               {userRole === 'PRESIDENT' && (
                 <>
                   <button
@@ -2162,12 +2205,23 @@ export default function App() {
 
                   <button
                     onClick={() => {
-                      setFantaBotSpeech('🔄 Se hai battuto per errore o al mister sbagliato, guarda in alto: il tasto "Annulla Assegnazione" ti permette di annullare all\'istante, ripristinando sia i crediti che il calciatore in asta!');
+                      setFantaBotSpeech('🔄 Se hai battuto per errore o al mister sbagliato, guarda in alto: il tasto "Annulla" ti permette di annullare all\'istante, ripristinando sia i crediti che il calciatore in asta!');
                       triggerSpotlight('UNDO');
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
                   >
                     <span>🔄 Come annullo un\'assegnazione errata?</span>
+                    <ChevronRight size={12} className="text-cyan-400" />
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setFantaBotSpeech('📋 Vai nella scheda "Rose" in alto (o apri il menu su smartphone): potrai vedere la rosa di qualsiasi mister, scaricarla in Excel o toccare "Invia Rosa su WhatsApp" per condividere la lista completa nella chat!');
+                      triggerSpotlight('ROSTERS_TAB');
+                    }}
+                    className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
+                  >
+                    <span>📋 Dove vedo le rose e le invio su WhatsApp?</span>
                     <ChevronRight size={12} className="text-cyan-400" />
                   </button>
 
@@ -2206,9 +2260,19 @@ export default function App() {
                 </>
               )}
 
-              {/* FAQ SCHERMATA 3: SMARTPHONE (PLAYER) */}
               {userRole === 'PLAYER' && (
                 <>
+                  <button
+                    onClick={() => {
+                      setFantaBotSpeech('👕 In alto tocca la scheda "La Mia Rosa": puoi consultare in ogni momento tutti i tuoi acquisti per ruolo, i crediti residui e toccare il tasto verde "Condividi Rosa" per inviare l\'elenco completo ai tuoi amici su WhatsApp!');
+                      triggerSpotlight('MY_ROSTER_TAB');
+                    }}
+                    className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
+                  >
+                    <span>👕 Dove vedo la mia rosa e la invio su WhatsApp?</span>
+                    <ChevronRight size={12} className="text-cyan-400" />
+                  </button>
+
                   <button
                     onClick={() => {
                       setFantaBotSpeech('⚡ Il pulsante circolare BUZZ alza istantaneamente la tua offerta del valore selezionato (+1, +5, +10 o +20 FM). Se sei già in testa, il buzzer si blocca per evitare auto-rilanci!');
@@ -2228,17 +2292,6 @@ export default function App() {
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
                   >
                     <span>💰 Come faccio un\'offerta esatta?</span>
-                    <ChevronRight size={12} className="text-cyan-400" />
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setFantaBotSpeech('👕 In alto sul tuo telefono tocca la scheda "La Mia Rosa": puoi consultare in ogni momento i tuoi acquisti suddivisi per ruolo e quanti crediti ti restano!');
-                      triggerSpotlight('MY_ROSTER_TAB');
-                    }}
-                    className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
-                  >
-                    <span>👕 Dove vedo la mia rosa e i crediti?</span>
                     <ChevronRight size={12} className="text-cyan-400" />
                   </button>
 
@@ -2303,7 +2356,7 @@ export default function App() {
         </div>
       )}
 
-      {/* MODALE INSTALLAZIONE PWA (GUIDA ANDROID & IOS) */}
+      {/* MODALE GUIDA PWA AGGIUNGI A SCHERMATA HOME */}
       {showPwaModal && (
         <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#0B132B] border-2 border-cyan-400 rounded-3xl p-6 max-w-sm w-full flex flex-col gap-4 text-center relative shadow-2xl">
@@ -2316,7 +2369,7 @@ export default function App() {
               <div className="bg-[#060D1E] border border-slate-700 rounded-2xl p-3 text-left space-y-2 text-xs text-slate-300">
                 <p className="font-bold text-amber-400">📱 Su iPhone / iPad (Safari):</p>
                 <ol className="list-decimal list-inside space-y-1.5 leading-relaxed">
-                  <li>Tocca il pulsante <strong className="text-white">Condividi</strong> in basso al centro su Safari (l'icona del quadrato con freccia in su).</li>
+                  <li>Tocca il pulsante <strong className="text-white">Condividi</strong> in basso al centro su Safari (quadrato con freccia in su).</li>
                   <li>Scorri le opzioni e tocca <strong className="text-cyan-400 flex items-center gap-1 mt-0.5"><PlusSquare size={14} /> Aggiungi a schermata Home</strong>.</li>
                   <li>Conferma premendo <strong className="text-white">Aggiungi</strong> in alto a destra.</li>
                 </ol>
@@ -2568,7 +2621,7 @@ export default function App() {
                           budget: manageAddBudget, 
                           playersCount: 0, 
                           isPresident: false,
-                          isOnline: true 
+                          isOnline: false 
                         };
                         const updated = [...coaches, newCoach];
                         setCoaches(updated);
@@ -2654,7 +2707,7 @@ export default function App() {
                   if (!newCoachInput.trim()) return;
                   const cName = newCoachInput.trim();
                   const tName = newTeamNameInput.trim() || `FC ${cName}`;
-                  setCoaches(prev => [...prev, { id: `c_${Date.now()}`, name: cName, teamName: tName, budget: initialBudget, playersCount: 0, isPresident: false, isOnline: true }]);
+                  setCoaches(prev => [...prev, { id: `c_${Date.now()}`, name: cName, teamName: tName, budget: initialBudget, playersCount: 0, isPresident: false, isOnline: false }]);
                   setNewCoachInput(''); setNewTeamNameInput('');
                 }}
                 className="w-full py-1.5 bg-emerald-500 text-slate-950 font-black rounded-lg text-xs flex items-center justify-center gap-1 cursor-pointer"
@@ -2764,11 +2817,12 @@ export default function App() {
                   ? customLeagueInput.trim().toUpperCase().replace(/[^A-Z0-9]/g, '') 
                   : generateDynamicRoomCode();
                 
-                // Reset rigoroso dei crediti e delle rose per la nuova stanza creata
-                const finalCoaches = ensureSinglePresident(coaches).map(c => ({
+                // Reset rigoroso per ogni nuova stanza creata
+                const finalCoaches = ensureSinglePresident(coaches).map((c, idx) => ({
                   ...c,
                   budget: initialBudget,
-                  playersCount: 0
+                  playersCount: 0,
+                  isOnline: idx === 0
                 }));
 
                 setPurchasedPlayers({});
