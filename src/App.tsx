@@ -63,7 +63,6 @@ export const ensureSinglePresident = (list: Coach[]): Coach[] => {
   return list.map((c, i) => ({ ...c, isPresident: i === 0 }));
 };
 
-// Solo il presidente online all'avvio, gli altri offline
 const DEFAULT_DEMO_COACHES: Coach[] = [
   { id: 'c_1', name: 'Mario P.', teamName: 'Sempre Ultimi F.C.', budget: 500, playersCount: 0, isPresident: true, isOnline: true },
   { id: 'c_2', name: 'Pasquale R.', teamName: 'Real Madrink', budget: 500, playersCount: 0, isPresident: false, isOnline: false },
@@ -122,7 +121,7 @@ const TEAM_BADGES = [
   { aliases: ['parma'], short: 'PAR', primary: '#19519a', secondary: '#f2d12a', ink: '#ffffff' },
   { aliases: ['cagliari'], short: 'CAG', primary: '#bd2637', secondary: '#16477c', ink: '#ffffff' },
   { aliases: ['lecce'], short: 'LEC', primary: '#c42a35', secondary: '#e4c326', ink: '#ffffff' },
-  { aliases: ['verona'], verona: '#f0c928', short: 'VER', primary: '#f0c928', secondary: '#1e4e9b', ink: '#17213a' },
+  { aliases: ['verona'], short: 'VER', primary: '#f0c928', secondary: '#1e4e9b', ink: '#17213a' },
 ] as const;
 
 const getTeamBadgeStyle = (team: unknown) => {
@@ -559,7 +558,6 @@ export default function App() {
   }, [bidHistory]);
 
   const registerBidLocally = useCallback((bidderCoachId: string, amount: number) => {
-    setLastAwardSnapshot(null);
     playBuzzSound(); setIsBlinking(true); setCountdown(null); setAwardModal(null);
     setTimeout(() => setIsBlinking(false), 300);
     setHighestBidderId(bidderCoachId); setCurrentBid(amount);
@@ -630,7 +628,6 @@ export default function App() {
           setBidHistory([]); 
           setCountdown(null); 
           setAwardModal(null); 
-          setLastAwardSnapshot(null);
         }
       })
       .on('broadcast', { event: 'close_award_modal' }, () => { if (isMounted) { setAwardModal(null); setCurrentBid(0); setHighestBidderId(null); } })
@@ -728,8 +725,14 @@ export default function App() {
   };
 
   const handleSelectPlayer = useCallback(async (player: Player) => {
-    setCurrentPlayer(player); setCurrentBid(0); setHighestBidderId(null); setBidHistory([]); setCustomBidInput(''); setCountdown(null); setAwardModal(null);
-    setLastAwardSnapshot(null);
+    setCurrentPlayer(player); 
+    setCurrentBid(0); 
+    setHighestBidderId(null); 
+    setBidHistory([]); 
+    setCustomBidInput(''); 
+    setCountdown(null); 
+    setAwardModal(null);
+    // Non azzeriamo lastAwardSnapshot qui: resta valido finché non viene effettuata una nuova aggiudicazione
     if (userRole === 'PRESIDENT') speakTelecronista(`In campo ${player.name}, ${player.team}.`, voiceEnabled);
     if (activeChannel) await activeChannel.send({ type: 'broadcast', event: 'change_player', payload: { player } });
   }, [activeChannel, userRole, voiceEnabled]);
@@ -1490,7 +1493,6 @@ export default function App() {
                     <Bell size={13} /> <span className="hidden sm:inline">Campanella</span>
                   </button>
 
-                  {/* Pulsante Speaker ON/OFF ripristinato con icona corretta */}
                   <button
                     onClick={() => setVoiceEnabled(prev => !prev)}
                     className={`hidden sm:flex px-2 py-1.5 rounded-xl text-xs font-bold border cursor-pointer items-center gap-1 transition-colors ${voiceEnabled ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-rose-500/20 text-rose-300 border-rose-500/40'}`}
@@ -1500,7 +1502,7 @@ export default function App() {
                     <span>{voiceEnabled ? 'ON' : 'Muto'}</span>
                   </button>
 
-                  {/* Tasto ANNULLA ASSEGNAZIONE permanente */}
+                  {/* Tasto ANNULLA ASSEGNAZIONE permanente: attivo e cliccabile dopo ogni acquisto */}
                   <button 
                     disabled={!lastAwardSnapshot}
                     onClick={handleUndoLastAward} 
@@ -2082,7 +2084,6 @@ export default function App() {
               <button onClick={() => setIsMobilePresidentDrawerOpen(false)} className="text-slate-400 hover:text-white p-1"><X size={18} /></button>
             </div>
 
-            {/* Navigazione Schede su Mobile */}
             <div className="grid grid-cols-3 gap-1 bg-[#020A06] p-1 rounded-xl border border-emerald-900/60">
               <button onClick={() => { setActiveTab('AUCTION'); setIsMobilePresidentDrawerOpen(false); }} className={`py-1.5 rounded-lg text-xs font-black cursor-pointer ${activeTab === 'AUCTION' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-300'}`}>Campo</button>
               <button onClick={() => { setActiveTab('ROSTERS'); setIsMobilePresidentDrawerOpen(false); }} className={`py-1.5 rounded-lg text-xs font-black cursor-pointer ${activeTab === 'ROSTERS' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-300'}`}>Rose</button>
