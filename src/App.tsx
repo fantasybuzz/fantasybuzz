@@ -4,7 +4,7 @@ import {
   Share2, Search, Download, Shirt, Edit2, Check,
   Monitor, Timer, Flame, Award, PieChart, AlertCircle, TrendingUp, Gavel,
   RotateCcw, Shuffle, UserPlus, Trash2, Sparkles, QrCode, Volume2, VolumeX,
-  FileSignature, ArrowLeft, Info, Copy, Bell, Crown, Settings, RefreshCw,
+  FileSignature, ArrowLeft, Copy, Bell, Crown, Settings, RefreshCw,
   ChevronRight, Menu, Smartphone, PlusSquare, Send
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -63,7 +63,7 @@ export const ensureSinglePresident = (list: Coach[]): Coach[] => {
   return list.map((c, i) => ({ ...c, isPresident: i === 0 }));
 };
 
-// Solo il presidente online di default
+// Solo il presidente online all'avvio, gli altri offline
 const DEFAULT_DEMO_COACHES: Coach[] = [
   { id: 'c_1', name: 'Mario P.', teamName: 'Sempre Ultimi F.C.', budget: 500, playersCount: 0, isPresident: true, isOnline: true },
   { id: 'c_2', name: 'Pasquale R.', teamName: 'Real Madrink', budget: 500, playersCount: 0, isPresident: false, isOnline: false },
@@ -122,7 +122,7 @@ const TEAM_BADGES = [
   { aliases: ['parma'], short: 'PAR', primary: '#19519a', secondary: '#f2d12a', ink: '#ffffff' },
   { aliases: ['cagliari'], short: 'CAG', primary: '#bd2637', secondary: '#16477c', ink: '#ffffff' },
   { aliases: ['lecce'], short: 'LEC', primary: '#c42a35', secondary: '#e4c326', ink: '#ffffff' },
-  { aliases: ['verona'], short: 'VER', primary: '#f0c928', secondary: '#1e4e9b', ink: '#17213a' },
+  { aliases: ['verona'], verona: '#f0c928', short: 'VER', primary: '#f0c928', secondary: '#1e4e9b', ink: '#17213a' },
 ] as const;
 
 const getTeamBadgeStyle = (team: unknown) => {
@@ -300,12 +300,12 @@ export default function App() {
 
   const [activeLeagueTab, setActiveLeagueTab] = useState<'REGULAR' | 'REPAIR'>('REPAIR');
 
-  // Gestione PWA / Aggiungi a schermata Home
+  // Gestione PWA
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showPwaModal, setShowPwaModal] = useState<boolean>(false);
   const [isIosDevice, setIsIosDevice] = useState<boolean>(false);
 
-  // Gestione drawer mobile per la regia del Presidente
+  // Drawer mobile per il Presidente
   const [isMobilePresidentDrawerOpen, setIsMobilePresidentDrawerOpen] = useState(false);
 
   // Assistente FantaBot
@@ -377,7 +377,7 @@ export default function App() {
   const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_initialBudget')) || 500);
   const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_leagueName') || 'FantaLega 2026');
 
-  // Gestione squadre: parte sempre con le demo pulite
+  // Squadre isolate per stanza: solo il presidente parte online
   const [coaches, setCoaches] = useState<Coach[]>(() => {
     const saved = localStorage.getItem(`fb_coaches_${roomCode}`);
     if (saved) {
@@ -400,7 +400,7 @@ export default function App() {
     return ensureSinglePresident(DEFAULT_DEMO_COACHES);
   });
 
-  // Isolamento rose per singola stanza
+  // Rose isolate per stanza
   const [purchasedPlayers, setPurchasedPlayers] = useState<Record<string, PurchasedItem[]>>(() => {
     const saved = localStorage.getItem(`fb_purchasedPlayers_${roomCode}`);
     if (saved) {
@@ -423,7 +423,7 @@ export default function App() {
   const [activeChannel, setActiveChannel] = useState<any>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
 
-  // Rilevamento installazione PWA (Android / iOS)
+  // Rilevamento PWA
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const userAgent = window.navigator.userAgent.toLowerCase();
@@ -452,7 +452,7 @@ export default function App() {
     }
   };
 
-  // Compilazione automatica stanza da QR o link WhatsApp (?room=BUZZxxxx)
+  // Compilazione automatica codice da query param (?room=BUZZxxxx)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
@@ -498,7 +498,7 @@ export default function App() {
     if (!selectedWinnerManualId && coaches.length > 0) setSelectedWinnerManualId(coaches[0].id);
   }, [coaches, selectedWinnerManualId]);
 
-  // Salvataggio localStorage isolato per Room Code
+  // Salvataggio LocalStorage
   useEffect(() => {
     if (!roomCode) return;
     localStorage.setItem(`fb_coaches_${roomCode}`, JSON.stringify(coaches));
@@ -1490,6 +1490,17 @@ export default function App() {
                     <Bell size={13} /> <span className="hidden sm:inline">Campanella</span>
                   </button>
 
+                  {/* Pulsante Speaker ON/OFF ripristinato con icona corretta */}
+                  <button
+                    onClick={() => setVoiceEnabled(prev => !prev)}
+                    className={`hidden sm:flex px-2 py-1.5 rounded-xl text-xs font-bold border cursor-pointer items-center gap-1 transition-colors ${voiceEnabled ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-rose-500/20 text-rose-300 border-rose-500/40'}`}
+                    title="Attiva/disattiva telecronista vocale"
+                  >
+                    {voiceEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
+                    <span>{voiceEnabled ? 'ON' : 'Muto'}</span>
+                  </button>
+
+                  {/* Tasto ANNULLA ASSEGNAZIONE permanente */}
                   <button 
                     disabled={!lastAwardSnapshot}
                     onClick={handleUndoLastAward} 
@@ -2817,7 +2828,7 @@ export default function App() {
                   ? customLeagueInput.trim().toUpperCase().replace(/[^A-Z0-9]/g, '') 
                   : generateDynamicRoomCode();
                 
-                // Reset rigoroso per ogni nuova stanza creata
+                // Reset rigoroso: Mario P. online, gli altri 7 offline
                 const finalCoaches = ensureSinglePresident(coaches).map((c, idx) => ({
                   ...c,
                   budget: initialBudget,
