@@ -5,7 +5,7 @@ import {
   Monitor, Timer, Flame, Award, PieChart, AlertCircle, TrendingUp, Gavel,
   RotateCcw, Shuffle, UserPlus, Trash2, Sparkles, QrCode, Volume2, VolumeX,
   FileSignature, ArrowLeft, Info, Copy, Bell, Crown, Settings, RefreshCw,
-  ChevronRight, Menu
+  ChevronRight, Menu, Smartphone, PlusSquare
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import rawListone from './data/listone.json';
@@ -63,7 +63,6 @@ export const ensureSinglePresident = (list: Coach[]): Coach[] => {
   return list.map((c, i) => ({ ...c, isPresident: i === 0 }));
 };
 
-// 8 Squadre demo standard invariabili di default
 const DEFAULT_DEMO_COACHES: Coach[] = [
   { id: 'c_1', name: 'Mario P.', teamName: 'Sempre Ultimi F.C.', budget: 500, playersCount: 0, isPresident: true, isOnline: true },
   { id: 'c_2', name: 'Pasquale R.', teamName: 'Real Madrink', budget: 500, playersCount: 0, isPresident: false, isOnline: true },
@@ -300,6 +299,11 @@ export default function App() {
 
   const [activeLeagueTab, setActiveLeagueTab] = useState<'REGULAR' | 'REPAIR'>('REPAIR');
 
+  // Gestione PWA / Aggiungi a schermata Home
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showPwaModal, setShowPwaModal] = useState<boolean>(false);
+  const [isIosDevice, setIsIosDevice] = useState<boolean>(false);
+
   // Gestione drawer mobile per la regia del Presidente
   const [isMobilePresidentDrawerOpen, setIsMobilePresidentDrawerOpen] = useState(false);
 
@@ -372,7 +376,7 @@ export default function App() {
   const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_initialBudget')) || 500);
   const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_leagueName') || 'FantaLega 2026');
 
-  // Gestione autonoma: carica da LocalStorage se esiste per questa specifica stanza, altrimenti parte sempre con le demo pulite
+  // Gestione squadre isolata per singola stanza
   const [coaches, setCoaches] = useState<Coach[]>(() => {
     const saved = localStorage.getItem(`fb_coaches_${roomCode}`);
     if (saved) {
@@ -417,6 +421,38 @@ export default function App() {
   
   const [activeChannel, setActiveChannel] = useState<any>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
+
+  // RILEVAMENTO PWA (ANDROID & IOS)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Rileva iOS Safari
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    const isIos = /iphone|ipad|ipod/.test(userAgent);
+    setIsIosDevice(isIos);
+
+    // Evento Chrome / Android PWA
+    const handleBeforeInstall = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+  }, []);
+
+  const handleTriggerInstall = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+        setShowPwaModal(false);
+      }
+    } else {
+      setShowPwaModal(true);
+    }
+  };
 
   // AUTO-COMPILAZIONE CODICE STANZA DA LINK WHATSAPP / QR CODE (?room=BUZZxxxx)
   useEffect(() => {
@@ -1110,6 +1146,13 @@ export default function App() {
                   🔥 PROMO RIPARAZIONE 2027: ACCESSO COMPLETO 0€
                 </span>
               </div>
+              <button
+                type="button"
+                onClick={handleTriggerInstall}
+                className="bg-cyan-500/20 border border-cyan-400/60 text-cyan-300 hover:bg-cyan-500/30 font-black px-2.5 py-0.5 rounded-full text-[10px] uppercase cursor-pointer flex items-center gap-1 shadow-sm transition-all"
+              >
+                <Smartphone size={11} /> 📲 Salva App su Telefono
+              </button>
             </div>
             
             <h1 className="text-2xl md:text-4xl font-black uppercase tracking-tight leading-tight drop-shadow-xl">
@@ -1340,6 +1383,7 @@ export default function App() {
                   <Settings size={11} /> ⚙️ Gestisci Lega / Azzera per Asta Vera
                 </button>
                 <button onClick={() => setShowWelcomeGuide(true)} className="hidden sm:flex bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 font-black px-2 py-0.5 rounded-lg text-[10px] uppercase cursor-pointer items-center gap-1"><Info size={11} /> Invita Amici</button>
+                <button onClick={handleTriggerInstall} className="hidden sm:flex bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 font-black px-2 py-0.5 rounded-lg text-[10px] uppercase cursor-pointer items-center gap-1"><Smartphone size={11} /> Salva App</button>
               </div>
             </div>
           )}
@@ -1456,22 +1500,31 @@ export default function App() {
               className="flex-1 flex flex-col gap-2 max-w-sm mx-auto w-full my-auto overflow-y-auto items-center justify-between py-2 px-3 rounded-3xl border-2 border-emerald-400/50"
               style={{ background: `radial-gradient(circle at 50% 35%, rgba(16, 185, 129, 0.34) 0%, rgba(5, 42, 26, 0.96) 75%, rgba(2, 18, 11, 1) 100%), repeating-linear-gradient(90deg, rgba(16, 120, 68, 0.35) 0px, rgba(16, 120, 68, 0.35) 45px, rgba(8, 82, 45, 0.35) 45px, rgba(8, 82, 45, 0.35) 90px)` }}
             >
-              <div className="w-full grid grid-cols-2 gap-1.5 bg-[#060D1E]/95 p-1.5 rounded-2xl border border-slate-700 shrink-0">
+              <div className="w-full flex items-center justify-between gap-1.5">
+                <div className="grid grid-cols-2 gap-1.5 flex-1 bg-[#060D1E]/95 p-1 rounded-2xl border border-slate-700">
+                  <button
+                    onClick={() => setMobilePlayerTab('BUZZER')}
+                    className={`py-2 rounded-xl font-black text-xs uppercase cursor-pointer flex items-center justify-center gap-1 ${mobilePlayerTab === 'BUZZER' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-300'}`}
+                  >
+                    <Zap size={13} /> Buzzer Live
+                  </button>
+                  <button
+                    onClick={() => setMobilePlayerTab('MY_ROSTER')}
+                    className={`py-2 rounded-xl font-black text-xs uppercase cursor-pointer flex items-center justify-center gap-1 transition-all ${
+                      spotlightTarget === 'MY_ROSTER_TAB'
+                        ? 'bg-amber-400 text-slate-950 ring-4 ring-amber-300 shadow-[0_0_35px_rgba(245,158,11,1)] scale-105 animate-pulse'
+                        : mobilePlayerTab === 'MY_ROSTER' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-300'
+                    }`}
+                  >
+                    <Shirt size={13} /> La Mia Rosa ({(purchasedPlayers[playerCoachId] || []).length}/25)
+                  </button>
+                </div>
                 <button
-                  onClick={() => setMobilePlayerTab('BUZZER')}
-                  className={`py-2 rounded-xl font-black text-xs uppercase cursor-pointer flex items-center justify-center gap-1 ${mobilePlayerTab === 'BUZZER' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-300'}`}
+                  onClick={handleTriggerInstall}
+                  className="bg-[#0B132B] border border-cyan-400/50 p-2 rounded-xl text-cyan-300 cursor-pointer shadow-sm shrink-0"
+                  title="Salva sulla schermata Home"
                 >
-                  <Zap size={13} /> Buzzer Live
-                </button>
-                <button
-                  onClick={() => setMobilePlayerTab('MY_ROSTER')}
-                  className={`py-2 rounded-xl font-black text-xs uppercase cursor-pointer flex items-center justify-center gap-1 transition-all ${
-                    spotlightTarget === 'MY_ROSTER_TAB'
-                      ? 'bg-amber-400 text-slate-950 ring-4 ring-amber-300 shadow-[0_0_35px_rgba(245,158,11,1)] scale-105 animate-pulse'
-                      : mobilePlayerTab === 'MY_ROSTER' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-300'
-                  }`}
-                >
-                  <Shirt size={13} /> La Mia Rosa ({(purchasedPlayers[playerCoachId] || []).length}/25)
+                  <Smartphone size={16} />
                 </button>
               </div>
 
@@ -1591,7 +1644,7 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* ASIDE SQUADRE: Nascosto su smartphone, visibile sul grande schermo desktop o nel Drawer */}
+                  {/* ASIDE SQUADRE */}
                   <aside className="hidden lg:flex w-[275px] shrink-0 bg-[#04160E]/95 rounded-2xl p-3 flex-col gap-2 overflow-hidden border border-emerald-500/30 shadow-xl backdrop-blur-md">
                     <div className="flex justify-between pb-1.5 border-b border-emerald-500/20 text-xs font-black text-emerald-400">
                       <span className="flex items-center gap-1"><Trophy size={13} className="text-amber-400" /> Club in Sala</span>
@@ -1635,7 +1688,7 @@ export default function App() {
                     </div>
                   </aside>
 
-                  {/* === PALCO CENTRALE CAMPO DA CALCIO CON LUCI STADIO === */}
+                  {/* PALCO CENTRALE CAMPO DA CALCIO */}
                   <section
                     className={`w-full lg:flex-1 shrink-0 min-h-[440px] lg:min-h-0 rounded-2xl p-2.5 sm:p-3 flex flex-col items-center justify-between relative overflow-hidden border-2 shadow-2xl transition-all duration-300 ${
                       isBlinking ? 'border-amber-400 shadow-[0_0_40px_rgba(245,158,11,0.6)]' : 'border-emerald-500/50'
@@ -2246,6 +2299,42 @@ export default function App() {
               </div>
             </div>
             <button onClick={() => setShowWelcomeGuide(false)} className="w-full py-3 bg-amber-500 text-slate-950 font-black rounded-xl text-xs uppercase cursor-pointer">Inizia l'Asta ⚽</button>
+          </div>
+        </div>
+      )}
+
+      {/* MODALE INSTALLAZIONE PWA (GUIDA ANDROID & IOS) */}
+      {showPwaModal && (
+        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
+          <div className="bg-[#0B132B] border-2 border-cyan-400 rounded-3xl p-6 max-w-sm w-full flex flex-col gap-4 text-center relative shadow-2xl">
+            <button onClick={() => setShowPwaModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer"><X size={18} /></button>
+            <div className="w-14 h-14 mx-auto bg-cyan-500/20 rounded-2xl border border-cyan-400 flex items-center justify-center text-cyan-300 shadow-md">
+              <Smartphone size={28} />
+            </div>
+            <h3 className="text-base font-black text-white uppercase">Salva l'App sul tuo Smartphone</h3>
+            {isIosDevice ? (
+              <div className="bg-[#060D1E] border border-slate-700 rounded-2xl p-3 text-left space-y-2 text-xs text-slate-300">
+                <p className="font-bold text-amber-400">📱 Su iPhone / iPad (Safari):</p>
+                <ol className="list-decimal list-inside space-y-1.5 leading-relaxed">
+                  <li>Tocca il pulsante <strong className="text-white">Condividi</strong> in basso al centro su Safari (l'icona del quadrato con freccia in su).</li>
+                  <li>Scorri le opzioni e tocca <strong className="text-cyan-400 flex items-center gap-1 mt-0.5"><PlusSquare size={14} /> Aggiungi a schermata Home</strong>.</li>
+                  <li>Conferma premendo <strong className="text-white">Aggiungi</strong> in alto a destra.</li>
+                </ol>
+              </div>
+            ) : (
+              <div className="bg-[#060D1E] border border-slate-700 rounded-2xl p-3 text-left space-y-2 text-xs text-slate-300">
+                <p className="font-bold text-emerald-400">📱 Su Android / Chrome:</p>
+                <ol className="list-decimal list-inside space-y-1.5 leading-relaxed">
+                  <li>Tocca i <strong>3 puntini in alto a destra</strong> sul tuo browser Chrome.</li>
+                  <li>Seleziona <strong className="text-cyan-400">"Installa app"</strong> oppure <strong className="text-cyan-400">"Aggiungi a schermata Home"</strong>.</li>
+                  <li>L'icona FantasyBuzz comparirà tra le tue app preferite!</li>
+                </ol>
+              </div>
+            )}
+            <p className="text-[11px] text-slate-400">Così potrai aprire l'asta a tutto schermo senza barre del browser e ritrovarla sempre pronta per l'asta di riparazione!</p>
+            <button onClick={() => setShowPwaModal(false)} className="w-full py-2.5 bg-cyan-500 text-slate-950 font-black rounded-xl text-xs uppercase cursor-pointer shadow-md">
+              Ho Capito 👍
+            </button>
           </div>
         </div>
       )}
