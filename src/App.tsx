@@ -304,7 +304,7 @@ export default function App() {
   const [showPwaModal, setShowPwaModal] = useState<boolean>(false);
   const [isIosDevice, setIsIosDevice] = useState<boolean>(false);
 
-  // Drawer mobile per il Presidente
+  // Drawer mobile
   const [isMobilePresidentDrawerOpen, setIsMobilePresidentDrawerOpen] = useState(false);
 
   // Assistente FantaBot
@@ -376,7 +376,7 @@ export default function App() {
   const [initialBudget, setInitialBudget] = useState<number>(() => Number(localStorage.getItem('fb_initialBudget')) || 500);
   const [leagueName, setLeagueName] = useState(() => localStorage.getItem('fb_leagueName') || 'FantaLega 2026');
 
-  // Squadre isolate per stanza: solo il presidente parte online
+  // Squadre isolate per stanza
   const [coaches, setCoaches] = useState<Coach[]>(() => {
     const saved = localStorage.getItem(`fb_coaches_${roomCode}`);
     if (saved) {
@@ -451,7 +451,7 @@ export default function App() {
     }
   };
 
-  // Compilazione automatica codice da query param (?room=BUZZxxxx)
+  // Compilazione automatica codice stanza da link
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
@@ -497,7 +497,7 @@ export default function App() {
     if (!selectedWinnerManualId && coaches.length > 0) setSelectedWinnerManualId(coaches[0].id);
   }, [coaches, selectedWinnerManualId]);
 
-  // Salvataggio LocalStorage
+  // Salvataggio localStorage per Room Code
   useEffect(() => {
     if (!roomCode) return;
     localStorage.setItem(`fb_coaches_${roomCode}`, JSON.stringify(coaches));
@@ -558,6 +558,7 @@ export default function App() {
   }, [bidHistory]);
 
   const registerBidLocally = useCallback((bidderCoachId: string, amount: number) => {
+    setLastAwardSnapshot(null);
     playBuzzSound(); setIsBlinking(true); setCountdown(null); setAwardModal(null);
     setTimeout(() => setIsBlinking(false), 300);
     setHighestBidderId(bidderCoachId); setCurrentBid(amount);
@@ -580,6 +581,7 @@ export default function App() {
       speakTelecronista(`Colpo di mercato! ${player.name} firma con ${clubLabel} per ${price} fantamilioni!`, voiceEnabled);
     }
     
+    // Backup snapshot per Undo
     setLastAwardSnapshot({
       player,
       winnerId: winnerCoachId,
@@ -732,7 +734,7 @@ export default function App() {
     setCustomBidInput(''); 
     setCountdown(null); 
     setAwardModal(null);
-    // Non azzeriamo lastAwardSnapshot qui: resta valido finché non viene effettuata una nuova aggiudicazione
+    // Non azzeriamo lastAwardSnapshot: resta valido finché non avviene una nuova aggiudicazione
     if (userRole === 'PRESIDENT') speakTelecronista(`In campo ${player.name}, ${player.team}.`, voiceEnabled);
     if (activeChannel) await activeChannel.send({ type: 'broadcast', event: 'change_player', payload: { player } });
   }, [activeChannel, userRole, voiceEnabled]);
@@ -953,12 +955,13 @@ export default function App() {
     window.open(`https://wa.me/?text=${encodeURIComponent(viralText)}`, '_blank');
   };
 
+  // Condivisione con codifica Unicode sicura (elimina caratteri corrotti tipo )
   const handleShareRosterWhatsApp = (coachId: string) => {
     const coachObj = coaches.find(x => x.id === coachId);
     if (!coachObj) return;
     const items = purchasedPlayers[coachId] || [];
-    let text = `📋 *ROSA UFFICIALE: ${coachObj.teamName.toUpperCase()}* (Mister: ${coachObj.name})\n`;
-    text += `💰 Crediti Residui: *${coachObj.budget} FM* • Calciatori: *${items.length}/25*\n\n`;
+    let text = `\u{1F4CB} *ROSA UFFICIALE: ${coachObj.teamName.toUpperCase()}* (Mister: ${coachObj.name})\n`;
+    text += `\u{1F4B0} Crediti Residui: *${coachObj.budget} FM* • Calciatori: *${items.length}/25*\n\n`;
 
     (['P', 'D', 'C', 'A'] as const).forEach(role => {
       const roleName = role === 'P' ? 'PORTIERI' : role === 'D' ? 'DIFENSORI' : role === 'C' ? 'CENTROCAMPISTI' : 'ATTACCANTI';
@@ -971,7 +974,7 @@ export default function App() {
       text += `\n`;
     });
 
-    text += `⚡ Generato con FantasyBuzz - https://${window.location.host}`;
+    text += `\u{26A1} Generato con FantasyBuzz - https://${window.location.host}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
@@ -1316,10 +1319,11 @@ export default function App() {
               </button>
             </div>
 
+            {/* SELEZIONE SQUADRA AL RIENTRO: se è il presidente, torna Regia TV! */}
             {isRoomCodeConfirmed && availableRemoteCoaches.length > 0 && (
               <div className="space-y-1.5 pt-2 mt-2 border-t border-slate-800 text-left">
                 <label className="text-xs font-bold text-emerald-400 block uppercase text-center">
-                  ✅ Stanza "{roomCode}" Trovata! Scegli la tua Squadra:
+                  ✅ Stanza "{roomCode}" Trovata! Scegli chi sei:
                 </label>
                 <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto">
                   {availableRemoteCoaches.map(c => (
@@ -1330,11 +1334,24 @@ export default function App() {
                         setSelectedRosterCoachId(c.id);
                         setCoaches(prev => prev.map(x => x.id === c.id ? { ...x, isOnline: true } : x));
                         if (activeChannel) activeChannel.send({ type: 'broadcast', event: 'player_online', payload: { coachId: c.id } });
-                        setUserRole('PLAYER');
+                        
+                        // SE SELEZIONA LA SQUADRA DEL PRESIDENTE, TORNA IN REGIA TV!
+                        if (c.isPresident) {
+                          setUserRole('PRESIDENT');
+                        } else {
+                          setUserRole('PLAYER');
+                        }
                       }}
-                      className="p-2 bg-[#0B132B] border border-slate-800 rounded-lg text-left cursor-pointer hover:border-cyan-400"
+                      className={`p-2 border rounded-lg text-left cursor-pointer transition-all ${
+                        c.isPresident 
+                          ? 'bg-amber-500/20 border-amber-400 hover:bg-amber-500/30' 
+                          : 'bg-[#0B132B] border-slate-800 hover:border-cyan-400'
+                      }`}
                     >
-                      <span className="font-extrabold text-amber-400 text-xs block truncate">{c.teamName}</span>
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-amber-400 text-xs block truncate">{c.teamName}</span>
+                        {c.isPresident && <span className="text-[9px] bg-amber-400 text-slate-950 font-black px-1 rounded uppercase">Regia</span>}
+                      </div>
                       <span className="text-[10px] text-slate-300 block truncate">Mister: {c.name}</span>
                     </button>
                   ))}
@@ -1363,7 +1380,7 @@ export default function App() {
           {userRole === 'PRESIDENT' && (
             <div className="bg-[#051C12]/90 border border-emerald-500/40 rounded-xl px-2.5 py-1 mb-1 flex items-center justify-between text-xs shrink-0 backdrop-blur-md">
               <div className="flex items-center gap-2">
-                <span className="text-slate-200 truncate max-w-[170px] sm:max-w-none">🎁 <strong className="text-emerald-400">Asta Ufficiale:</strong> {roomCode}</span>
+                <span className="text-slate-200 truncate max-w-[170px] sm:max-w-none">🎁 <strong className="text-emerald-400">Asta:</strong> {roomCode}</span>
                 
                 {showRoomCodeArrow && (
                   <button
@@ -1502,7 +1519,7 @@ export default function App() {
                     <span>{voiceEnabled ? 'ON' : 'Muto'}</span>
                   </button>
 
-                  {/* Tasto ANNULLA ASSEGNAZIONE permanente: attivo e cliccabile dopo ogni acquisto */}
+                  {/* Tasto ANNULLA ASSEGNAZIONE permanente: attivo e visibile dopo ogni aggiudicazione */}
                   <button 
                     disabled={!lastAwardSnapshot}
                     onClick={handleUndoLastAward} 
@@ -1645,7 +1662,7 @@ export default function App() {
                   <div className="flex justify-between items-center border-b border-slate-800 pb-2">
                     <div>
                       <span className="text-xs font-black text-amber-400 uppercase block">{coaches.find(c => c.id === playerCoachId)?.teamName}</span>
-                      <span className="text-xs text-slate-300">Crediti Residui: <strong>{coaches.find(c => c.id === playerCoachId)?.budget} FM</strong> (Max Bid: {getCoachMaxBidById(playerCoachId)})</span>
+                      <span className="text-xs text-slate-300">Crediti: <strong>{coaches.find(c => c.id === playerCoachId)?.budget} FM</strong> (Max: {getCoachMaxBidById(playerCoachId)})</span>
                     </div>
                     <button
                       onClick={() => handleShareRosterWhatsApp(playerCoachId)}
@@ -1907,9 +1924,13 @@ export default function App() {
                 </main>
               )}
 
+              {/* ======================================================== */}
+              {/* VISTA ROSE CON MENU A TENDINA INTEGRATO PER SMARTPHONE   */}
+              {/* ======================================================== */}
               {activeTab === 'ROSTERS' && (
                 <main className="flex-1 flex flex-col lg:flex-row gap-3 my-1 overflow-y-auto w-full min-h-0">
-                  <aside className="w-full lg:w-[260px] bg-[#04160E]/95 border border-emerald-500/30 rounded-2xl p-3 flex flex-col gap-2 backdrop-blur-md">
+                  {/* Selettore Desktop a Colonna */}
+                  <aside className="hidden lg:flex w-[260px] bg-[#04160E]/95 border border-emerald-500/30 rounded-2xl p-3 flex-col gap-2 backdrop-blur-md">
                     <div className="flex justify-between items-center pb-2 border-b border-emerald-950">
                       <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Squadre di Lega</span>
                       <button onClick={handleExportCSV} className="text-xs bg-emerald-500 text-slate-950 font-black px-2 py-1 rounded-lg flex items-center gap-1 cursor-pointer"><Download size={11} /> Excel</button>
@@ -1933,62 +1954,88 @@ export default function App() {
                     </div>
                   </aside>
 
-                  <section className="flex-1 bg-[#04160E]/95 border border-emerald-500/30 rounded-2xl p-4 overflow-y-auto backdrop-blur-md">
-                    {rosterViewMode === 'GRID' ? (
-                      <div className="space-y-4">
-                        <div className="flex flex-wrap justify-between items-center bg-[#020A06] p-3 rounded-2xl border border-emerald-900 gap-2">
-                          <div>
-                            <h2 className="text-xl font-black text-white uppercase flex items-center gap-2">
-                              {coaches.find(x => x.id === selectedRosterCoachId)?.teamName}
-                            </h2>
-                            <p className="text-xs text-slate-300 mt-0.5">
-                              Mister: <strong className="text-white">{coaches.find(x => x.id === selectedRosterCoachId)?.name}</strong> • Offerta Max Bid: <strong className="text-emerald-400">{getCoachMaxBidById(selectedRosterCoachId)} FM</strong> • Residui: <strong className="text-amber-400">{coaches.find(x => x.id === selectedRosterCoachId)?.budget} FM</strong>
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleShareRosterWhatsApp(selectedRosterCoachId)}
-                              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-3 py-1.5 rounded-xl text-xs uppercase flex items-center gap-1.5 shadow-md cursor-pointer"
-                            >
-                              <Send size={13} /> Invia Rosa su WhatsApp
-                            </button>
-                            <span className="text-xs font-black bg-amber-400 text-slate-950 px-3 py-1.5 rounded-xl uppercase shadow-md">
-                              {(purchasedPlayers[selectedRosterCoachId] || []).length} / {TOTAL_SLOTS}
-                            </span>
-                          </div>
+                  {/* Area Contenuto Rosa */}
+                  <section className="flex-1 bg-[#04160E]/95 border border-emerald-500/30 rounded-2xl p-3 sm:p-4 overflow-y-auto backdrop-blur-md flex flex-col gap-3">
+                    
+                    {/* Header Selezione Squadra su Mobile: MENU A TENDINA COMPATTO */}
+                    <div className="flex flex-wrap justify-between items-center bg-[#020A06] p-2.5 sm:p-3 rounded-2xl border border-emerald-900 gap-2">
+                      <div className="flex-1 min-w-[200px]">
+                        <div className="flex items-center gap-2 mb-1">
+                          <label className="text-[10px] uppercase font-black text-slate-400">Squadra:</label>
+                          {/* Tendina selezione su Mobile e Desktop */}
+                          <select 
+                            value={selectedRosterCoachId} 
+                            onChange={e => setSelectedRosterCoachId(e.target.value)}
+                            className="bg-[#061A12] border border-emerald-500/50 rounded-lg px-2.5 py-1 text-xs font-black text-amber-400 focus:outline-none"
+                          >
+                            {coaches.map(c => (
+                              <option key={c.id} value={c.id}>{c.teamName} ({c.name})</option>
+                            ))}
+                          </select>
+                        </div>
+                        <p className="text-[11px] sm:text-xs text-slate-300">
+                          Residui: <strong className="text-amber-400">{coaches.find(x => x.id === selectedRosterCoachId)?.budget} FM</strong> • Max: <strong className="text-emerald-400">{getCoachMaxBidById(selectedRosterCoachId)} FM</strong>
+                        </p>
+                      </div>
+
+                      {/* Tasti Azione: Tabellone/Campo + WhatsApp + Excel */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <div className="grid grid-cols-2 gap-1 bg-[#061A12] p-0.5 rounded-lg border border-emerald-950 text-xs font-bold">
+                          <button onClick={() => setRosterViewMode('GRID')} className={`px-2 py-1 rounded text-[10px] sm:text-xs cursor-pointer ${rosterViewMode === 'GRID' ? 'bg-amber-500 text-slate-950 font-black' : 'text-slate-400'}`}>Lista</button>
+                          <button onClick={() => setRosterViewMode('FIELD')} className={`px-2 py-1 rounded text-[10px] sm:text-xs cursor-pointer ${rosterViewMode === 'FIELD' ? 'bg-emerald-500 text-slate-950 font-black' : 'text-slate-400'}`}>11 Campo</button>
                         </div>
 
+                        <button
+                          onClick={() => handleShareRosterWhatsApp(selectedRosterCoachId)}
+                          className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-2.5 py-1.5 rounded-xl text-[10px] sm:text-xs uppercase flex items-center gap-1 shadow-md cursor-pointer"
+                          title="Invia la rosa completa su WhatsApp"
+                        >
+                          <Send size={12} /> <span className="hidden sm:inline">Invia WhatsApp</span>
+                        </button>
+
+                        <button 
+                          onClick={handleExportCSV} 
+                          className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-2.5 py-1.5 rounded-xl text-[10px] sm:text-xs uppercase flex items-center gap-1 cursor-pointer border border-slate-700"
+                          title="Scarica Excel"
+                        >
+                          <Download size={12} /> <span className="hidden sm:inline">Excel</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {rosterViewMode === 'GRID' ? (
+                      <div className="space-y-3">
                         {(['P', 'D', 'C', 'A'] as const).map(role => {
                           const items = (purchasedPlayers[selectedRosterCoachId] || []).filter(i => i.player.role === role);
                           const max = ROLE_LIMITS[role];
                           const roleLabel = role === 'P' ? 'Portieri' : role === 'D' ? 'Difensori' : role === 'C' ? 'Centrocampisti' : 'Attaccanti';
                           return (
-                            <div key={role} className="space-y-2">
+                            <div key={role} className="space-y-1.5">
                               <div className="flex items-center gap-2">
-                                <span className={`text-xs font-black px-2.5 py-0.5 rounded-full ${getRoleBadge(role)}`}>{role}</span>
+                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${getRoleBadge(role)}`}>{role}</span>
                                 <span className="text-xs font-bold text-slate-300 uppercase">{roleLabel} ({items.length}/{max})</span>
                               </div>
-                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2">
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-1.5">
                                 {Array.from({ length: max }).map((_, idx) => {
                                   const item = items[idx];
                                   return item ? (
-                                    <div key={idx} className="bg-gradient-to-b from-[#0F1E36] to-[#0A1424] border-2 border-amber-400/80 rounded-xl p-2 flex flex-col justify-between shadow-lg relative min-h-[68px]">
-                                      <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold">
+                                    <div key={idx} className="bg-gradient-to-b from-[#0F1E36] to-[#0A1424] border border-amber-400/80 rounded-xl p-1.5 flex flex-col justify-between shadow-md relative min-h-[58px]">
+                                      <div className="flex items-center justify-between text-[9px] text-slate-400 font-bold">
                                         <span>#{idx + 1}</span>
                                         <span className="text-slate-300 uppercase truncate max-w-[55px]">{item.player.team}</span>
                                       </div>
-                                      <span className="font-black text-xs text-white uppercase truncate my-1" title={item.player.name}>
+                                      <span className="font-black text-xs text-white uppercase truncate my-0.5" title={item.player.name}>
                                         {item.player.name}
                                       </span>
-                                      <div className="flex justify-between items-center text-[10px] pt-1 border-t border-slate-700/60 font-black">
-                                        <span className="text-emerald-400">FM {item.price}</span>
-                                        <span className="text-slate-400 text-[9px]">{item.player.mv || '6.0'}</span>
+                                      <div className="flex justify-between items-center text-[9px] pt-1 border-t border-slate-700/60 font-black">
+                                        <span className="text-emerald-400">{item.price} FM</span>
+                                        <span className="text-slate-400 text-[8px]">{item.player.mv || '6.0'}</span>
                                       </div>
                                     </div>
                                   ) : (
-                                    <div key={idx} className="bg-[#020A06] border-2 border-dashed border-emerald-900 rounded-xl p-2 flex flex-col items-center justify-center min-h-[68px] text-center">
-                                      <span className="text-[10px] font-black text-slate-500 uppercase">Slot #{idx + 1}</span>
-                                      <span className="text-[11px] font-bold text-slate-400 mt-0.5">Libero</span>
+                                    <div key={idx} className="bg-[#020A06] border border-dashed border-emerald-950 rounded-xl p-1.5 flex flex-col items-center justify-center min-h-[58px] text-center">
+                                      <span className="text-[9px] font-black text-slate-500 uppercase">Slot #{idx + 1}</span>
+                                      <span className="text-[10px] font-bold text-slate-400">Libero</span>
                                     </div>
                                   );
                                 })}
@@ -1999,7 +2046,7 @@ export default function App() {
                       </div>
                     ) : (
                       <div
-                        className="w-full h-full min-h-[480px] rounded-2xl p-4 flex flex-col items-center justify-around relative overflow-hidden border-2 border-emerald-400/50 shadow-inner"
+                        className="w-full h-full min-h-[460px] rounded-2xl p-3 flex flex-col items-center justify-around relative overflow-hidden border-2 border-emerald-400/50 shadow-inner"
                         style={{ background: `radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.35) 0%, rgba(4, 38, 22, 0.96) 80%, rgba(2, 18, 11, 1) 100%), repeating-linear-gradient(0deg, rgba(16, 120, 68, 0.3) 0px, rgba(16, 120, 68, 0.3) 40px, rgba(8, 80, 42, 0.3) 40px, rgba(8, 80, 42, 0.3) 80px)` }}
                       >
                         <div className="absolute inset-0 pointer-events-none opacity-20">
@@ -2008,37 +2055,37 @@ export default function App() {
                           <div className="absolute top-1/2 left-1/2 w-48 h-48 border-2 border-emerald-100 rounded-full -translate-x-1/2 -translate-y-1/2" />
                         </div>
 
-                        <div className="text-center z-10 bg-slate-950/80 px-4 py-1.5 rounded-full border border-emerald-500/40">
-                          <h3 className="text-sm font-black text-white uppercase tracking-wider">{coaches.find(x => x.id === selectedRosterCoachId)?.teamName} • Top 11 in Campo (4-3-3)</h3>
+                        <div className="text-center z-10 bg-slate-950/80 px-3 py-1 rounded-full border border-emerald-500/40">
+                          <h3 className="text-xs font-black text-white uppercase tracking-wider">{coaches.find(x => x.id === selectedRosterCoachId)?.teamName} • Top 11 (4-3-3)</h3>
                         </div>
 
-                        <div className="z-10 flex gap-2">
+                        <div className="z-10 flex gap-1.5">
                           {((purchasedPlayers[selectedRosterCoachId] || []).filter(i => i.player.role === 'P').slice(0, 1)).map((item, i) => (
-                            <div key={i} className="bg-amber-500 text-slate-950 px-3 py-1.5 rounded-xl font-black text-xs shadow-lg border border-white text-center">
+                            <div key={i} className="bg-amber-500 text-slate-950 px-2.5 py-1 rounded-lg font-black text-xs shadow border border-white text-center">
                               🧤 {item.player.name} <span className="opacity-75">({item.price} FM)</span>
                             </div>
                           ))}
                         </div>
 
-                        <div className="z-10 flex flex-wrap justify-center gap-2">
+                        <div className="z-10 flex flex-wrap justify-center gap-1.5">
                           {((purchasedPlayers[selectedRosterCoachId] || []).filter(i => i.player.role === 'D').slice(0, 4)).map((item, i) => (
-                            <div key={i} className="bg-emerald-500 text-slate-950 px-3 py-1.5 rounded-xl font-black text-xs shadow-lg border border-white text-center">
+                            <div key={i} className="bg-emerald-500 text-slate-950 px-2 py-1 rounded-lg font-black text-xs shadow border border-white text-center">
                               🛡️ {item.player.name} <span className="opacity-75">({item.price} FM)</span>
                             </div>
                           ))}
                         </div>
 
-                        <div className="z-10 flex flex-wrap justify-center gap-2">
+                        <div className="z-10 flex flex-wrap justify-center gap-1.5">
                           {((purchasedPlayers[selectedRosterCoachId] || []).filter(i => i.player.role === 'C').slice(0, 3)).map((item, i) => (
-                            <div key={i} className="bg-sky-500 text-slate-950 px-3 py-1.5 rounded-xl font-black text-xs shadow-lg border border-white text-center">
+                            <div key={i} className="bg-sky-500 text-slate-950 px-2 py-1 rounded-lg font-black text-xs shadow border border-white text-center">
                               ⚡ {item.player.name} <span className="opacity-75">({item.price} FM)</span>
                             </div>
                           ))}
                         </div>
 
-                        <div className="z-10 flex flex-wrap justify-center gap-2">
+                        <div className="z-10 flex flex-wrap justify-center gap-1.5">
                           {((purchasedPlayers[selectedRosterCoachId] || []).filter(i => i.player.role === 'A').slice(0, 3)).map((item, i) => (
-                            <div key={i} className="bg-rose-600 text-white px-3 py-1.5 rounded-xl font-black text-xs shadow-lg border border-white text-center">
+                            <div key={i} className="bg-rose-600 text-white px-2 py-1 rounded-lg font-black text-xs shadow border border-white text-center">
                               ⚽ {item.player.name} <span className="opacity-75">({item.price} FM)</span>
                             </div>
                           ))}
@@ -2084,6 +2131,7 @@ export default function App() {
               <button onClick={() => setIsMobilePresidentDrawerOpen(false)} className="text-slate-400 hover:text-white p-1"><X size={18} /></button>
             </div>
 
+            {/* Navigazione Schede su Mobile */}
             <div className="grid grid-cols-3 gap-1 bg-[#020A06] p-1 rounded-xl border border-emerald-900/60">
               <button onClick={() => { setActiveTab('AUCTION'); setIsMobilePresidentDrawerOpen(false); }} className={`py-1.5 rounded-lg text-xs font-black cursor-pointer ${activeTab === 'AUCTION' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-300'}`}>Campo</button>
               <button onClick={() => { setActiveTab('ROSTERS'); setIsMobilePresidentDrawerOpen(false); }} className={`py-1.5 rounded-lg text-xs font-black cursor-pointer ${activeTab === 'ROSTERS' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-300'}`}>Rose</button>
@@ -2228,7 +2276,7 @@ export default function App() {
 
                   <button
                     onClick={() => {
-                      setFantaBotSpeech('📋 Vai nella scheda "Rose" in alto (o apri il menu su smartphone): potrai vedere la rosa di qualsiasi mister, scaricarla in Excel o toccare "Invia Rosa su WhatsApp" per condividere la lista completa nella chat!');
+                      setFantaBotSpeech('📋 Vai nella scheda "Rose" in alto (o apri il menu su smartphone): seleziona qualsiasi squadra dal menu a tendina e tocca "Invia WhatsApp" per condividere la lista completa nella chat!');
                       triggerSpotlight('ROSTERS_TAB');
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
@@ -2829,7 +2877,6 @@ export default function App() {
                   ? customLeagueInput.trim().toUpperCase().replace(/[^A-Z0-9]/g, '') 
                   : generateDynamicRoomCode();
                 
-                // Reset rigoroso: Mario P. online, gli altri 7 offline
                 const finalCoaches = ensureSinglePresident(coaches).map((c, idx) => ({
                   ...c,
                   budget: initialBudget,
