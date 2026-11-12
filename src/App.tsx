@@ -1181,7 +1181,7 @@ export default function App() {
               <div className="inline-flex items-center gap-1.5 bg-[#060D1E]/95 border border-amber-400/70 px-3 py-0.5 rounded-full shadow-lg">
                 <BuzzMark size={15} />
                 <span className="text-[11px] font-black uppercase tracking-widest text-amber-400">
-                  🔥 PROMO RIPARAZIONE 2027: ACCESSO COMPLETO 0€
+                  🔥 PROMO RIPARAZIONE 2027: <span className="line-through text-slate-400 mx-1">9,99€</span> GRATIS (0€) PER TUTTA LA STAGIONE
                 </span>
               </div>
               <button
@@ -1298,7 +1298,7 @@ export default function App() {
                     : 'bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 hover:from-emerald-400 text-slate-950 shadow-lg active:scale-98'
                 }`}
               >
-                <Zap size={16} className="fill-slate-950" /> 🚀 CONFIGURA & AVVIA LEGA (0€)
+                <Zap size={16} className="fill-slate-950" /> 🚀 CONFIGURA & AVVIA LEGA (<span className="line-through opacity-75 mx-0.5">9,99€</span> 0€)
               </button>
             </div>
 
@@ -1924,7 +1924,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* PANNELLO CONTROLLI BATTUTA RAGGIUNGIBILE ANCHE CON ROTELLINA MOUSE */}
+                    {/* PANNELLO CONTROLLI BATTUTA */}
                     <div className="w-full max-w-3xl bg-[#04160E]/95 p-2.5 sm:p-3 rounded-2xl flex flex-col gap-1.5 z-10 border border-emerald-500/30 shadow-2xl backdrop-blur-md shrink-0">
                       <div className="flex flex-wrap justify-between items-center gap-2">
                         <div>
@@ -2318,12 +2318,12 @@ export default function App() {
 
                   <button
                     onClick={() => {
-                      setFantaBotSpeech(`📺 Puoi collegare la TV in 2 modi:\n1. Con un cavo HDMI dal PC/portatile alla TV (consigliato per zero ritardo).\n2. Aprendo il browser della tua Smart TV e digitando direttamente https://${window.location.host}!`);
+                      setFantaBotSpeech(`📺 Puoi collegare la TV in 2 modi:\n1. Con un cavo HDMI dal PC/portatile alla TV.\n2. Aprendo https://${window.location.host} sul browser della Smart TV, inserendo il Codice Stanza e premendo il tasto dorato "📺 PROIETTA SUL TELEVISORE"!`);
                       triggerSpotlight(null);
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
                   >
-                    <span>📺 Come collego l\'app alla TV?</span>
+                    <span>📺 Come collego l'app alla TV?</span>
                     <ChevronRight size={12} className="text-cyan-400" />
                   </button>
                 </>
@@ -2349,7 +2349,7 @@ export default function App() {
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
                   >
-                    <span>🔄 Come annullo un\'assegnazione errata?</span>
+                    <span>🔄 Come annullo un'assegnazione errata?</span>
                     <ChevronRight size={12} className="text-cyan-400" />
                   </button>
 
@@ -2419,7 +2419,7 @@ export default function App() {
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
                   >
-                    <span>🛡️ Perché mi blocca o cos\'è il Max Bid?</span>
+                    <span>🛡️ Perché mi blocca o cos'è il Max Bid?</span>
                     <ChevronRight size={12} className="text-cyan-400" />
                   </button>
 
@@ -2441,7 +2441,7 @@ export default function App() {
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
                   >
-                    <span>💰 Come faccio un\'offerta esatta?</span>
+                    <span>💰 Come faccio un'offerta esatta?</span>
                     <ChevronRight size={12} className="text-cyan-400" />
                   </button>
 
@@ -2952,7 +2952,7 @@ export default function App() {
 
             <div className="p-2 rounded-xl text-xs font-bold text-center border bg-[#060D1E]">
               <span className="text-emerald-400 flex items-center justify-center gap-1.5">
-                <Sparkles size={13} /> <strong>Asta Ufficiale Gratuita:</strong> Tutte le leghe sbloccate a 0€
+                <Sparkles size={13} /> <strong>Promo Stagione 2026/2027:</strong> Tutte le leghe a <span className="line-through text-slate-400 mx-0.5">9,99€</span> <strong>0€</strong>
               </span>
             </div>
 
@@ -3084,7 +3084,7 @@ export default function App() {
                 <h3 className="text-lg font-black text-amber-400 uppercase">Termini del Servizio</h3>
                 <div className="space-y-2.5 text-xs text-slate-300 leading-relaxed">
                   <p><strong>1. Scopo:</strong> FantasyBuzz è una web-app studiata per la gestione live delle aste del Fantacalcio con regia su schermo e buzzer su dispositivi mobili.</p>
-                  <p><strong>2. Accesso:</strong> L'utilizzo del software per le stanze d'asta private è attualmente ad accesso libero e gratuito.</p>
+                  <p><strong>2. Accesso:</strong> L'utilizzo del software per le stanze d'asta private è attualmente gratuito per tutta la stagione 2026/2027.</p>
                 </div>
               </>
             )}
