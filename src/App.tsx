@@ -625,7 +625,8 @@ export default function App() {
     let isMounted = true;
     const ch = supabase.channel(`room_${roomCode}`)
       .on('broadcast', { event: 'quick_bid' }, ({ payload }: any) => {
-        payload?.bidderCoachId && registerBidRef.current(payload.bidderCoachId, payload.amount);
+        if (!isMounted || !payload?.bidderCoachId) return;
+        registerBidRef.current(payload.bidderCoachId, payload.amount);
       })
       .on('broadcast', { event: 'player_online' }, ({ payload }: any) => {
         if (payload?.coachId && isMounted) setCoaches(prev => prev.map(c => c.id === payload.coachId ? { ...c, isOnline: true } : c));
@@ -1796,7 +1797,7 @@ export default function App() {
 
                   {/* PALCO CENTRALE CAMPO DA CALCIO */}
                   <section
-                    className={`w-full lg:flex-1 shrink-0 min-h-[440px] lg:min-h-0 rounded-2xl p-2.5 sm:p-3 flex flex-col items-center justify-between relative overflow-hidden border-2 shadow-2xl transition-all duration-300 ${
+                    className={`w-full lg:flex-1 shrink-0 min-h-[440px] lg:min-h-0 rounded-2xl p-2 sm:p-2.5 flex flex-col items-center justify-between relative overflow-hidden border-2 shadow-2xl transition-all duration-300 ${
                       isBlinking ? 'border-amber-400 shadow-[0_0_40px_rgba(245,158,11,0.6)]' : 'border-emerald-500/50'
                     }`}
                     style={{
@@ -1825,7 +1826,7 @@ export default function App() {
                       </div>
                     )}
 
-                    <div className={`w-full bg-[#04160E]/95 rounded-xl p-2 flex flex-col gap-2 z-10 border shadow-md backdrop-blur-md transition-all ${
+                    <div className={`w-full bg-[#04160E]/95 rounded-xl p-1.5 sm:p-2 flex flex-col gap-1.5 z-10 border shadow-md backdrop-blur-md transition-all ${
                       spotlightTarget === 'LISTONE' 
                         ? 'border-amber-400 ring-4 ring-amber-300 shadow-[0_0_35px_rgba(245,158,11,1)] scale-[1.01] animate-pulse' 
                         : 'border-emerald-500/30'
@@ -1845,55 +1846,60 @@ export default function App() {
                           <button
                             key={r.code}
                             onClick={() => handleRoleFilterChange(r.code as 'ALL' | Role)}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-black cursor-pointer transition-colors ${selectedRole === r.code ? 'bg-amber-500 text-slate-950 shadow' : 'bg-[#020A06] text-slate-400 hover:text-white'}`}
+                            className={`px-2 py-1 rounded-lg text-xs font-black cursor-pointer transition-colors ${selectedRole === r.code ? 'bg-amber-500 text-slate-950 shadow' : 'bg-[#020A06] text-slate-400 hover:text-white'}`}
                           >
                             {r.label}
                           </button>
                         ))}
-                        <button onClick={handleRandomPlayer} className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-black flex items-center gap-1 cursor-pointer shadow"><Shuffle size={12} /> 🎲 Pesca a Sorte</button>
+                        <button onClick={handleRandomPlayer} className="px-2 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-black flex items-center gap-1 cursor-pointer shadow"><Shuffle size={12} /> 🎲 Pesca</button>
                         <button
                           onClick={() => setActiveLeagueTab(activeLeagueTab === 'REGULAR' ? 'REPAIR' : 'REGULAR')}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-black cursor-pointer border transition-colors ${activeLeagueTab === 'REPAIR' ? 'bg-emerald-500 text-slate-950 border-emerald-300 shadow' : 'bg-[#020A06] text-emerald-400 border-emerald-800'}`}
+                          className={`px-2 py-1 rounded-lg text-xs font-black cursor-pointer border transition-colors ${activeLeagueTab === 'REPAIR' ? 'bg-emerald-500 text-slate-950 border-emerald-300 shadow' : 'bg-[#020A06] text-emerald-400 border-emerald-800'}`}
                           title="Filtra solo i calciatori svincolati per Aste di Riparazione"
                         >
-                          {activeLeagueTab === 'REPAIR' ? '🔄 Solo Svincolati' : '📋 Listone'}
+                          {activeLeagueTab === 'REPAIR' ? '🔄 Svincolati' : '📋 Listone'}
                         </button>
-                        <button onClick={() => setStartFromOne(!startFromOne)} className="px-2 py-1 bg-[#020A06] border border-emerald-950 rounded-lg text-xs font-bold text-amber-400 cursor-pointer">Base: {startFromOne ? '1 FM' : 'Quotazione'}</button>
-                        <label className="flex items-center gap-1 text-xs text-slate-300 cursor-pointer font-bold"><input type="checkbox" checked={hidePurchased} onChange={e => setHidePurchased(e.target.checked)} /> Solo Liberi</label>
+                        <button onClick={() => setStartFromOne(!startFromOne)} className="px-2 py-1 bg-[#020A06] border border-emerald-950 rounded-lg text-xs font-bold text-amber-400 cursor-pointer">Base: {startFromOne ? '1 FM' : 'Quot.'}</button>
+                        <label className="flex items-center gap-1 text-xs text-slate-300 cursor-pointer font-bold"><input type="checkbox" checked={hidePurchased} onChange={e => setHidePurchased(e.target.checked)} /> Liberi</label>
                       </div>
-                      <div className="flex gap-1.5 overflow-x-auto py-1 max-h-12 border-t border-emerald-950">
+                      <div className="flex gap-1.5 overflow-x-auto py-0.5 max-h-10 border-t border-emerald-950">
                         {filteredList.slice(0, 80).map(p => (
-                          <button key={p.id} onClick={() => handleSelectPlayer(p)} className={`px-2.5 py-1 rounded-lg text-xs font-bold shrink-0 cursor-pointer transition-all ${activePlayer.id === p.id ? 'bg-amber-500 text-slate-950 font-black shadow-md' : 'bg-[#020A06] text-slate-300 hover:text-white'}`}>[{p.role}] {p.name} ({p.basePrice})</button>
+                          <button key={p.id} onClick={() => handleSelectPlayer(p)} className={`px-2 py-0.5 rounded-lg text-xs font-bold shrink-0 cursor-pointer transition-all ${activePlayer.id === p.id ? 'bg-amber-500 text-slate-950 font-black shadow-md' : 'bg-[#020A06] text-slate-300 hover:text-white'}`}>[{p.role}] {p.name} ({p.basePrice})</button>
                         ))}
                       </div>
                     </div>
 
-                    <div className="flex flex-col items-center justify-center my-auto z-10 text-center space-y-2 py-2">
-                      {activeDuel && <div className="bg-rose-600/40 border border-rose-400 px-4 py-1 rounded-full text-xs font-black uppercase text-rose-100 animate-pulse tracking-wider">🔥 SFIDA: {activeDuel} 🔥</div>}
+                    {/* CARD CALCIATORE AL CENTRO CON BADGE SFIDA SOVRAPPOSTO CHE NON SPINGE IN BASSO I CONTROLLI */}
+                    <div className="flex flex-col items-center justify-center my-auto z-10 text-center relative w-full py-1">
+                      {activeDuel && (
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20 bg-rose-600 border border-rose-300 px-3 py-0.5 rounded-full text-[10px] sm:text-xs font-black uppercase text-white shadow-xl animate-pulse tracking-wider whitespace-nowrap">
+                          🔥 SFIDA: {activeDuel} 🔥
+                        </div>
+                      )}
                       
-                      <div className="bg-[#051C12]/95 border-2 border-amber-400/90 rounded-3xl p-3 sm:p-5 shadow-[0_12px_45px_rgba(0,0,0,0.85)] max-w-md w-full relative overflow-hidden backdrop-blur-md">
-                        <div className="flex items-center justify-between gap-2 pb-2 border-b border-emerald-900/60">
+                      <div className="bg-[#051C12]/95 border-2 border-amber-400/90 rounded-3xl p-2.5 sm:p-4 shadow-[0_12px_45px_rgba(0,0,0,0.85)] max-w-md w-full relative overflow-hidden backdrop-blur-md">
+                        <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-emerald-900/60">
                           <span className={`text-xs px-2.5 py-0.5 rounded-full ${getRoleBadge(activePlayer.role)} shadow-sm`}>{activePlayer.role}</span>
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-white bg-[#020A06] px-3 py-1 rounded-full border border-emerald-900/80">
-                            <TeamBadge team={activePlayer.team} size={18} /> 
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-white bg-[#020A06] px-3 py-0.5 rounded-full border border-emerald-900/80">
+                            <TeamBadge team={activePlayer.team} size={16} /> 
                             <span className="tracking-wider uppercase">{activePlayer.team}</span>
                           </div>
                           {activePlayer.basePrice >= 15 ? (
-                            <span className="text-xs font-black text-amber-300 bg-amber-500/20 px-2.5 py-0.5 rounded-full border border-amber-400/50 flex items-center gap-1"><Flame size={12} className="fill-amber-400" /> TOP</span>
+                            <span className="text-xs font-black text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-400/50 flex items-center gap-1"><Flame size={11} className="fill-amber-400" /> TOP</span>
                           ) : <span className="text-[10px] text-slate-400 font-bold uppercase">SERIE A</span>}
                         </div>
 
-                        <div className="my-2 flex justify-center">
-                          <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-[#020A06] border-2 border-amber-400 flex items-center justify-center shadow-[0_0_22px_rgba(245,158,11,0.35)]">
-                            <span className="text-2xl sm:text-4xl font-black text-amber-400 uppercase">{activePlayer.name.charAt(0)}</span>
+                        <div className="my-1.5 flex justify-center">
+                          <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-[#020A06] border-2 border-amber-400 flex items-center justify-center shadow-[0_0_22px_rgba(245,158,11,0.35)]">
+                            <span className="text-2xl sm:text-3xl font-black text-amber-400 uppercase">{activePlayer.name.charAt(0)}</span>
                           </div>
                         </div>
 
-                        <h2 className="text-2xl sm:text-5xl font-black text-white uppercase tracking-tight drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] truncate max-w-sm">
+                        <h2 className="text-xl sm:text-4xl font-black text-white uppercase tracking-tight drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] truncate max-w-sm mx-auto">
                           {activePlayer.name}
                         </h2>
 
-                        <div className="flex justify-center items-center gap-2 sm:gap-3 text-xs font-bold text-slate-200 bg-[#020A06] px-3 sm:px-4 py-1.5 rounded-2xl border border-emerald-900/80 mt-2">
+                        <div className="flex justify-center items-center gap-2 sm:gap-3 text-xs font-bold text-slate-200 bg-[#020A06] px-3 sm:px-4 py-1 rounded-2xl border border-emerald-900/80 mt-1.5">
                           <span>Base: <strong className="text-amber-400 font-black">{activePlayer.basePrice} FM</strong></span>
                           <span className="text-slate-600">•</span>
                           <span>MV: <strong className="text-emerald-400 font-black">{activePlayer.mv || '6.00'}</strong></span>
@@ -1903,42 +1909,43 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="w-full max-w-3xl bg-[#04160E]/95 p-3 rounded-2xl flex flex-col gap-2 z-10 border border-emerald-500/30 shadow-2xl backdrop-blur-md">
+                    {/* PANNELLO CONTROLLI BATTUTA SEMPRE VISIBILE */}
+                    <div className="w-full max-w-3xl bg-[#04160E]/95 p-2.5 sm:p-3 rounded-2xl flex flex-col gap-1.5 z-10 border border-emerald-500/30 shadow-2xl backdrop-blur-md shrink-0">
                       <div className="flex flex-wrap justify-between items-center gap-2">
                         <div>
                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">SOCIETÀ IN TESTA</span>
-                          <p className="text-sm sm:text-base text-emerald-400 font-black uppercase flex items-center gap-1.5">
+                          <p className="text-xs sm:text-base text-emerald-400 font-black uppercase flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                             {highestBidderId ? getCoachDisplayById(highestBidderId) : `Si parte da ${startingPrice} FM`}
                           </p>
                         </div>
 
-                        <div className="text-3xl sm:text-6xl font-black text-amber-400 drop-shadow-md">
-                          {currentBid || startingPrice} <span className="text-lg sm:text-2xl font-bold">FM</span>
+                        <div className="text-2xl sm:text-5xl font-black text-amber-400 drop-shadow-md">
+                          {currentBid || startingPrice} <span className="text-base sm:text-xl font-bold">FM</span>
                         </div>
 
                         <div className="flex gap-1.5">
-                          <button onClick={() => { setCountdown(3); if (activeChannel) activeChannel.send({ type: 'broadcast', event: 'start_countdown', payload: { seconds: 3 } }); }} className="px-3 py-2 sm:px-3.5 sm:py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center gap-1 cursor-pointer shadow-md transition-all active:scale-95"><Timer size={14} /> 3s Gong</button>
-                          <button onClick={handleNextPlayer} className="px-3 py-2 sm:px-3 sm:py-2.5 bg-[#020A06] hover:bg-slate-900 text-slate-200 font-bold rounded-xl text-xs uppercase flex items-center gap-1 cursor-pointer border border-emerald-950"><SkipForward size={14} /> Salta</button>
-                          <button onClick={handleAward} className="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center gap-1.5 cursor-pointer shadow-lg transition-all active:scale-95"><Gavel size={15} /> Aggiudica</button>
+                          <button onClick={() => { setCountdown(3); if (activeChannel) activeChannel.send({ type: 'broadcast', event: 'start_countdown', payload: { seconds: 3 } }); }} className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center gap-1 cursor-pointer shadow-md transition-all active:scale-95"><Timer size={14} /> 3s Gong</button>
+                          <button onClick={handleNextPlayer} className="px-2.5 py-1.5 sm:px-3 sm:py-2 bg-[#020A06] hover:bg-slate-900 text-slate-200 font-bold rounded-xl text-xs uppercase flex items-center gap-1 cursor-pointer border border-emerald-950"><SkipForward size={14} /> Salta</button>
+                          <button onClick={handleAward} className="px-3 py-1.5 sm:px-4 sm:py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center gap-1.5 cursor-pointer shadow-lg transition-all active:scale-95"><Gavel size={15} /> Aggiudica</button>
                         </div>
                       </div>
 
-                      <div className="pt-2 border-t border-emerald-950 flex flex-wrap items-center justify-between gap-2">
+                      <div className="pt-1.5 border-t border-emerald-950 flex flex-wrap items-center justify-between gap-2">
                         <select 
                           value={selectedWinnerManualId} 
                           onChange={e => setSelectedWinnerManualId(e.target.value)} 
-                          className="bg-[#020A06] border border-emerald-900 rounded-lg px-2 py-1.5 text-xs font-bold text-amber-400 focus:outline-none max-w-[140px] sm:max-w-none truncate"
+                          className="bg-[#020A06] border border-emerald-900 rounded-lg px-2 py-1 text-xs font-bold text-amber-400 focus:outline-none max-w-[140px] sm:max-w-none truncate"
                         >
                           {coaches.map(c => <option key={c.id} value={c.id}>{c.teamName} - {c.name} ({c.budget} FM)</option>)}
                         </select>
                         
                         <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 flex-1 justify-end">
                           {[1, 5, 10, 20].map(s => (
-                            <button key={s} onClick={() => { setSelectedStep(s); handleRaise(s); }} className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl text-xs font-black bg-[#020A06] text-white border border-emerald-900 hover:border-amber-400 hover:text-amber-300 transition-colors cursor-pointer">+{s}</button>
+                            <button key={s} onClick={() => { setSelectedStep(s); handleRaise(s); }} className="px-2.5 py-1 sm:px-3 sm:py-1 rounded-xl text-xs font-black bg-[#020A06] text-white border border-emerald-900 hover:border-amber-400 hover:text-amber-300 transition-colors cursor-pointer">+{s}</button>
                           ))}
                           
-                          <div className="flex items-center gap-1 bg-[#020A06] border border-emerald-900 rounded-xl px-1.5 py-1">
+                          <div className="flex items-center gap-1 bg-[#020A06] border border-emerald-900 rounded-xl px-1.5 py-0.5">
                             <input 
                               type="number" 
                               placeholder="FM..." 
