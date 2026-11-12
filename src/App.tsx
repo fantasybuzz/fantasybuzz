@@ -907,6 +907,7 @@ export default function App() {
     setCoaches(updatedCoaches);
     setLastAwardSnapshot(null);
     setAwardModal(null);
+    setBidHistory([]);
     setCurrentBid(0);
     setHighestBidderId(null);
     setShowLeagueSettingsModal(false);
@@ -1288,7 +1289,6 @@ export default function App() {
                 onClick={() => {
                   setCustomLeagueInput('');
                   setInitialBudget(500);
-                  // Resetta sempre alle 8 squadre demo originali quando crei una nuova lega!
                   setCoaches(ensureSinglePresident(DEFAULT_DEMO_COACHES));
                   setShowCustomLeagueModal(true);
                 }}
@@ -1575,7 +1575,21 @@ export default function App() {
                   <button onClick={() => setIsPureTvDisplay(!isPureTvDisplay)} className="hidden sm:flex px-2 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-200 cursor-pointer"><Monitor size={12} /></button>
                 </>
               )}
-              <button onClick={() => { setUserRole(null); setPlayerCoachId(''); setActiveTab('AUCTION'); }} className="text-xs bg-slate-800 text-slate-400 font-bold p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl cursor-pointer"><LogOut size={12} /></button>
+              <button 
+                onClick={() => { 
+                  setUserRole(null); 
+                  setPlayerCoachId(''); 
+                  setActiveTab('AUCTION'); 
+                  setBidHistory([]);
+                  setCurrentBid(0);
+                  setHighestBidderId(null);
+                  setLastAwardSnapshot(null);
+                }} 
+                className="text-xs bg-slate-800 text-slate-400 font-bold p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl cursor-pointer"
+                title="Esci dalla stanza"
+              >
+                <LogOut size={12} />
+              </button>
             </div>
           </header>
 
@@ -2938,7 +2952,7 @@ export default function App() {
                   isOnline: idx === 0
                 }));
 
-                // Salva la stanza nello storico così il Presidente non la dimentica mai!
+                // Salva la stanza nello storico
                 const newHistoryEntry = {
                   code: newCode,
                   name: n,
@@ -2950,6 +2964,10 @@ export default function App() {
 
                 setPurchasedPlayers({});
                 setCoaches(finalCoaches);
+                setBidHistory([]);
+                setCurrentBid(0);
+                setHighestBidderId(null);
+                setLastAwardSnapshot(null);
                 setLeagueName(n); 
                 setRoomCode(newCode);
                 setShowCustomLeagueModal(false); 
