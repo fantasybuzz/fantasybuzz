@@ -965,7 +965,6 @@ export default function App() {
     window.open(`https://wa.me/?text=${encodeURIComponent(viralText)}`, '_blank');
   };
 
-  // Condivisione con codifica Unicode sicura
   const handleShareRosterWhatsApp = (coachId: string) => {
     const coachObj = coaches.find(x => x.id === coachId);
     if (!coachObj) return;
@@ -1388,6 +1387,7 @@ export default function App() {
                         if (activeChannel) activeChannel.send({ type: 'broadcast', event: 'player_online', payload: { coachId: c.id } });
                         if (c.isPresident) {
                           setUserRole('PRESIDENT');
+                          setIsPureTvDisplay(false);
                         } else {
                           setUserRole('PLAYER');
                         }
@@ -1427,7 +1427,7 @@ export default function App() {
           {/* ======================================================== */}
           {/* 2. REGIA TV (Ruolo: PRESIDENTE)                         */}
           {/* ======================================================== */}
-          {userRole === 'PRESIDENT' && (
+          {userRole === 'PRESIDENT' && !isPureTvDisplay && (
             <div className="bg-[#051C12]/90 border border-emerald-500/40 rounded-xl px-2.5 py-1 mb-1 flex items-center justify-between text-xs shrink-0 backdrop-blur-md">
               <div className="flex items-center gap-2">
                 <span className="text-slate-200 truncate max-w-[170px] sm:max-w-none">🎁 <strong className="text-emerald-400">Asta:</strong> {roomCode}</span>
@@ -1501,7 +1501,7 @@ export default function App() {
                 <h1 className="text-xs font-black text-white uppercase flex items-center gap-1.5 tracking-wider">
                   FantasyBuzz
                   <span className="bg-amber-500 text-slate-950 px-2 py-0.5 rounded text-[9px] font-black">
-                    {userRole === 'PRESIDENT' ? 'REGIA TV' : getCoachDisplayById(playerCoachId)}
+                    {isPureTvDisplay ? 'SCHERMO TV' : userRole === 'PRESIDENT' ? 'REGIA TV' : getCoachDisplayById(playerCoachId)}
                   </span>
                 </h1>
               </div>
@@ -1548,44 +1548,60 @@ export default function App() {
 
               {userRole === 'PRESIDENT' && (
                 <>
-                  <button
-                    onClick={handleRingBroadcastBell}
-                    className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-black flex items-center gap-1 cursor-pointer shadow-md transition-all active:scale-95 ${
-                      spotlightTarget === 'BELL'
-                        ? 'bg-amber-400 text-slate-950 ring-4 ring-amber-300 shadow-[0_0_35px_rgba(245,158,11,1)] scale-105 animate-pulse'
-                        : 'bg-gradient-to-r from-amber-400 to-amber-500 hover:brightness-110 text-slate-950'
-                    }`}
-                    title="Suona la Campanella in diretta su tutti gli smartphone"
-                  >
-                    <Bell size={13} /> <span className="hidden sm:inline">Campanella</span>
-                  </button>
+                  {!isPureTvDisplay && (
+                    <>
+                      <button
+                        onClick={handleRingBroadcastBell}
+                        className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-black flex items-center gap-1 cursor-pointer shadow-md transition-all active:scale-95 ${
+                          spotlightTarget === 'BELL'
+                            ? 'bg-amber-400 text-slate-950 ring-4 ring-amber-300 shadow-[0_0_35px_rgba(245,158,11,1)] scale-105 animate-pulse'
+                            : 'bg-gradient-to-r from-amber-400 to-amber-500 hover:brightness-110 text-slate-950'
+                        }`}
+                        title="Suona la Campanella in diretta su tutti gli smartphone"
+                      >
+                        <Bell size={13} /> <span className="hidden sm:inline">Campanella</span>
+                      </button>
 
-                  <button
-                    onClick={() => setVoiceEnabled(prev => !prev)}
-                    className={`hidden sm:flex px-2 py-1.5 rounded-xl text-xs font-bold border cursor-pointer items-center gap-1 transition-colors ${voiceEnabled ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-rose-500/20 text-rose-300 border-rose-500/40'}`}
-                    title="Attiva/disattiva telecronista vocale"
-                  >
-                    {voiceEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
-                    <span>{voiceEnabled ? 'ON' : 'Muto'}</span>
-                  </button>
+                      <button
+                        onClick={() => setVoiceEnabled(prev => !prev)}
+                        className={`hidden sm:flex px-2 py-1.5 rounded-xl text-xs font-bold border cursor-pointer items-center gap-1 transition-colors ${voiceEnabled ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-rose-500/20 text-rose-300 border-rose-500/40'}`}
+                        title="Attiva/disattiva telecronista vocale"
+                      >
+                        {voiceEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
+                        <span>{voiceEnabled ? 'ON' : 'Muto'}</span>
+                      </button>
 
-                  <button 
-                    disabled={!lastAwardSnapshot}
-                    onClick={handleUndoLastAward} 
-                    className={`px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl text-[10px] sm:text-xs font-black flex items-center gap-1 transition-all ${
-                      lastAwardSnapshot
-                        ? spotlightTarget === 'UNDO'
-                          ? 'bg-rose-500 text-white border-2 border-white ring-4 ring-amber-300 shadow-[0_0_35px_rgba(245,158,11,1)] scale-105 animate-pulse cursor-pointer'
-                          : 'bg-rose-600 hover:bg-rose-500 text-white shadow-md cursor-pointer animate-pulse'
-                        : 'bg-slate-800/60 text-slate-500 border border-slate-700/50 cursor-not-allowed opacity-50'
-                    }`}
-                    title={lastAwardSnapshot ? `Annulla l'acquisto di ${lastAwardSnapshot.player.name}` : 'Nessuna operazione recente da annullare'}
-                  >
-                    <RotateCcw size={11} /> 
-                    <span>Annulla {lastAwardSnapshot ? `(${lastAwardSnapshot.price} FM)` : ''}</span>
-                  </button>
+                      <button 
+                        disabled={!lastAwardSnapshot}
+                        onClick={handleUndoLastAward} 
+                        className={`px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl text-[10px] sm:text-xs font-black flex items-center gap-1 transition-all ${
+                          lastAwardSnapshot
+                            ? spotlightTarget === 'UNDO'
+                              ? 'bg-rose-500 text-white border-2 border-white ring-4 ring-amber-300 shadow-[0_0_35px_rgba(245,158,11,1)] scale-105 animate-pulse cursor-pointer'
+                              : 'bg-rose-600 hover:bg-rose-500 text-white shadow-md cursor-pointer animate-pulse'
+                            : 'bg-slate-800/60 text-slate-500 border border-slate-700/50 cursor-not-allowed opacity-50'
+                        }`}
+                        title={lastAwardSnapshot ? `Annulla l'acquisto di ${lastAwardSnapshot.player.name}` : 'Nessuna operazione recente da annullare'}
+                      >
+                        <RotateCcw size={11} /> 
+                        <span>Annulla {lastAwardSnapshot ? `(${lastAwardSnapshot.price} FM)` : ''}</span>
+                      </button>
+                    </>
+                  )}
                   
-                  <button onClick={() => setIsPureTvDisplay(!isPureTvDisplay)} className="hidden sm:flex px-2 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-200 cursor-pointer"><Monitor size={12} /></button>
+                  {/* PULSANTE MONITOR TV PURA ATTIVATO E ILLUMINATO */}
+                  <button 
+                    onClick={() => setIsPureTvDisplay(prev => !prev)} 
+                    className={`flex px-2 py-1.5 rounded-xl text-xs font-black cursor-pointer items-center gap-1 transition-all border ${
+                      isPureTvDisplay 
+                        ? 'bg-amber-500 text-slate-950 border-white shadow-[0_0_15px_rgba(245,158,11,0.8)]' 
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                    }`}
+                    title={isPureTvDisplay ? 'Torna alla Regia con i comandi' : 'Attiva Schermo TV Pulito (nasconde i comandi)'}
+                  >
+                    <Monitor size={13} />
+                    {isPureTvDisplay && <span className="text-[10px]">TV</span>}
+                  </button>
                 </>
               )}
               <button 
@@ -1597,6 +1613,7 @@ export default function App() {
                   setCurrentBid(0);
                   setHighestBidderId(null);
                   setLastAwardSnapshot(null);
+                  setIsPureTvDisplay(false);
                 }} 
                 className="text-xs bg-slate-800 text-slate-400 font-bold p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl cursor-pointer"
                 title="Esci dalla stanza"
@@ -1768,7 +1785,7 @@ export default function App() {
                   <aside className="hidden lg:flex w-[275px] shrink-0 bg-[#04160E]/95 rounded-2xl p-3 flex-col gap-2 overflow-hidden border border-emerald-500/30 shadow-xl backdrop-blur-md">
                     <div className="flex justify-between pb-1.5 border-b border-emerald-500/20 text-xs font-black text-emerald-400">
                       <span className="flex items-center gap-1"><Trophy size={13} className="text-amber-400" /> Club in Sala</span>
-                      <span className="text-[10px] text-amber-300">👆 Clicca = +1 FM</span>
+                      {!isPureTvDisplay && <span className="text-[10px] text-amber-300">👆 Clicca = +1 FM</span>}
                     </div>
 
                     <div className="space-y-1.5 overflow-y-auto flex-1">
@@ -1777,8 +1794,12 @@ export default function App() {
                         return (
                           <div
                             key={c.id}
-                            onClick={() => { setSelectedWinnerManualId(c.id); handleRaise(1, c.id); }}
-                            className={`p-2.5 rounded-xl transition-all cursor-pointer ${isHighest ? 'bg-emerald-500/30 border-2 border-emerald-400 shadow-[0_0_18px_rgba(16,185,129,0.5)]' : selectedWinnerManualId === c.id ? 'bg-amber-500/15 border border-amber-400/60' : 'bg-[#020A06] border border-emerald-950'}`}
+                            onClick={() => {
+                              if (isPureTvDisplay) return;
+                              setSelectedWinnerManualId(c.id);
+                              handleRaise(1, c.id);
+                            }}
+                            className={`p-2.5 rounded-xl transition-all ${!isPureTvDisplay ? 'cursor-pointer' : ''} ${isHighest ? 'bg-emerald-500/30 border-2 border-emerald-400 shadow-[0_0_18px_rgba(16,185,129,0.5)]' : selectedWinnerManualId === c.id && !isPureTvDisplay ? 'bg-amber-500/15 border border-amber-400/60' : 'bg-[#020A06] border border-emerald-950'}`}
                           >
                             <div className="flex justify-between items-start">
                               <div className="truncate pr-1">
@@ -1807,7 +1828,7 @@ export default function App() {
                     </div>
                   </aside>
 
-                  {/* PALCO CENTRALE CON SCORRIMENTO NATURALE E NOMI BEN LEGGIBILI */}
+                  {/* PALCO CENTRALE CAMPO DA CALCIO */}
                   <section
                     className={`w-full lg:flex-1 shrink-0 min-h-[420px] lg:min-h-0 rounded-2xl p-2 sm:p-3 flex flex-col items-center justify-between relative overflow-y-auto border-2 shadow-2xl transition-all duration-300 ${
                       isBlinking ? 'border-amber-400 shadow-[0_0_40px_rgba(245,158,11,0.6)]' : 'border-emerald-500/50'
@@ -1838,55 +1859,56 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* BARRA FILTRI LISTONE E NOMI GIOCATORI AMPIA E LEGGIBILE */}
-                    <div className={`w-full bg-[#04160E]/95 rounded-xl p-2 flex flex-col gap-2 z-10 border shadow-md backdrop-blur-md transition-all shrink-0 ${
-                      spotlightTarget === 'LISTONE' 
-                        ? 'border-amber-400 ring-4 ring-amber-300 shadow-[0_0_35px_rgba(245,158,11,1)] scale-[1.01] animate-pulse' 
-                        : 'border-emerald-500/30'
-                    }`}>
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <div className="relative flex-1 min-w-[130px]">
-                          <Search size={13} className="absolute left-2.5 top-2 text-slate-400" />
-                          <input type="text" placeholder="Cerca nel Listone Ufficiale..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-[#020A06] border border-emerald-950 rounded-lg py-1 pl-7 pr-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-emerald-400" />
-                        </div>
-                        {[
-                          { code: 'ALL', label: 'Tutti' },
-                          { code: 'P', label: 'Por' },
-                          { code: 'D', label: 'Dif' },
-                          { code: 'C', label: 'Cen' },
-                          { code: 'A', label: 'Att' },
-                        ].map(r => (
+                    {/* BARRA FILTRI LISTONE: NASCOSTA IN MODALITÀ TV PURA */}
+                    {!isPureTvDisplay && (
+                      <div className={`w-full bg-[#04160E]/95 rounded-xl p-2 flex flex-col gap-2 z-10 border shadow-md backdrop-blur-md transition-all shrink-0 ${
+                        spotlightTarget === 'LISTONE' 
+                          ? 'border-amber-400 ring-4 ring-amber-300 shadow-[0_0_35px_rgba(245,158,11,1)] scale-[1.01] animate-pulse' 
+                          : 'border-emerald-500/30'
+                      }`}>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <div className="relative flex-1 min-w-[130px]">
+                            <Search size={13} className="absolute left-2.5 top-2 text-slate-400" />
+                            <input type="text" placeholder="Cerca nel Listone Ufficiale..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-[#020A06] border border-emerald-950 rounded-lg py-1 pl-7 pr-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-emerald-400" />
+                          </div>
+                          {[
+                            { code: 'ALL', label: 'Tutti' },
+                            { code: 'P', label: 'Por' },
+                            { code: 'D', label: 'Dif' },
+                            { code: 'C', label: 'Cen' },
+                            { code: 'A', label: 'Att' },
+                          ].map(r => (
+                            <button
+                              key={r.code}
+                              onClick={() => handleRoleFilterChange(r.code as 'ALL' | Role)}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-black cursor-pointer transition-colors ${selectedRole === r.code ? 'bg-amber-500 text-slate-950 shadow' : 'bg-[#020A06] text-slate-400 hover:text-white'}`}
+                            >
+                              {r.label}
+                            </button>
+                          ))}
+                          <button onClick={handleRandomPlayer} className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-black flex items-center gap-1 cursor-pointer shadow"><Shuffle size={12} /> 🎲 Pesca a Sorte</button>
                           <button
-                            key={r.code}
-                            onClick={() => handleRoleFilterChange(r.code as 'ALL' | Role)}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-black cursor-pointer transition-colors ${selectedRole === r.code ? 'bg-amber-500 text-slate-950 shadow' : 'bg-[#020A06] text-slate-400 hover:text-white'}`}
+                            onClick={() => setActiveLeagueTab(activeLeagueTab === 'REGULAR' ? 'REPAIR' : 'REGULAR')}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-black cursor-pointer border transition-colors ${activeLeagueTab === 'REPAIR' ? 'bg-emerald-500 text-slate-950 border-emerald-300 shadow' : 'bg-[#020A06] text-emerald-400 border-emerald-800'}`}
+                            title="Filtra solo i calciatori svincolati per Aste di Riparazione"
                           >
-                            {r.label}
+                            {activeLeagueTab === 'REPAIR' ? '🔄 Solo Svincolati' : '📋 Listone'}
                           </button>
-                        ))}
-                        <button onClick={handleRandomPlayer} className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-black flex items-center gap-1 cursor-pointer shadow"><Shuffle size={12} /> 🎲 Pesca a Sorte</button>
-                        <button
-                          onClick={() => setActiveLeagueTab(activeLeagueTab === 'REGULAR' ? 'REPAIR' : 'REGULAR')}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-black cursor-pointer border transition-colors ${activeLeagueTab === 'REPAIR' ? 'bg-emerald-500 text-slate-950 border-emerald-300 shadow' : 'bg-[#020A06] text-emerald-400 border-emerald-800'}`}
-                          title="Filtra solo i calciatori svincolati per Aste di Riparazione"
-                        >
-                          {activeLeagueTab === 'REPAIR' ? '🔄 Solo Svincolati' : '📋 Listone'}
-                        </button>
-                        <button onClick={() => setStartFromOne(!startFromOne)} className="px-2 py-1 bg-[#020A06] border border-emerald-950 rounded-lg text-xs font-bold text-amber-400 cursor-pointer">Base: {startFromOne ? '1 FM' : 'Quotazione'}</button>
-                        <label className="flex items-center gap-1 text-xs text-slate-300 cursor-pointer font-bold"><input type="checkbox" checked={hidePurchased} onChange={e => setHidePurchased(e.target.checked)} /> Solo Liberi</label>
+                          <button onClick={() => setStartFromOne(!startFromOne)} className="px-2 py-1 bg-[#020A06] border border-emerald-950 rounded-lg text-xs font-bold text-amber-400 cursor-pointer">Base: {startFromOne ? '1 FM' : 'Quotazione'}</button>
+                          <label className="flex items-center gap-1 text-xs text-slate-300 cursor-pointer font-bold"><input type="checkbox" checked={hidePurchased} onChange={e => setHidePurchased(e.target.checked)} /> Solo Liberi</label>
+                        </div>
+                        <div className="flex gap-1.5 overflow-x-auto py-1.5 border-t border-emerald-950 items-center">
+                          {filteredList.slice(0, 80).map(p => (
+                            <button key={p.id} onClick={() => handleSelectPlayer(p)} className={`px-2.5 py-1 rounded-lg text-xs font-bold shrink-0 cursor-pointer transition-all ${activePlayer.id === p.id ? 'bg-amber-500 text-slate-950 font-black shadow-md' : 'bg-[#020A06] text-slate-300 hover:text-white'}`}>[{p.role}] {p.name} ({p.basePrice})</button>
+                          ))}
+                        </div>
                       </div>
-                      <div className="flex gap-1.5 overflow-x-auto py-1.5 border-t border-emerald-950 items-center">
-                        {filteredList.slice(0, 80).map(p => (
-                          <button key={p.id} onClick={() => handleSelectPlayer(p)} className={`px-2.5 py-1 rounded-lg text-xs font-bold shrink-0 cursor-pointer transition-all ${activePlayer.id === p.id ? 'bg-amber-500 text-slate-950 font-black shadow-md' : 'bg-[#020A06] text-slate-300 hover:text-white'}`}>[{p.role}] {p.name} ({p.basePrice})</button>
-                        ))}
-                      </div>
-                    </div>
+                    )}
 
-                    {/* CARD CALCIATORE CENTRALIZZATA */}
+                    {/* CARD CALCIATORE CENTRALIZZATA (SI INGRANDISCE IN MODALITÀ TV PURA) */}
                     <div className="flex flex-col items-center justify-center my-auto z-10 text-center relative w-full py-2 shrink-0">
-                      <div className="bg-[#051C12]/95 border-2 border-amber-400/90 rounded-3xl p-3 sm:p-4 shadow-[0_12px_45px_rgba(0,0,0,0.85)] max-w-md w-full relative backdrop-blur-md">
+                      <div className={`bg-[#051C12]/95 border-2 border-amber-400/90 rounded-3xl shadow-[0_12px_45px_rgba(0,0,0,0.85)] w-full relative backdrop-blur-md transition-all ${isPureTvDisplay ? 'max-w-xl p-6 sm:p-8' : 'max-w-md p-3 sm:p-4'}`}>
                         
-                        {/* BADGE SFIDA 1vs1 SUL BORDO SUPERIORE DELLA CARD */}
                         {activeDuel && (
                           <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-20 bg-gradient-to-r from-rose-600 via-red-600 to-rose-600 border border-amber-300 px-3 py-0.5 rounded-full text-[10px] sm:text-xs font-black uppercase text-white shadow-[0_0_20px_rgba(225,29,72,0.85)] animate-pulse tracking-wider whitespace-nowrap">
                             🔥 SFIDA: {activeDuel} 🔥
@@ -1905,16 +1927,16 @@ export default function App() {
                         </div>
 
                         <div className="my-1.5 flex justify-center">
-                          <div className="w-14 h-14 xl:w-20 xl:h-20 rounded-full bg-[#020A06] border-2 border-amber-400 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.35)]">
-                            <span className="text-2xl xl:text-4xl font-black text-amber-400 uppercase">{activePlayer.name.charAt(0)}</span>
+                          <div className={`rounded-full bg-[#020A06] border-2 border-amber-400 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.35)] ${isPureTvDisplay ? 'w-24 h-24 sm:w-28 sm:h-28' : 'w-14 h-14 xl:w-20 xl:h-20'}`}>
+                            <span className={`font-black text-amber-400 uppercase ${isPureTvDisplay ? 'text-4xl sm:text-5xl' : 'text-2xl xl:text-4xl'}`}>{activePlayer.name.charAt(0)}</span>
                           </div>
                         </div>
 
-                        <h2 className="text-2xl sm:text-3xl xl:text-4xl font-black text-white uppercase tracking-tight drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] truncate max-w-sm mx-auto leading-tight">
+                        <h2 className={`font-black text-white uppercase tracking-tight drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] truncate max-w-md mx-auto leading-tight ${isPureTvDisplay ? 'text-3xl sm:text-5xl my-2' : 'text-2xl sm:text-3xl xl:text-4xl'}`}>
                           {activePlayer.name}
                         </h2>
 
-                        <div className="flex justify-center items-center gap-2 sm:gap-3 text-xs font-bold text-slate-200 bg-[#020A06] px-3 py-1 rounded-2xl border border-emerald-900/80 mt-1.5">
+                        <div className="flex justify-center items-center gap-2 sm:gap-3 text-xs font-bold text-slate-200 bg-[#020A06] px-3 py-1.5 rounded-2xl border border-emerald-900/80 mt-2">
                           <span>Base: <strong className="text-amber-400 font-black">{activePlayer.basePrice} FM</strong></span>
                           <span className="text-slate-600">•</span>
                           <span>MV: <strong className="text-emerald-400 font-black">{activePlayer.mv || '6.00'}</strong></span>
@@ -1924,61 +1946,65 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* PANNELLO CONTROLLI BATTUTA */}
+                    {/* PANNELLO BATTUTA: IN MODALITÀ TV PURA MOSTRA SOLO SOCIETÀ IN TESTA E PREZZO GIGANTE */}
                     <div className="w-full max-w-3xl bg-[#04160E]/95 p-2.5 sm:p-3 rounded-2xl flex flex-col gap-1.5 z-10 border border-emerald-500/30 shadow-2xl backdrop-blur-md shrink-0">
-                      <div className="flex flex-wrap justify-between items-center gap-2">
+                      <div className={`flex flex-wrap items-center gap-2 ${isPureTvDisplay ? 'justify-around py-2' : 'justify-between'}`}>
                         <div>
                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">SOCIETÀ IN TESTA</span>
-                          <p className="text-xs sm:text-sm xl:text-base text-emerald-400 font-black uppercase flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                          <p className={`text-emerald-400 font-black uppercase flex items-center gap-1.5 ${isPureTvDisplay ? 'text-lg sm:text-2xl' : 'text-xs sm:text-sm xl:text-base'}`}>
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
                             {highestBidderId ? getCoachDisplayById(highestBidderId) : `Si parte da ${startingPrice} FM`}
                           </p>
                         </div>
 
-                        <div className="text-3xl sm:text-4xl xl:text-5xl font-black text-amber-400 drop-shadow-md">
-                          {currentBid || startingPrice} <span className="text-base sm:text-xl font-bold">FM</span>
+                        <div className={`font-black text-amber-400 drop-shadow-md ${isPureTvDisplay ? 'text-5xl sm:text-7xl' : 'text-3xl sm:text-4xl xl:text-5xl'}`}>
+                          {currentBid || startingPrice} <span className="text-base sm:text-2xl font-bold">FM</span>
                         </div>
 
-                        <div className="flex gap-1.5">
-                          <button onClick={() => { setCountdown(3); if (activeChannel) activeChannel.send({ type: 'broadcast', event: 'start_countdown', payload: { seconds: 3 } }); }} className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center gap-1 cursor-pointer shadow-md transition-all active:scale-95"><Timer size={14} /> 3s Gong</button>
-                          <button onClick={handleNextPlayer} className="px-2.5 py-1.5 sm:px-3 sm:py-2 bg-[#020A06] hover:bg-slate-900 text-slate-200 font-bold rounded-xl text-xs uppercase flex items-center gap-1 cursor-pointer border border-emerald-950"><SkipForward size={14} /> Salta</button>
-                          <button onClick={handleAward} className="px-3 py-1.5 sm:px-4 sm:py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center gap-1.5 cursor-pointer shadow-lg transition-all active:scale-95"><Gavel size={15} /> Aggiudica</button>
-                        </div>
+                        {!isPureTvDisplay && (
+                          <div className="flex gap-1.5">
+                            <button onClick={() => { setCountdown(3); if (activeChannel) activeChannel.send({ type: 'broadcast', event: 'start_countdown', payload: { seconds: 3 } }); }} className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center gap-1 cursor-pointer shadow-md transition-all active:scale-95"><Timer size={14} /> 3s Gong</button>
+                            <button onClick={handleNextPlayer} className="px-2.5 py-1.5 sm:px-3 sm:py-2 bg-[#020A06] hover:bg-slate-900 text-slate-200 font-bold rounded-xl text-xs uppercase flex items-center gap-1 cursor-pointer border border-emerald-950"><SkipForward size={14} /> Salta</button>
+                            <button onClick={handleAward} className="px-3 py-1.5 sm:px-4 sm:py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center gap-1.5 cursor-pointer shadow-lg transition-all active:scale-95"><Gavel size={15} /> Aggiudica</button>
+                          </div>
+                        )}
                       </div>
 
-                      <div className="pt-1.5 border-t border-emerald-950 flex flex-wrap items-center justify-between gap-2">
-                        <select 
-                          value={selectedWinnerManualId} 
-                          onChange={e => setSelectedWinnerManualId(e.target.value)} 
-                          className="bg-[#020A06] border border-emerald-900 rounded-lg px-2 py-1 text-xs font-bold text-amber-400 focus:outline-none max-w-[140px] sm:max-w-none truncate"
-                        >
-                          {coaches.map(c => <option key={c.id} value={c.id}>{c.teamName} - {c.name} ({c.budget} FM)</option>)}
-                        </select>
-                        
-                        <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 flex-1 justify-end">
-                          {[1, 5, 10, 20].map(s => (
-                            <button key={s} onClick={() => { setSelectedStep(s); handleRaise(s); }} className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl text-xs font-black bg-[#020A06] text-white border border-emerald-900 hover:border-amber-400 hover:text-amber-300 transition-colors cursor-pointer">+{s}</button>
-                          ))}
+                      {!isPureTvDisplay && (
+                        <div className="pt-1.5 border-t border-emerald-950 flex flex-wrap items-center justify-between gap-2">
+                          <select 
+                            value={selectedWinnerManualId} 
+                            onChange={e => setSelectedWinnerManualId(e.target.value)} 
+                            className="bg-[#020A06] border border-emerald-900 rounded-lg px-2 py-1 text-xs font-bold text-amber-400 focus:outline-none max-w-[140px] sm:max-w-none truncate"
+                          >
+                            {coaches.map(c => <option key={c.id} value={c.id}>{c.teamName} - {c.name} ({c.budget} FM)</option>)}
+                          </select>
                           
-                          <div className="flex items-center gap-1 bg-[#020A06] border border-emerald-900 rounded-xl px-1.5 py-1">
-                            <input 
-                              type="number" 
-                              placeholder="FM..." 
-                              value={customBidInput} 
-                              onChange={e => setCustomBidInput(e.target.value)} 
-                              onKeyDown={e => { if (e.key === 'Enter') handleCustomExactBid(); }}
-                              className="w-14 sm:w-20 bg-transparent text-xs font-bold text-emerald-400 text-center focus:outline-none placeholder-slate-500" 
-                            />
-                            <button
-                              type="button"
-                              onClick={handleCustomExactBid}
-                              className="px-2 py-0.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-lg text-[10px] uppercase cursor-pointer"
-                            >
-                              Rilancia
-                            </button>
+                          <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 flex-1 justify-end">
+                            {[1, 5, 10, 20].map(s => (
+                              <button key={s} onClick={() => { setSelectedStep(s); handleRaise(s); }} className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl text-xs font-black bg-[#020A06] text-white border border-emerald-900 hover:border-amber-400 hover:text-amber-300 transition-colors cursor-pointer">+{s}</button>
+                            ))}
+                            
+                            <div className="flex items-center gap-1 bg-[#020A06] border border-emerald-900 rounded-xl px-1.5 py-1">
+                              <input 
+                                type="number" 
+                                placeholder="FM..." 
+                                value={customBidInput} 
+                                onChange={e => setCustomBidInput(e.target.value)} 
+                                onKeyDown={e => { if (e.key === 'Enter') handleCustomExactBid(); }}
+                                className="w-14 sm:w-20 bg-transparent text-xs font-bold text-emerald-400 text-center focus:outline-none placeholder-slate-500" 
+                              />
+                              <button
+                                type="button"
+                                onClick={handleCustomExactBid}
+                                className="px-2 py-0.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-lg text-[10px] uppercase cursor-pointer"
+                              >
+                                Rilancia
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </section>
 
@@ -2993,6 +3019,7 @@ export default function App() {
                 setRoomCode(newCode);
                 setShowCustomLeagueModal(false); 
                 setUserRole('PRESIDENT'); 
+                setIsPureTvDisplay(false);
                 setShowWelcomeGuide(true); 
                 setShowRoomCodeArrow(true);
                 setSelectedRole('ALL'); 
