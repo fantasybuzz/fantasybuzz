@@ -5,7 +5,7 @@ import {
   Monitor, Timer, Flame, Award, PieChart, AlertCircle, TrendingUp, Gavel,
   RotateCcw, Shuffle, UserPlus, Trash2, Sparkles, QrCode, Volume2, VolumeX,
   FileSignature, ArrowLeft, Copy, Bell, Crown, Settings, RefreshCw,
-  ChevronRight, Menu, Smartphone, PlusSquare, Send
+  ChevronRight, Menu, Smartphone, PlusSquare, MessageCircle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import rawListone from './data/listone.json';
@@ -307,10 +307,20 @@ export default function App() {
   // Drawer mobile
   const [isMobilePresidentDrawerOpen, setIsMobilePresidentDrawerOpen] = useState(false);
 
+  // Storico stanze create dal Presidente
+  const [savedRoomsHistory, setSavedRoomsHistory] = useState<{ code: string; name: string; date: string }[]>(() => {
+    try {
+      const raw = localStorage.getItem('fb_saved_rooms_history');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
   // Assistente FantaBot
   const [isFantaBotOpen, setIsFantaBotOpen] = useState(false);
   const [fantaBotSpeech, setFantaBotSpeech] = useState<string>('Ciao! Sono FantaBot ⚽🤖. Come posso aiutarti a gestire al meglio la tua asta?');
-  const [spotlightTarget, setSpotlightTarget] = useState<'HERO_START' | 'HERO_CONNECT' | 'HERO_SIM' | 'QR' | 'UNDO' | 'SETTINGS' | 'LISTONE' | 'BELL' | 'BUZZER_BIG' | 'BUZZER_EXACT' | 'MY_ROSTER_TAB' | 'REACTIONS' | 'ROSTERS_TAB' | null>(null);
+  const [spotlightTarget, setSpotlightTarget] = useState<'HERO_START' | 'HERO_CONNECT' | 'HERO_SIM' | 'HERO_PWA' | 'QR' | 'UNDO' | 'SETTINGS' | 'LISTONE' | 'BELL' | 'BUZZER_BIG' | 'BUZZER_EXACT' | 'MY_ROSTER_TAB' | 'REACTIONS' | 'ROSTERS_TAB' | null>(null);
 
   const triggerSpotlight = (target: typeof spotlightTarget) => {
     setSpotlightTarget(target);
@@ -581,7 +591,6 @@ export default function App() {
       speakTelecronista(`Colpo di mercato! ${player.name} firma con ${clubLabel} per ${price} fantamilioni!`, voiceEnabled);
     }
     
-    // Backup snapshot per Undo
     setLastAwardSnapshot({
       player,
       winnerId: winnerCoachId,
@@ -734,7 +743,6 @@ export default function App() {
     setCustomBidInput(''); 
     setCountdown(null); 
     setAwardModal(null);
-    // Non azzeriamo lastAwardSnapshot: resta valido finché non avviene una nuova aggiudicazione
     if (userRole === 'PRESIDENT') speakTelecronista(`In campo ${player.name}, ${player.team}.`, voiceEnabled);
     if (activeChannel) await activeChannel.send({ type: 'broadcast', event: 'change_player', payload: { player } });
   }, [activeChannel, userRole, voiceEnabled]);
@@ -943,7 +951,7 @@ export default function App() {
   }, [countdown, userRole, handleAward]);
 
   const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
-  const handleShareWhatsAppInvite = () => window.open(`https://wa.me/?text=${encodeURIComponent(`⚽ Entra nello studio TV dell'asta di Fantacalcio *${leagueName}*!\n📲 Clicca qui per aprire il tuo Buzzer: ${inviteUrl}\n🔑 Codice Stanza: *${roomCode}*`)}`, '_blank');
+  const handleShareWhatsAppInvite = () => window.open(`https://wa.me/?text=${encodeURIComponent(`\u{26BD} Entra nello studio TV dell'asta di Fantacalcio *${leagueName}*!\n\u{1F4F2} Clicca qui per aprire il tuo Buzzer: ${inviteUrl}\n\u{1F511} Codice Stanza: *${roomCode}*`)}`, '_blank');
   const handleCopyRoomCode = () => { navigator.clipboard?.writeText(roomCode); setCodeCopied(true); setTimeout(() => setCodeCopied(false), 2000); };
 
   const handleShareViralDealWhatsApp = () => {
@@ -951,11 +959,11 @@ export default function App() {
     const winnerObj = coaches.find(x => x.id === awardModal.winnerId);
     const club = winnerObj?.teamName || awardModal.winnerName;
     const stamp = getViralStampInfo(awardModal.price, awardModal.player.basePrice, initialBudget);
-    const viralText = `🔥 *${stamp.label}* 🔥\n✍️ *${awardModal.player.name}* (${awardModal.player.team}) firma con *${club.toUpperCase()}* (${awardModal.winnerName}) per *${awardModal.price} FM*!\n\n📺 Asta del Fantacalcio trasformata in uno Show TV con *FantasyBuzz*!\n👉 Provalo gratis con la tua lega su https://${window.location.host}`;
+    const viralText = `\u{1F525} *${stamp.label}* \u{1F525}\n\u{270D}\u{FE0F} *${awardModal.player.name}* (${awardModal.player.team}) firma con *${club.toUpperCase()}* (${awardModal.winnerName}) per *${awardModal.price} FM*!\n\n\u{1F4FA} Asta del Fantacalcio trasformata in uno Show TV con *FantasyBuzz*!\n\u{1F449} Provalo gratis con la tua lega su https://${window.location.host}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(viralText)}`, '_blank');
   };
 
-  // Condivisione con codifica Unicode sicura (elimina caratteri corrotti tipo )
+  // Condivisione con codifica Unicode sicura
   const handleShareRosterWhatsApp = (coachId: string) => {
     const coachObj = coaches.find(x => x.id === coachId);
     if (!coachObj) return;
@@ -1130,6 +1138,9 @@ export default function App() {
     return items;
   }, [allPurchasesFeed, leagueName, roomCode, richestCoach]);
 
+  // Durata proporzionale al numero di elementi nel ticker per mantenere velocità costante
+  const tickerDurationSeconds = useMemo(() => Math.max(24, tickerItems.length * 7.5), [tickerItems.length]);
+
   return (
     <>
       <style>{`
@@ -1175,7 +1186,11 @@ export default function App() {
               <button
                 type="button"
                 onClick={handleTriggerInstall}
-                className="bg-cyan-500/20 border border-cyan-400/60 text-cyan-300 hover:bg-cyan-500/30 font-black px-2.5 py-0.5 rounded-full text-[10px] uppercase cursor-pointer flex items-center gap-1 shadow-sm transition-all"
+                className={`border font-black px-2.5 py-0.5 rounded-full text-[10px] uppercase cursor-pointer flex items-center gap-1 shadow-sm transition-all ${
+                  spotlightTarget === 'HERO_PWA'
+                    ? 'bg-cyan-400 text-slate-950 border-white ring-4 ring-amber-400 shadow-[0_0_30px_rgba(245,158,11,1)] scale-105 animate-pulse'
+                    : 'bg-cyan-500/20 border-cyan-400/60 text-cyan-300 hover:bg-cyan-500/30'
+                }`}
               >
                 <Smartphone size={11} /> 📲 Salva App su Telefono
               </button>
@@ -1272,6 +1287,9 @@ export default function App() {
                 type="button"
                 onClick={() => {
                   setCustomLeagueInput('');
+                  setInitialBudget(500);
+                  // Resetta sempre alle 8 squadre demo originali quando crei una nuova lega!
+                  setCoaches(ensureSinglePresident(DEFAULT_DEMO_COACHES));
                   setShowCustomLeagueModal(true);
                 }}
                 className={`w-full py-2.5 px-4 rounded-xl text-xs md:text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer font-black transition-all ${
@@ -1319,6 +1337,27 @@ export default function App() {
               </button>
             </div>
 
+            {/* PROMEMORIA RAPIDO DELLE ULTIME STANZE CREATE DAL PRESIDENTE */}
+            {savedRoomsHistory.length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
+                <span className="text-[10px] font-bold text-slate-400">📌 Le tue leghe salvate:</span>
+                {savedRoomsHistory.map(r => (
+                  <button
+                    key={r.code}
+                    type="button"
+                    onClick={() => {
+                      setInputLeagueName(r.code);
+                      setRoomCode(r.code);
+                    }}
+                    className="px-2 py-0.5 bg-[#0B1528] hover:bg-cyan-950 border border-cyan-500/40 rounded-lg text-[10px] font-black text-amber-300 cursor-pointer transition-colors"
+                    title={`Carica la stanza ${r.name} creata il ${r.date}`}
+                  >
+                    {r.name} ({r.code})
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* SELEZIONE SQUADRA AL RIENTRO: se è il presidente, torna Regia TV! */}
             {isRoomCodeConfirmed && availableRemoteCoaches.length > 0 && (
               <div className="space-y-1.5 pt-2 mt-2 border-t border-slate-800 text-left">
@@ -1334,8 +1373,6 @@ export default function App() {
                         setSelectedRosterCoachId(c.id);
                         setCoaches(prev => prev.map(x => x.id === c.id ? { ...x, isOnline: true } : x));
                         if (activeChannel) activeChannel.send({ type: 'broadcast', event: 'player_online', payload: { coachId: c.id } });
-                        
-                        // SE SELEZIONA LA SQUADRA DEL PRESIDENTE, TORNA IN REGIA TV!
                         if (c.isPresident) {
                           setUserRole('PRESIDENT');
                         } else {
@@ -1519,7 +1556,6 @@ export default function App() {
                     <span>{voiceEnabled ? 'ON' : 'Muto'}</span>
                   </button>
 
-                  {/* Tasto ANNULLA ASSEGNAZIONE permanente: attivo e visibile dopo ogni aggiudicazione */}
                   <button 
                     disabled={!lastAwardSnapshot}
                     onClick={handleUndoLastAward} 
@@ -1668,7 +1704,7 @@ export default function App() {
                       onClick={() => handleShareRosterWhatsApp(playerCoachId)}
                       className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-2 py-1 rounded-lg text-[10px] uppercase flex items-center gap-1 cursor-pointer shadow-md"
                     >
-                      <Send size={11} /> Condividi Rosa
+                      <MessageCircle size={12} /> Condividi Rosa
                     </button>
                   </div>
                   {(['P', 'D', 'C', 'A'] as const).map(role => {
@@ -1929,7 +1965,6 @@ export default function App() {
               {/* ======================================================== */}
               {activeTab === 'ROSTERS' && (
                 <main className="flex-1 flex flex-col lg:flex-row gap-3 my-1 overflow-y-auto w-full min-h-0">
-                  {/* Selettore Desktop a Colonna */}
                   <aside className="hidden lg:flex w-[260px] bg-[#04160E]/95 border border-emerald-500/30 rounded-2xl p-3 flex-col gap-2 backdrop-blur-md">
                     <div className="flex justify-between items-center pb-2 border-b border-emerald-950">
                       <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Squadre di Lega</span>
@@ -1954,15 +1989,11 @@ export default function App() {
                     </div>
                   </aside>
 
-                  {/* Area Contenuto Rosa */}
                   <section className="flex-1 bg-[#04160E]/95 border border-emerald-500/30 rounded-2xl p-3 sm:p-4 overflow-y-auto backdrop-blur-md flex flex-col gap-3">
-                    
-                    {/* Header Selezione Squadra su Mobile: MENU A TENDINA COMPATTO */}
                     <div className="flex flex-wrap justify-between items-center bg-[#020A06] p-2.5 sm:p-3 rounded-2xl border border-emerald-900 gap-2">
                       <div className="flex-1 min-w-[200px]">
                         <div className="flex items-center gap-2 mb-1">
                           <label className="text-[10px] uppercase font-black text-slate-400">Squadra:</label>
-                          {/* Tendina selezione su Mobile e Desktop */}
                           <select 
                             value={selectedRosterCoachId} 
                             onChange={e => setSelectedRosterCoachId(e.target.value)}
@@ -1978,7 +2009,6 @@ export default function App() {
                         </p>
                       </div>
 
-                      {/* Tasti Azione: Tabellone/Campo + WhatsApp + Excel */}
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <div className="grid grid-cols-2 gap-1 bg-[#061A12] p-0.5 rounded-lg border border-emerald-950 text-xs font-bold">
                           <button onClick={() => setRosterViewMode('GRID')} className={`px-2 py-1 rounded text-[10px] sm:text-xs cursor-pointer ${rosterViewMode === 'GRID' ? 'bg-amber-500 text-slate-950 font-black' : 'text-slate-400'}`}>Lista</button>
@@ -1990,7 +2020,7 @@ export default function App() {
                           className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-2.5 py-1.5 rounded-xl text-[10px] sm:text-xs uppercase flex items-center gap-1 shadow-md cursor-pointer"
                           title="Invia la rosa completa su WhatsApp"
                         >
-                          <Send size={12} /> <span className="hidden sm:inline">Invia WhatsApp</span>
+                          <MessageCircle size={13} /> <span className="hidden sm:inline">Invia WhatsApp</span>
                         </button>
 
                         <button 
@@ -2110,11 +2140,14 @@ export default function App() {
             </>
           )}
 
-          {/* TICKER IN FONDO ALLO SCHERMO */}
+          {/* TICKER IN FONDO ALLO SCHERMO CON VELOCITÀ COSTANTE */}
           <div className="w-full bg-[#04160E] border border-emerald-500/30 rounded-xl h-8 flex items-center overflow-hidden shrink-0 shadow-lg mt-0.5">
             <div className="bg-amber-500 text-slate-950 font-black text-[10px] uppercase px-3 h-full flex items-center gap-1 shrink-0 z-10"><Zap size={12} className="fill-slate-950" /> ULTIM'ORA FANTAMERCATO</div>
             <div className="flex-1 overflow-hidden relative h-full flex items-center">
-              <div className="flex whitespace-nowrap gap-10 text-xs font-bold text-slate-200" style={{ animation: 'tickerMarquee 24s linear infinite' }}>
+              <div 
+                className="flex whitespace-nowrap gap-10 text-xs font-bold text-slate-200" 
+                style={{ animation: `tickerMarquee ${tickerDurationSeconds}s linear infinite` }}
+              >
                 {[...tickerItems, ...tickerItems].map((item, i) => <span key={i} className="inline-flex items-center gap-2">{item} <span className="text-amber-400">•</span></span>)}
               </div>
             </div>
@@ -2131,7 +2164,6 @@ export default function App() {
               <button onClick={() => setIsMobilePresidentDrawerOpen(false)} className="text-slate-400 hover:text-white p-1"><X size={18} /></button>
             </div>
 
-            {/* Navigazione Schede su Mobile */}
             <div className="grid grid-cols-3 gap-1 bg-[#020A06] p-1 rounded-xl border border-emerald-900/60">
               <button onClick={() => { setActiveTab('AUCTION'); setIsMobilePresidentDrawerOpen(false); }} className={`py-1.5 rounded-lg text-xs font-black cursor-pointer ${activeTab === 'AUCTION' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-300'}`}>Campo</button>
               <button onClick={() => { setActiveTab('ROSTERS'); setIsMobilePresidentDrawerOpen(false); }} className={`py-1.5 rounded-lg text-xs font-black cursor-pointer ${activeTab === 'ROSTERS' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-300'}`}>Rose</button>
@@ -2175,7 +2207,7 @@ export default function App() {
       {/* ======================================================== */}
       {/* 4. FANTABOT CONTESTUALE PER LE 3 SCHERMATE (z-50)       */}
       {/* ======================================================== */}
-      <div className="fixed bottom-12 right-3 sm:bottom-10 sm:right-4 z-50 flex flex-col items-end">
+      <div className="fixed bottom-14 right-3 sm:bottom-10 sm:right-4 z-50 flex flex-col items-end">
         {isFantaBotOpen && (
           <div className="mb-2 w-80 max-w-[90vw] bg-[#091526]/95 border-2 border-cyan-400/80 rounded-2xl p-3.5 shadow-[0_0_35px_rgba(56,189,248,0.45)] backdrop-blur-xl text-left text-xs animate-in fade-in slide-in-from-bottom-3 duration-200 z-50">
             <div className="flex items-center justify-between border-b border-slate-700/80 pb-2 mb-2">
@@ -2217,12 +2249,23 @@ export default function App() {
 
                   <button
                     onClick={() => {
-                      setFantaBotSpeech('🔑 Se il tuo Presidente ha già creato la stanza, inserisci il codice nel box evidenziato e premi "Entra nella Stanza"!');
+                      setFantaBotSpeech('🔑 Se il tuo Presidente ha già creato la stanza, inserisci il codice nel box evidenziato e premi "Entra nella Stanza" (oppure tocca una delle tue leghe salvate subito sotto)!');
                       triggerSpotlight('HERO_CONNECT');
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
                   >
                     <span>🔑 Ho già un codice, come entro?</span>
+                    <ChevronRight size={12} className="text-cyan-400" />
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setFantaBotSpeech('📲 Tocca il pulsante "Salva App su Telefono" in alto per aggiungere FantasyBuzz come vera icona sulla schermata Home (iPhone e Android) a schermo intero, pronta anche per le aste future!');
+                      triggerSpotlight('HERO_PWA');
+                    }}
+                    className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
+                  >
+                    <span>📲 Posso salvare l'app come icona sul telefono?</span>
                     <ChevronRight size={12} className="text-cyan-400" />
                   </button>
 
@@ -2287,12 +2330,12 @@ export default function App() {
 
                   <button
                     onClick={() => {
-                      setFantaBotSpeech('🧹 In alto a destra premi "⚙️ Gestisci Lega": troverai il tasto per azzerare i contratti di prova e partire puliti per l\'asta ufficiale, conservando squadre e crediti!');
+                      setFantaBotSpeech('⚙️ Premi "Gestisci Lega" in alto a destra: da lì puoi modificare i crediti residui di qualsiasi mister (utile in caso di asta di riparazione), aggiungere nuove squadre o azzerare i contratti di prova!');
                       triggerSpotlight('SETTINGS');
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
                   >
-                    <span>🧹 Come azzero le rose per l\'asta vera?</span>
+                    <span>⚙️ Come modifico i crediti o azzero le rose?</span>
                     <ChevronRight size={12} className="text-cyan-400" />
                   </button>
 
@@ -2335,6 +2378,17 @@ export default function App() {
 
                   <button
                     onClick={() => {
+                      setFantaBotSpeech('🛡️ Il "Max Bid" (Puntata Massima) è calcolato automaticamente: il sistema ti riserva sempre 1 FM per ogni slot libero da completare fino a 25 giocatori, così non rischi mai di restare senza crediti per finire la squadra!');
+                      triggerSpotlight(null);
+                    }}
+                    className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
+                  >
+                    <span>🛡️ Perché mi blocca o cos\'è il Max Bid?</span>
+                    <ChevronRight size={12} className="text-cyan-400" />
+                  </button>
+
+                  <button
+                    onClick={() => {
                       setFantaBotSpeech('⚡ Il pulsante circolare BUZZ alza istantaneamente la tua offerta del valore selezionato (+1, +5, +10 o +20 FM). Se sei già in testa, il buzzer si blocca per evitare auto-rilanci!');
                       triggerSpotlight('BUZZER_BIG');
                     }}
@@ -2346,7 +2400,7 @@ export default function App() {
 
                   <button
                     onClick={() => {
-                      setFantaBotSpeech('💰 Sotto i pulsanti rapidi puoi digitare una cifra esatta (es. 45 FM) e premere "Rilancia". Ricorda che non puoi mai superare il tuo Max Bid calcolato automaticamente!');
+                      setFantaBotSpeech('💰 Sotto i pulsanti rapidi puoi digitare una cifra esatta (es. 45 FM) e premere "Rilancia".');
                       triggerSpotlight('BUZZER_EXACT');
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
@@ -2883,6 +2937,16 @@ export default function App() {
                   playersCount: 0,
                   isOnline: idx === 0
                 }));
+
+                // Salva la stanza nello storico così il Presidente non la dimentica mai!
+                const newHistoryEntry = {
+                  code: newCode,
+                  name: n,
+                  date: new Date().toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })
+                };
+                const updatedHistory = [newHistoryEntry, ...savedRoomsHistory.filter(r => r.code !== newCode)].slice(0, 3);
+                setSavedRoomsHistory(updatedHistory);
+                localStorage.setItem('fb_saved_rooms_history', JSON.stringify(updatedHistory));
 
                 setPurchasedPlayers({});
                 setCoaches(finalCoaches);
