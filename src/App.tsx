@@ -3035,28 +3035,34 @@ export default function App() {
 
       {/* MODALE QR CODE IN PRIMISSIMO PIANO (z-[9999]) */}
       {showQrModal && (
-        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-xl flex items-center justify-center p-4 z-[9999]">
-          <div className="bg-[#04160E] border-2 border-emerald-400 rounded-3xl p-6 md:p-8 max-w-lg w-full flex flex-col items-center gap-4 text-center relative shadow-[0_0_60px_rgba(16,185,129,0.35)]">
-            <button onClick={() => setShowQrModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer"><X size={24} /></button>
-            <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 px-3 py-1 rounded-full text-xs font-black uppercase">Collegamento Rapido Smartphone</span>
-            <h3 className="text-2xl md:text-3xl font-black text-white uppercase">Inquadra la TV col Telefono 📱</h3>
-            <div className="bg-white p-4 rounded-3xl shadow-2xl">
-              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(inviteUrl)}`} alt="QR Code" className="w-56 h-56 md:w-64 md:h-64" />
+        <div
+          onClick={() => setShowQrModal(false)}
+          className="fixed inset-0 bg-slate-950/95 backdrop-blur-xl flex items-center justify-center p-3 z-[9999] overflow-y-auto"
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="bg-[#04160E] border-2 border-emerald-400 rounded-3xl p-4 sm:p-5 max-w-sm w-full max-h-[92vh] overflow-y-auto flex flex-col items-center gap-2.5 text-center relative shadow-[0_0_60px_rgba(16,185,129,0.35)] my-auto"
+          >
+            <button onClick={() => setShowQrModal(false)} className="absolute top-3 right-3 bg-slate-800/80 hover:bg-slate-700 p-1.5 rounded-full text-slate-300 hover:text-white cursor-pointer"><X size={18} /></button>
+            <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase">Collegamento Rapido Smartphone</span>
+            <h3 className="text-lg sm:text-xl font-black text-white uppercase leading-tight">Inquadra la TV col Telefono 📱</h3>
+            <div className="bg-white p-2.5 rounded-2xl shadow-xl">
+              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(inviteUrl)}`} alt="QR Code" className="w-40 h-40 sm:w-44 sm:h-44" />
             </div>
             
-            <div className="bg-[#020A06] border border-amber-400/50 p-3 rounded-2xl w-full flex flex-col gap-2">
+            <div className="bg-[#020A06] border border-amber-400/50 p-2.5 rounded-2xl w-full flex flex-col gap-1.5">
               <span className="text-[10px] font-bold text-slate-400 uppercase block">Codice Stanza:</span>
-              <strong className="text-3xl font-black text-amber-400 tracking-widest">{roomCode}</strong>
+              <strong className="text-2xl font-black text-amber-400 tracking-widest">{roomCode}</strong>
               <button 
                 onClick={handleCopyRoomCode} 
-                className="py-1.5 bg-[#0B132B] hover:bg-slate-800 text-slate-200 border border-slate-700 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer mx-auto px-4"
+                className="py-1 bg-[#0B132B] hover:bg-slate-800 text-slate-200 border border-slate-700 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer mx-auto px-4"
               >
                 <Copy size={13} /> {codeCopied ? 'Copiato! ✅' : 'Copia Codice'}
               </button>
             </div>
 
-            <button onClick={handleShareWhatsAppInvite} className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-2 cursor-pointer shadow-lg">
-              <Share2 size={16} /> Invia Link nel Gruppo WhatsApp
+            <button onClick={handleShareWhatsAppInvite} className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center justify-center gap-2 cursor-pointer shadow-lg">
+              <Share2 size={15} /> Invia Link nel Gruppo WhatsApp
             </button>
           </div>
         </div>
