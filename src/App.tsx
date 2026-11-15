@@ -952,7 +952,7 @@ export default function App() {
     }
   }, [countdown, userRole, handleAward]);
 
-  const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
+  const inviteUrl = `https://fantasybuzz.it${window.location.pathname}?room=${roomCode}`;
   const handleShareWhatsAppInvite = () => window.open(`https://wa.me/?text=${encodeURIComponent(`\u{26BD} Entra nello studio TV dell'asta di Fantacalcio *${leagueName}*!\n\u{1F4F2} Clicca qui per aprire il tuo Buzzer: ${inviteUrl}\n\u{1F511} Codice Stanza: *${roomCode}*`)}`, '_blank');
   const handleCopyRoomCode = () => { navigator.clipboard?.writeText(roomCode); setCodeCopied(true); setTimeout(() => setCodeCopied(false), 2000); };
 
@@ -961,7 +961,7 @@ export default function App() {
     const winnerObj = coaches.find(x => x.id === awardModal.winnerId);
     const club = winnerObj?.teamName || awardModal.winnerName;
     const stamp = getViralStampInfo(awardModal.price, awardModal.player.basePrice, initialBudget);
-    const viralText = `\u{1F525} *${stamp.label}* \u{1F525}\n\u{270D}\u{FE0F} *${awardModal.player.name}* (${awardModal.player.team}) firma con *${club.toUpperCase()}* (${awardModal.winnerName}) per *${awardModal.price} FM*!\n\n\u{1F4FA} Asta del Fantacalcio trasformata in uno Show TV con *FantasyBuzz*!\n\u{1F449} Provalo gratis con la tua lega su https://${window.location.host}`;
+    const viralText = `\u{1F525} *${stamp.label}* \u{1F525}\n\u{270D}\u{FE0F} *${awardModal.player.name}* (${awardModal.player.team}) firma con *${club.toUpperCase()}* (${awardModal.winnerName}) per *${awardModal.price} FM*!\n\n\u{1F4FA} Asta del Fantacalcio trasformata in uno Show TV con *FantasyBuzz*!\n\u{1F449} Provalo gratis con la tua lega su https://fantasybuzz.it`;
     window.open(`https://wa.me/?text=${encodeURIComponent(viralText)}`, '_blank');
   };
 
@@ -983,7 +983,7 @@ export default function App() {
       text += `\n`;
     });
 
-    text += `\u{26A1} Generato con FantasyBuzz - https://${window.location.host}`;
+    text += `\u{26A1} Generato con FantasyBuzz - https://fantasybuzz.it`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
@@ -1102,7 +1102,7 @@ export default function App() {
 
     ctx.fillStyle = '#ffffff'; 
     ctx.font = '28px system-ui, sans-serif';
-    ctx.fillText('L’ASTA DEL FANTACALCIO DIVENTA UNO SHOW LIVE • FANTASYBUZZ', 540, 1720);
+    ctx.fillText('L’ASTA DEL FANTACALCIO DIVENTA UNO SHOW LIVE • FANTASYBUZZ.IT', 540, 1720);
 
     const fileName = `FantasyBuzz_${awardModal.player.name.replace(/\s+/g, '_')}.png`;
     const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/png'));
@@ -1163,7 +1163,7 @@ export default function App() {
       `}</style>
 
       {/* ======================================================== */}
-      {/* 1. SCHERMATA INIZIALE: HERO / CONFIGURAZIONE LEGA       */}
+      {/* 1. SCHERMATA INIZIALE: HERO / CONFIGURAZIONE LEGA        */}
       {/* ======================================================== */}
       {!userRole ? (
         <div
@@ -1425,7 +1425,7 @@ export default function App() {
         <div className="h-screen w-screen font-sans flex flex-col justify-between p-1.5 sm:p-2 select-none overflow-hidden relative z-10 bg-[#020D08] text-slate-200">
           
           {/* ======================================================== */}
-          {/* 2. REGIA TV (Ruolo: PRESIDENTE)                         */}
+          {/* 2. REGIA TV (Ruolo: PRESIDENTE)                          */}
           {/* ======================================================== */}
           {userRole === 'PRESIDENT' && !isPureTvDisplay && (
             <div className="bg-[#051C12]/90 border border-emerald-500/40 rounded-xl px-2.5 py-1 mb-1 flex items-center justify-between text-xs shrink-0 backdrop-blur-md">
@@ -1624,7 +1624,7 @@ export default function App() {
           </header>
 
           {/* ======================================================== */}
-          {/* 3. SCHERMATA SMARTPHONE (Ruolo: PLAYER / BUZZER)        */}
+          {/* 3. SCHERMATA SMARTPHONE (Ruolo: PLAYER / BUZZER)         */}
           {/* ======================================================== */}
           {userRole === 'PLAYER' ? (
             <main
@@ -2058,7 +2058,7 @@ export default function App() {
                           <label className="text-[10px] uppercase font-black text-slate-400">Squadra:</label>
                           <select 
                             value={selectedRosterCoachId} 
-                            onChange={e => setSelectedRosterCoachId(e.target.value)}
+                            onChange={e => setSelectedRosterCoachId(e.target.value)} 
                             className="bg-[#061A12] border border-emerald-500/50 rounded-lg px-2.5 py-1 text-xs font-black text-amber-400 focus:outline-none"
                           >
                             {coaches.map(c => (
@@ -2267,7 +2267,7 @@ export default function App() {
       )}
 
       {/* ======================================================== */}
-      {/* 4. FANTABOT CONTESTUALE PER LE 3 SCHERMATE (z-50)       */}
+      {/* 4. FANTABOT CONTESTUALE PER LE 3 SCHERMATE (z-50)        */}
       {/* ======================================================== */}
       <div className="fixed bottom-14 right-3 sm:bottom-10 sm:right-4 z-50 flex flex-col items-end">
         {isFantaBotOpen && (
@@ -2344,7 +2344,7 @@ export default function App() {
 
                   <button
                     onClick={() => {
-                      setFantaBotSpeech(`📺 Puoi collegare la TV in 2 modi:\n1. Con un cavo HDMI dal PC/portatile alla TV.\n2. Aprendo https://${window.location.host} sul browser della Smart TV, inserendo il Codice Stanza e premendo il tasto dorato "📺 PROIETTA SUL TELEVISORE"!`);
+                      setFantaBotSpeech('📺 Puoi collegare la TV in 2 modi:\n1. Con un cavo HDMI dal PC/portatile alla TV.\n2. Aprendo https://fantasybuzz.it sul browser della Smart TV, inserendo il Codice Stanza e premendo il tasto dorato "📺 PROIETTA SUL TELEVISORE"!');
                       triggerSpotlight(null);
                     }}
                     className="w-full text-left p-1.5 rounded-lg bg-[#0E1F38] hover:bg-cyan-950/70 border border-slate-700 hover:border-cyan-400 text-[11px] font-semibold text-slate-200 flex items-center justify-between transition-colors"
@@ -3139,7 +3139,12 @@ export default function App() {
               <>
                 <h3 className="text-lg font-black text-amber-400 uppercase">Supporto Tecnico</h3>
                 <div className="space-y-2.5 text-xs text-slate-300 leading-relaxed">
-                  <p>Email: <strong>supporto@fantasybuzz.app</strong></p>
+                  <p>
+                    Email:{' '}
+                    <a href="mailto:supporto@fantasybuzz.it" className="font-bold text-amber-400 underline hover:text-amber-300">
+                      supporto@fantasybuzz.it
+                    </a>
+                  </p>
                   {userRole && <p>Codice Stanza Corrente: <strong className="text-amber-400">{roomCode}</strong></p>}
                 </div>
               </>
